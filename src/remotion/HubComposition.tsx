@@ -1,4 +1,5 @@
 import { ThreeCanvas } from '@remotion/three';
+import { useAnatomy } from '../anatomy/useAnatomy';
 import { useMemo } from 'react';
 import { Vector3 } from 'three';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
@@ -8,6 +9,7 @@ import { Avatar, jointStatuses } from '../scene/Avatar';
 import { CameraRig } from '../scene/CameraRig';
 import { boxCorners, fitCamera, keyLightFor, project } from '../scene/camera';
 import { Lights } from '../scene/Environment';
+import { GymRoom, RoomLighting } from '../scene/GymRoom';
 import { Mat } from '../scene/kit';
 import { PALETTES } from '../scene/palette';
 import { Placeholder } from '../scene/Placeholder';
@@ -49,6 +51,8 @@ function ActiveStation({ entry, t, props }: { entry: CatalogEntry; t: number; pr
 }
 
 export const HubComposition: React.FC<HubCompProps> = (props) => {
+  // Fuera del lienzo 3D: aquí sí llega el contexto de Remotion (espera al modelo al renderizar).
+  useAnatomy();
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const palette = PALETTES[props.theme];
@@ -66,21 +70,18 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: palette.bg, fontFamily: props.theme === 'terminal' ? MONO : SANS }}>
-      <ThreeCanvas width={width} height={height} orthographic shadows frameloop="demand">
+      <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand">
         <color attach="background" args={[palette.bg]} />
         <CameraRig spec={cam} />
         <Lights extent={12} keyPosition={keyLightFor(cam)} />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[FLOOR[0], FLOOR[1]]} />
-          <meshStandardMaterial color={palette.floor} roughness={0.95} />
-        </mesh>
-        <gridHelper args={[19, 38, palette.floorLine, palette.floorLine]} position={[0, 0.003, 0]} />
+        <RoomLighting />
+        <GymRoom palette={palette} center={[0, 0]} size={FLOOR} azimuth={-45 + 90 * props.rotation} elevation={35.264} height={2.6} variant="hub" />
         {(Object.keys(ZONES) as Zone[]).map((z) => {
           const zr = ZONES[z];
           return (
             <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[zr.x, 0.006, zr.z]} receiveShadow>
               <planeGeometry args={[zr.w, zr.d]} />
-              <meshStandardMaterial color={palette.zone[z]} roughness={0.9} transparent opacity={0.85} />
+              <meshStandardMaterial color={palette.zone[z]} roughness={0.9} transparent opacity={0.72} />
             </mesh>
           );
         })}

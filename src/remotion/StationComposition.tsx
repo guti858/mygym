@@ -1,4 +1,5 @@
 import { ThreeCanvas } from '@remotion/three';
+import { useAnatomy } from '../anatomy/useAnatomy';
 import { useMemo } from 'react';
 import { Vector3 } from 'three';
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
@@ -9,7 +10,8 @@ import type { Evaluation, Status } from '../engine/types';
 import { Avatar, jointStatuses, metricJoint } from '../scene/Avatar';
 import { CameraRig } from '../scene/CameraRig';
 import { fitCamera, keyLightFor, project } from '../scene/camera';
-import { Floor, Lights } from '../scene/Environment';
+import { Lights } from '../scene/Environment';
+import { GymRoom, RoomLighting } from '../scene/GymRoom';
 import { Gauges } from '../scene/Gauges';
 import { gaugeArcs, type GaugeArc } from '../scene/gauges';
 import { PALETTES } from '../scene/palette';
@@ -34,21 +36,29 @@ const SHORT_LABEL: Partial<Record<string, string>> = {
   'knee.valgus': 'Valgo',
 };
 
-/** Evita solapes entre etiquetas: las separa en vertical manteniendo su orden. */
-function placeLabels<T extends { x: number; y: number; ax: number }>(items: T[], unit: number): T[] {
-  const gap = 34 * unit;
-  const wide = 170 * unit;
-  const out = items.map((i) => ({ ...i })).sort((a, b) => a.y - b.y);
-  for (let i = 0; i < out.length; i++) {
-    for (let j = 0; j < i; j++) {
-      const a = out[j]!;
-      const b = out[i]!;
-      if (Math.abs(a.x - b.x) < wide && b.y - a.y < gap) b.y = a.y + gap;
+/** Marcadores numerados: separa los que caen demasiado cerca para que no se tapen. */
+function spreadBadges<T extends { x: number; y: number; ax: number; ay: number }>(items: T[], minDist: number): T[] {
+  const out = items.map((i) => ({ ...i }));
+  for (let iter = 0; iter < 6; iter++) {
+    for (let i = 0; i < out.length; i++) {
+      for (let j = 0; j < i; j++) {
+        const a = out[j]!;
+        const b = out[i]!;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.hypot(dx, dy);
+        if (d < minDist) {
+          // Empuja el marcador en la dirección que lo aleja de su articulación.
+          let ux = b.x - b.ax;
+          let uy = b.y - b.ay;
+          const ul = Math.hypot(ux, uy) || 1;
+          ux /= ul;
+          uy /= ul;
+          b.x += ux * (minDist - d + 2);
+          b.y += uy * (minDist - d + 2);
+        }
+      }
     }
-  }
-  // Separa la etiqueta del punto anclado hacia el lado más libre.
-  for (const l of out) {
-    if (Math.abs(l.x - l.ax) < 40 * unit) l.x = l.ax + (l.x >= l.ax ? 1 : -1) * 70 * unit;
   }
   return out;
 }
@@ -60,6 +70,8 @@ function worstEval(evals: readonly Evaluation[]): Evaluation | undefined {
 }
 
 export const StationComposition: React.FC<StationCompProps> = (props) => {
+  // Fuera del lienzo 3D: aquí sí llega el contexto de Remotion (espera al modelo al renderizar).
+  useAnatomy();
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const { mod, seg, variant, timeline, state, result } = useStationFrame(props, frame, fps);
@@ -86,11 +98,17 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
     points: framePts,
     width,
     height,
-    margins: props.showOverlay ? { top: 0.13, bottom: 0.2, side: 0.05 } : { top: 0.05, bottom: 0.05, side: 0.05 },
+    margins: {
+      top: props.showOverlay ? 0.13 : 0.05,
+      bottom: props.showOverlay ? 0.2 : 0.05,
+      side: 0.04,
+      right: props.showGauges ? ((props.uiScale ?? 1) > 1.2 ? 0.3 : 0.22) : 0.04,
+    },
     zoomFactor: props.zoom,
   });
   const b = mod.logic.bounds;
   const floorCenter: [number, number] = [(b.min[0] + b.max[0]) / 2, (b.min[2] + b.max[2]) / 2];
+  const roomSize: [number, number] = [Math.max(5.2, b.max[0] - b.min[0] + 2.8), Math.max(5.2, b.max[2] - b.min[2] + 2.8)];
   const statuses = jointStatuses(result.evaluations);
   const arcs = props.showGauges ? gaugeArcs(result.body, result.metrics, mod.content.keyMetrics) : [];
   const arcStatus = (a: GaugeArc): Status | undefined => {
@@ -113,22 +131,31 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
   const repEnd = repSegments[repSegments.length - 1]?.end ?? 1;
   const unit = (Math.min(width, height) / 900) * (props.uiScale ?? 1);
   const compact = (props.uiScale ?? 1) > 1.2;
-  const labels = placeLabels(
-    arcs.map((a) => {
+  const badges = spreadBadges(
+    arcs.map((a, i) => {
       const [ax, ay] = project(cam, a.center);
       const [x, y] = project(cam, a.label);
-      return { key: `${a.metric}${a.side ?? ''}`, a, ax, ay, x, y, status: arcStatus(a) ?? ('ok' as Status) };
+      return { key: `${a.metric}${a.side ?? ''}`, n: i + 1, a, ax, ay, x, y, status: arcStatus(a) ?? ('ok' as Status) };
     }),
-    unit,
+    30 * unit,
   );
+  const badgeSize = 26 * unit;
 
   return (
     <AbsoluteFill style={{ backgroundColor: palette.bg, fontFamily: props.theme === 'terminal' ? MONO : SANS }}>
-      <ThreeCanvas width={width} height={height} orthographic shadows frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: true }}>
+      <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: true }}>
         <color attach="background" args={[palette.bg]} />
         <CameraRig spec={cam} />
         <Lights keyPosition={keyLightFor(cam)} />
-        <Floor palette={palette} size={7} center={floorCenter} />
+        <RoomLighting />
+        <GymRoom
+          palette={palette}
+          center={floorCenter}
+          size={roomSize}
+          azimuth={view.azimuth + props.azimuthOffset}
+          elevation={view.elevation}
+          variant="station"
+        />
         <mod.Machine m={result.machine} palette={palette} H={seg.H} />
         <Avatar
           body={result.body}
@@ -142,38 +169,76 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
         {props.showGauges && <Gauges arcs={arcs} statusOf={arcStatus} colors={palette.status} />}
       </ThreeCanvas>
 
-      {props.showGauges && (
-        <svg width={width} height={height} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-          {labels.map((l) => (
-            <line key={l.key} x1={l.ax} y1={l.ay} x2={l.x} y2={l.y} stroke={palette.status[l.status]} strokeWidth={1.5 * unit} strokeOpacity={0.8} />
-          ))}
-        </svg>
-      )}
       {props.showGauges &&
-        labels.map(({ key, a, x, y, status: st }) => {
-          return (
-            <div
-              key={key}
-              style={{
-                position: 'absolute',
-                left: x,
-                top: y,
-                translate: '-50% -50%',
-                padding: `${3 * unit}px ${8 * unit}px`,
-                borderRadius: 999,
-                background: palette.labelBg,
-                border: `${2 * unit}px solid ${palette.status[st]}`,
-                color: palette.label,
-                fontSize: 17 * unit,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {SHORT_LABEL[a.metric] ?? METRIC_INFO[a.metric].label} {Math.round(a.value)}°
-            </div>
-          );
-        })}
+        badges.map(({ key, n, x, y, status: st }) => (
+          <div
+            key={key}
+            style={{
+              position: 'absolute',
+              left: x,
+              top: y,
+              translate: '-50% -50%',
+              width: badgeSize,
+              height: badgeSize,
+              borderRadius: '50%',
+              display: 'grid',
+              placeItems: 'center',
+              background: palette.labelBg,
+              border: `${2.5 * unit}px solid ${palette.status[st]}`,
+              color: palette.label,
+              fontSize: 14 * unit,
+              fontWeight: 800,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {n}
+          </div>
+        ))}
+
+      {props.showGauges && badges.length > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            right: 28 * unit,
+            top: (props.showOverlay ? 92 : 24) * unit,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6 * unit,
+            background: palette.labelBg,
+            borderRadius: 14 * unit,
+            padding: `${10 * unit}px ${12 * unit}px`,
+            color: palette.label,
+            minWidth: (compact ? 150 : 210) * unit,
+          }}
+        >
+          {badges
+            .slice()
+            .sort((p, q) => p.n - q.n)
+            .map(({ key, n, a, status: st }) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 * unit, fontSize: (compact ? 15 : 17) * unit }}>
+                <span
+                  style={{
+                    width: 20 * unit,
+                    height: 20 * unit,
+                    borderRadius: '50%',
+                    flex: 'none',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: 12 * unit,
+                    fontWeight: 800,
+                    background: palette.status[st],
+                    color: palette.bg,
+                  }}
+                >
+                  {n}
+                </span>
+                <span style={{ flex: 1, opacity: 0.9 }}>{SHORT_LABEL[a.metric] ?? METRIC_INFO[a.metric].label}</span>
+                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{Math.round(a.value)}°</span>
+                <span style={{ color: palette.status[st], width: 14 * unit, textAlign: 'center' }}>{STATUS_ICON[st]}</span>
+              </div>
+            ))}
+        </div>
+      )}
 
       {props.showOverlay && (
         <>

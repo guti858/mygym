@@ -33,6 +33,9 @@ export function MusclesPanel({ variant }: { variant: VariantContent }) {
           ))}
         </ul>
         <p className="fine">Implicación cualitativa (0–3) basada en la literatura y el consenso técnico; no son valores de EMG.</p>
+        <p className="fine">
+          Modelo anatómico: Z-Anatomy, z-anatomy.com (CC BY-SA 4.0), basado en BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 JP). Adaptado: mallas simplificadas y deformadas con el rig de MyGym.
+        </p>
       </section>
     </div>
   );

@@ -44,6 +44,8 @@ export const ANTHRO_TEST_PROFILES: Record<string, Anthropometry> = {
 
 export interface Segments {
   H: number;
+  /** Factor de complexión (√(IMC/22,5), acotado): escala perímetros y volúmenes. */
+  build: number;
   // Miembro inferior
   thigh: number;
   shank: number;
@@ -98,6 +100,7 @@ export function computeSegments(a: Anthropometry): Segments {
   const footLen = 0.152 * H;
   return {
     H,
+    build: k,
     thigh,
     shank,
     footLen,

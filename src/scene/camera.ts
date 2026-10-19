@@ -48,6 +48,8 @@ export interface Margins {
   top: number;
   bottom: number;
   side: number;
+  /** Margen derecho propio (p. ej. para un panel lateral); por defecto `side`. */
+  right?: number;
 }
 
 /** Encuadre automático: ajusta objetivo y zoom para que todos los `points` quepan dentro de los márgenes. */
@@ -78,7 +80,8 @@ export function fitCamera(opts: {
     maxV = Math.max(maxV, v);
   }
   const { top, bottom, side } = opts.margins;
-  const availW = opts.width * (1 - 2 * side);
+  const right = opts.margins.right ?? side;
+  const availW = opts.width * (1 - side - right);
   const availH = opts.height * (1 - top - bottom);
   const zoom = Math.min(availW / Math.max(0.01, maxU - minU), availH / Math.max(0.01, maxV - minV)) * (opts.zoomFactor ?? 1);
   const boxCenter = c
@@ -86,7 +89,10 @@ export function fitCamera(opts: {
     .add(base.right.clone().multiplyScalar((minU + maxU) / 2))
     .add(base.camUp.clone().multiplyScalar((minV + maxV) / 2));
   const yc = opts.height * top + availH / 2;
-  const target = boxCenter.sub(base.camUp.clone().multiplyScalar((opts.height / 2 - yc) / zoom));
+  const xc = opts.width * side + availW / 2;
+  const target = boxCenter
+    .sub(base.camUp.clone().multiplyScalar((opts.height / 2 - yc) / zoom))
+    .sub(base.right.clone().multiplyScalar((xc - opts.width / 2) / zoom));
   const dir = base.position.clone().sub(base.target).normalize();
   return { ...base, target, position: target.clone().add(dir.multiplyScalar(30)), zoom };
 }

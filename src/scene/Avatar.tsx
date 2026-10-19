@@ -1,4 +1,6 @@
 import { Quaternion, Vector3 } from 'three';
+import { AnatomyBody } from '../anatomy/AnatomyBody';
+import { useAnatomy } from '../anatomy/useAnatomy';
 import type { MuscleId } from '../content/muscles';
 import { SIDES, sideSign, type SolvedBody } from '../engine/body';
 import { STATUS_RANK } from '../engine/evaluate';
@@ -217,7 +219,80 @@ export interface AvatarProps {
   pulse: number;
 }
 
-export function Avatar({ body, palette, statuses, muscles, activation, showMuscles, pulse }: AvatarProps) {
+/** Avatar: modelo anatómico (Z-Anatomy) sobre el rig del motor; maniquí simple mientras carga. */
+export function Avatar(props: AvatarProps) {
+  const model = useAnatomy();
+  if (!model) return <Mannequin {...props} />;
+  return (
+    <group>
+      <AnatomyBody
+        model={model}
+        body={props.body}
+        palette={props.palette}
+        muscles={props.muscles}
+        activation={props.activation}
+        showMuscles={props.showMuscles}
+      />
+      <JointMarkers body={props.body} palette={props.palette} statuses={props.statuses} pulse={props.pulse} xray />
+    </group>
+  );
+}
+
+function jointList(body: SolvedBody) {
+  const { seg } = body;
+  const H = seg.H;
+  const th = body.thorax;
+  const joints: Array<{ key: string; pos: Vector3; r: number }> = [];
+  for (const side of SIDES) {
+    const arm = body.arms[side];
+    const leg = body.legs[side];
+    joints.push(
+      { key: `hombro.${side}`, pos: arm.gh, r: seg.r.upperArm * 0.7 },
+      { key: `codo.${side}`, pos: arm.elbow, r: seg.r.forearm * 1.05 },
+      { key: `muneca.${side}`, pos: arm.wrist, r: seg.r.forearm * 0.8 },
+      { key: `cadera.${side}`, pos: leg.hjc, r: seg.r.thigh * 0.62 },
+      { key: `rodilla.${side}`, pos: leg.knee, r: seg.r.shank * 1.05 },
+      { key: `tobillo.${side}`, pos: leg.ankle, r: seg.r.shank * 0.8 },
+    );
+  }
+  joints.push(
+    { key: 'lumbar', pos: body.s1.clone().lerp(body.l1, 0.5), r: 0.03 * H },
+    { key: 'tronco', pos: body.l1.clone().lerp(body.c7, 0.5).add(th.dir(0, 0, -seg.r.thoraxBack * 0.6)), r: 0.026 * H },
+    { key: 'cuello', pos: body.c7, r: 0.022 * H },
+  );
+  return joints;
+}
+
+/**
+ * Estado por articulación (verde/ámbar/rojo). En modo «rayos X» son puntos pequeños que se ven a
+ * través de músculos y huesos; en el maniquí, esferas que envuelven la articulación.
+ */
+function JointMarkers({ body, palette, statuses, pulse, xray = false }: Pick<AvatarProps, 'body' | 'palette' | 'statuses' | 'pulse'> & { xray?: boolean }) {
+  const H = body.seg.H;
+  return (
+    <>
+      {jointList(body).map(({ key, pos, r }) => {
+        const status: Status | undefined = statuses.get(key) ?? statuses.get(key.split('.')[0]!);
+        if (!status) return null;
+        const color = palette.status[status];
+        const s = status === 'riesgo' ? 1 + 0.18 * Math.sin(pulse) : 1;
+        const radius = xray ? (status === 'ok' ? 0.0075 : 0.011) * H : r;
+        return (
+          <mesh key={`j-${key}`} position={pos} scale={s} renderOrder={xray ? 20 : 0}>
+            <sphereGeometry args={[radius, 14, 10]} />
+            {xray ? (
+              <meshBasicMaterial color={color} transparent opacity={status === 'ok' ? 0.75 : 0.95} depthTest={false} depthWrite={false} />
+            ) : (
+              <Mat color={color} emissive={color} emissiveIntensity={status === 'ok' ? 0.25 : 0.6} opacity={0.92} />
+            )}
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
+function Mannequin({ body, palette, statuses, muscles, activation, showMuscles, pulse }: AvatarProps) {
   const { seg } = body;
   const H = seg.H;
   const skin = palette.avatar;
@@ -263,41 +338,6 @@ export function Avatar({ body, palette, statuses, muscles, activation, showMuscl
     );
   }
 
-  // Articulaciones con estado (verde/ámbar/rojo).
-  const joints: Array<{ key: string; pos: Vector3; r: number }> = [];
-  for (const side of SIDES) {
-    const arm = body.arms[side];
-    const leg = body.legs[side];
-    joints.push(
-      { key: `hombro.${side}`, pos: arm.gh, r: seg.r.upperArm * 0.7 },
-      { key: `codo.${side}`, pos: arm.elbow, r: seg.r.forearm * 1.05 },
-      { key: `muneca.${side}`, pos: arm.wrist, r: seg.r.forearm * 0.8 },
-      { key: `cadera.${side}`, pos: leg.hjc, r: seg.r.thigh * 0.62 },
-      { key: `rodilla.${side}`, pos: leg.knee, r: seg.r.shank * 1.05 },
-      { key: `tobillo.${side}`, pos: leg.ankle, r: seg.r.shank * 0.8 },
-    );
-  }
-  joints.push(
-    { key: 'lumbar', pos: body.s1.clone().lerp(body.l1, 0.5), r: 0.03 * H },
-    { key: 'tronco', pos: body.l1.clone().lerp(body.c7, 0.5).add(th.dir(0, 0, -seg.r.thoraxBack * 0.6)), r: 0.026 * H },
-    { key: 'cuello', pos: body.c7, r: 0.022 * H },
-  );
-  const jointEls = joints.map(({ key, pos, r }) => {
-    const st = statuses.get(key);
-    const base = key.split('.')[0]!;
-    const sideless = statuses.get(base);
-    const status: Status | undefined = st ?? sideless;
-    if (!status) return null;
-    const color = palette.status[status];
-    const s = status === 'riesgo' ? 1 + 0.18 * Math.sin(pulse) : 1;
-    return (
-      <mesh key={`j-${key}`} position={pos} scale={s}>
-        <sphereGeometry args={[r, 14, 10]} />
-        <Mat color={color} emissive={color} emissiveIntensity={status === 'ok' ? 0.25 : 0.6} opacity={0.92} />
-      </mesh>
-    );
-  });
-
   const shells = showMuscles
     ? muscleShells(body).flatMap((sh, i) => {
         const act = muscles.find((m) => m.muscle === sh.muscle);
@@ -323,7 +363,7 @@ export function Avatar({ body, palette, statuses, muscles, activation, showMuscl
     <group>
       {parts}
       {shells}
-      {jointEls}
+      <JointMarkers body={body} palette={palette} statuses={statuses} pulse={pulse} />
     </group>
   );
 }

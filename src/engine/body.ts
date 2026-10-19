@@ -92,6 +92,10 @@ export interface ArmSolution extends LimbSolution {
   wrist: Vector3;
   grip: Vector3;
   palm: Vector3;
+  /** Dirección hacia la que apunta el codo (polo de la IK). */
+  pole: Vector3;
+  /** true si la mano sujeta un maneral (dedos cerrados). */
+  gripping: boolean;
 }
 
 export interface LegSolution extends LimbSolution {
@@ -104,6 +108,8 @@ export interface LegSolution extends LimbSolution {
   toeDir: Vector3;
   footUp: Vector3;
   heelLift: number;
+  /** Dirección hacia la que apunta la rodilla (polo de la IK). */
+  pole: Vector3;
 }
 
 export interface SolvedBody {
@@ -153,6 +159,8 @@ function solveArm(
       wrist,
       grip,
       palm: thorax.dir(-s, 0, 0),
+      pole: thorax.dir(0, 0, -1),
+      gripping: false,
       root: gh,
       mid: elbow,
       end: grip,
@@ -188,6 +196,8 @@ function solveArm(
     wrist,
     grip,
     palm: target.palm.clone().normalize(),
+    pole: target.pole.clone().normalize(),
+    gripping: true,
     root: gh,
     mid: elbow,
     end: grip,
@@ -243,6 +253,7 @@ function solveLegWithFoot(
     toeDir,
     footUp: up,
     heelLift: liftDeg,
+    pole: pole.normalize(),
     root: hjc,
     mid: ik.mid,
     end: ik.end,

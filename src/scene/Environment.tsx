@@ -3,7 +3,7 @@ import type { ScenePalette } from './palette';
 export function Lights({ extent = 3, keyPosition = [4, 7, 5] }: { extent?: number; keyPosition?: readonly [number, number, number] }) {
   return (
     <>
-      <hemisphereLight args={['#ffffff', '#4a505a', 1.25]} />
+      <hemisphereLight args={['#ffffff', '#4a505a', 0.95]} />
       <directionalLight
         position={[keyPosition[0], keyPosition[1], keyPosition[2]]}
         intensity={1.7}

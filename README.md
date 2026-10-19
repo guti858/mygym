@@ -66,6 +66,14 @@ src/
 - **Coherencia entre estaciones:** cinco mecánicas compartidas (cable, palanca con pivote, carril, peso libre, peso corporal) y el mismo esquema de contenido.
 - **Tests de contrato** (por estación): la técnica ideal no genera alertas para perfiles de 150 a 195 cm, fémur largo, brazos cortos/largos y poca movilidad; cada error demostrable dispara las alertas que declara.
 
+## Modelo anatómico
+
+El avatar usa músculos, huesos y piel (cabeza, manos y pies) del atlas libre [Z-Anatomy](https://www.z-anatomy.com) (CC BY-SA 4.0), derivado de [BodyParts3D](https://lifesciencedb.jp/bp3d/) © The Database Center for Life Science (CC BY-SA 2.1 Japan). Se probó Sketchfab: su API de descarga exige OAuth y cada modelo tiene su propia licencia, así que se optó por esta fuente libre y reproducible.
+
+- `scripts/anatomy/export_zanatomy.py` (Blender como módulo de Python, `bpy`) selecciona las piezas, las simplifica, calcula los pesos de *skinning* respecto al rig del motor y mide los centros articulares. Genera `src/anatomy/data.generated.ts`, que es obra derivada y se distribuye con la misma licencia **CC BY-SA 4.0**.
+- `src/anatomy/rig.ts` traduce cada postura del motor (marcos de pelvis, columna y cuello, IK de brazos y piernas, pronosupinación, dedos cerrados sobre el maneral) a una matriz por hueso; huesos auxiliares de medio giro conservan el volumen en las articulaciones.
+- El modelo se carga en un fragmento aparte (~0,8 MB comprimido) y, mientras llega, se ve el maniquí simplificado.
+
 ## Dependencias con licencia propia
 
 Remotion es gratuito para particulares y empresas de hasta 3 personas; por encima hace falta licencia de empresa ([licencia de Remotion](https://www.remotion.dev/license)).
