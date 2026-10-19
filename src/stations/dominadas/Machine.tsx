@@ -5,9 +5,9 @@ import { DOMINADAS_PARALLEL_HALF, DOMINADAS_PARALLEL_Z, type DominadasMachine } 
 
 const Z = new Vector3(0, 0, 1);
 /** Torre delante del usuario (mira hacia ella); la barra sale en voladizo hacia atrás. */
-const TOWER_Z = 0.62;
+const TOWER_Z = 0.82;
 const OUTER = 0.62;
-const TOP = 2.48;
+const TOP = 2.6;
 const STACK = new Vector3(0, 0.06, TOWER_Z + 0.06);
 const BAR_HALF = 0.62;
 /** La barra recta pasa por z = 0 (donde la lógica coloca los agarres prono y supino). */
@@ -23,10 +23,11 @@ export function DominadasMachine3D({ m, palette }: { m: DominadasMachine; palett
       {[-1, 1].map((s) => (
         <group key={s}>
           <Beam from={[s * OUTER, 0, TOWER_Z]} to={[s * OUTER, TOP, TOWER_Z]} w={0.08} color={f} />
-          {/* Voladizo hasta la barra */}
-          <Beam from={[s * OUTER, y + 0.06, TOWER_Z]} to={[s * OUTER, y + 0.06, BAR_Z]} w={0.07} color={f} />
+          {/* Voladizo hasta las asas paralelas (por detrás de la barra recta) */}
+          <Beam from={[s * OUTER, y + 0.06, TOWER_Z]} to={[s * OUTER, y + 0.06, DOMINADAS_PARALLEL_Z - 0.04]} w={0.07} color={f} />
           <Beam from={[s * OUTER, y + 0.06, BAR_Z]} to={[s * OUTER, y, BAR_Z]} w={0.05} color={f} />
-          {/* Asas paralelas (agarre neutro) colgadas de un travesaño */}
+          {/* Asas paralelas (agarre neutro), colgadas de un brazo lateral: nada pasa sobre la cabeza */}
+          <Beam from={[s * OUTER, y + 0.06, DOMINADAS_PARALLEL_Z]} to={[s * DOMINADAS_PARALLEL_HALF, y + 0.06, DOMINADAS_PARALLEL_Z]} w={0.05} color={f} />
           <Beam from={[s * DOMINADAS_PARALLEL_HALF, y + 0.06, DOMINADAS_PARALLEL_Z - 0.12]} to={[s * DOMINADAS_PARALLEL_HALF, y + 0.06, DOMINADAS_PARALLEL_Z + 0.12]} w={0.04} color={f} />
           <Tube from={[s * DOMINADAS_PARALLEL_HALF, y + 0.06, DOMINADAS_PARALLEL_Z - 0.1]} to={[s * DOMINADAS_PARALLEL_HALF, y, DOMINADAS_PARALLEL_Z - 0.1]} r={0.012} color={palette.metal} />
           <Tube from={[s * DOMINADAS_PARALLEL_HALF, y + 0.06, DOMINADAS_PARALLEL_Z + 0.1]} to={[s * DOMINADAS_PARALLEL_HALF, y, DOMINADAS_PARALLEL_Z + 0.1]} r={0.012} color={palette.metal} />
@@ -40,7 +41,6 @@ export function DominadasMachine3D({ m, palette }: { m: DominadasMachine; palett
         </group>
       ))}
       <Beam from={[-OUTER, TOP, TOWER_Z]} to={[OUTER, TOP, TOWER_Z]} w={0.07} color={f} />
-      <Beam from={[-OUTER, y + 0.06, DOMINADAS_PARALLEL_Z]} to={[OUTER, y + 0.06, DOMINADAS_PARALLEL_Z]} w={0.05} color={f} />
       {/* Barra recta con los puños donde se agarra */}
       <Tube from={[-BAR_HALF, y, BAR_Z]} to={[BAR_HALF, y, BAR_Z]} r={0.016} color={palette.metal} />
       {m.grip === 'barra' &&

@@ -64,7 +64,7 @@ Consola: `ir dominadas`, `carga asistencia 25`, `ir remo`, `variante libre-prono
 
 - [ ] **Dominadas:** el recorrido arriba se mide por agarre (prona 122–152°, supina 130–160°, neutra 128–160° de codo), según lo que da la simulación con la barbilla justo por encima de la barra.
 - [ ] **Remo en T:** recorrido del codo por agarre (neutro 95–125°, prono 85–115°); el maneral va 24 cm por encima de la palanca para que los discos no choquen con el pecho; errores nuevos «pecho despegado» y «recorrido corto».
-- [ ] **Poleas:** 4 modalidades (sin barra EZ ni curl unilateral); en la extensión sobre la cabeza «hombros abajo» pasa a −5…18° porque con los brazos arriba la escápula se eleva de forma natural; polea supuesta 2:1.
+- [ ] **Poleas:** 4 modalidades (sin barra EZ ni curl unilateral); en la extensión sobre la cabeza «hombros abajo» pasa a −5…18° porque con los brazos arriba la escápula se eleva de forma natural; en la polea alta «codo fijo» pasa a −10…22° (codos pegados pero algo por delante, para que la barra baje delante de los muslos); polea supuesta 2:1.
 
 ### Cómo anotar cambios
 

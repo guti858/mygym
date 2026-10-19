@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { Beam, Cable, Disc, FootPlate, Pulley, Tube, WeightStack } from '../../scene/kit';
 import type { ScenePalette } from '../../scene/palette';
-import type { PoleasMachine } from './logic';
+import { POLEA_CARRIAGE_Z, type PoleasMachine } from './logic';
 
 const X = new Vector3(1, 0, 0);
 const TOP = 2.24;
@@ -13,7 +13,7 @@ export function PoleasMachine3D({ m, palette }: { m: PoleasMachine; palette: Sce
   const side = -m.facing; // signo de z de la cara de la columna donde está el carro
   const railZ = side * 0.07;
   const stackTop = STACK.y + m.stackPlates * 0.032;
-  const topPulley = new Vector3(0, TOP - 0.06, side * 0.09);
+  const topPulley = new Vector3(0, TOP - 0.06, side * POLEA_CARRIAGE_Z);
   const handles = m.hands;
   return (
     <group>

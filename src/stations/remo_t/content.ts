@@ -21,7 +21,7 @@ const W = {
     warn: [35, 75],
     at: 'siempre',
     label: 'Ángulo de tronco estable',
-    cue: 'Bisagra de cadera con el tronco a unos 45–60° de la vertical, y que no suba al tirar.',
+    cue: 'Bisagra de cadera con el tronco a 45–65° de la vertical, y que no suba al tirar.',
     why: 'Levantar el tronco para mover la carga añade inercia y traslada el esfuerzo a la zona lumbar.',
     confidence: 'practica',
   },

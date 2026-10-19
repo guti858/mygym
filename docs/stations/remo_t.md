@@ -22,12 +22,12 @@
 ### Ajuste de la máquina según la talla
 | Perfil | Posición | Almohadilla | Agarre |
 |---|---|---|---|
-| 150 cm | Tobillos a 131 cm del anclaje | Posición 14 | Neutro estrecho (15 cm) |
-| 175 cm | Tobillos a 125 cm del anclaje | Posición 20 | Neutro estrecho (15 cm) |
-| 195 cm | Tobillos a 119 cm del anclaje | Posición 20 | Neutro estrecho (15 cm) |
-| 175 cm, poca movilidad | Tobillos a 125 cm del anclaje | Posición 20 | Neutro estrecho (15 cm) |
+| 150 cm | Tobillos a 131 cm del anclaje | Posición 13 | Neutro estrecho (15 cm) |
+| 175 cm | Tobillos a 125 cm del anclaje | Posición 19 | Neutro estrecho (15 cm) |
+| 195 cm | Tobillos a 119 cm del anclaje | Posición 23 | Neutro estrecho (15 cm) |
+| 175 cm, poca movilidad | Tobillos a 125 cm del anclaje | Posición 19 | Neutro estrecho (15 cm) |
 
-Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 kg (brazo de palanca).
+Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 40 kg (brazo de palanca).
 
 ### Guion por fases
 - **Preparación:** Esternón en la almohadilla, pies firmes y cabeza fuera del apoyo. · Columna neutra: pecho alto, mirada al suelo algo adelantada, abdomen firme.
@@ -51,9 +51,9 @@ Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 k
 ### Ángulos simulados (175 cm, técnica ideal)
 | Posición | Columna lumbar · flexión | Tronco · inclinación | Codo · flexión | Escápula · protracción | Rodilla · flexión | Escápula · elevación | Cuello · flexión | Muñeca · extensión | Momentos (N·m) |
 |---|---|---|---|---|---|---|---|---|---|
-| Estiramiento (p=0) | -4 | 47 | 10 | 10 | 14 | -2 | 4 | 4 | Hombro 26, Codo 16 |
-| Mitad (p=0,5) | -4 | 47 | 59 | -5 | 14 | -4 | 4 | 4 | Hombro 22, Codo 39 |
-| Contracción (p=1) | -4 | 47 | 108 | -20 | 14 | -6 | 4 | 4 | Hombro 21, Codo 53 |
+| Estiramiento (p=0) | -4 | 47 | 10 | 10 | 14 | -2 | 4 | 4 | Hombro 24, Codo 15 |
+| Mitad (p=0,5) | -4 | 47 | 59 | -5 | 14 | -4 | 4 | 4 | Hombro 20, Codo 36 |
+| Contracción (p=1) | -4 | 47 | 108 | -20 | 14 | -6 | 4 | 4 | Hombro 19, Codo 49 |
 
 ### Músculos
 | Músculo | Papel | Implicación (1–3) |
@@ -71,12 +71,12 @@ Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 k
 ### Ajuste de la máquina según la talla
 | Perfil | Posición | Almohadilla | Agarre |
 |---|---|---|---|
-| 150 cm | Tobillos a 132 cm del anclaje | Posición 14 | Prono ancho (58 cm) |
-| 175 cm | Tobillos a 126 cm del anclaje | Posición 20 | Prono ancho (58 cm) |
-| 195 cm | Tobillos a 121 cm del anclaje | Posición 20 | Prono ancho (58 cm) |
-| 175 cm, poca movilidad | Tobillos a 126 cm del anclaje | Posición 20 | Prono ancho (58 cm) |
+| 150 cm | Tobillos a 132 cm del anclaje | Posición 13 | Prono ancho (58 cm) |
+| 175 cm | Tobillos a 126 cm del anclaje | Posición 19 | Prono ancho (58 cm) |
+| 195 cm | Tobillos a 121 cm del anclaje | Posición 23 | Prono ancho (58 cm) |
+| 175 cm, poca movilidad | Tobillos a 126 cm del anclaje | Posición 19 | Prono ancho (58 cm) |
 
-Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 kg (brazo de palanca).
+Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 40 kg (brazo de palanca).
 
 ### Guion por fases
 - **Preparación:** Esternón en la almohadilla, pies firmes y cabeza fuera del apoyo. · Columna neutra: pecho alto, mirada al suelo algo adelantada, abdomen firme.
@@ -100,9 +100,9 @@ Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 k
 ### Ángulos simulados (175 cm, técnica ideal)
 | Posición | Columna lumbar · flexión | Tronco · inclinación | Codo · flexión | Escápula · protracción | Rodilla · flexión | Escápula · elevación | Cuello · flexión | Muñeca · extensión | Momentos (N·m) |
 |---|---|---|---|---|---|---|---|---|---|
-| Estiramiento (p=0) | -4 | 47 | 10 | 10 | 14 | -2 | 4 | 4 | Hombro 20, Codo 5 |
-| Mitad (p=0,5) | -4 | 47 | 53 | -5 | 14 | -4 | 4 | 4 | Hombro 24, Codo 20 |
-| Contracción (p=1) | -4 | 47 | 96 | -20 | 14 | -6 | 4 | 4 | Hombro 32, Codo 34 |
+| Estiramiento (p=0) | -4 | 47 | 10 | 10 | 14 | -2 | 4 | 4 | Hombro 19, Codo 5 |
+| Mitad (p=0,5) | -4 | 47 | 53 | -5 | 14 | -4 | 4 | 4 | Hombro 22, Codo 19 |
+| Contracción (p=1) | -4 | 47 | 96 | -20 | 14 | -6 | 4 | 4 | Hombro 29, Codo 31 |
 
 ### Músculos
 | Músculo | Papel | Implicación (1–3) |
@@ -125,7 +125,7 @@ Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 k
 | 195 cm | Tobillos a 117 cm del anclaje | A la anchura de las caderas, a ambos lados de la palanca | Neutro estrecho (15 cm) |
 | 175 cm, poca movilidad | Tobillos a 123 cm del anclaje | A la anchura de las caderas, a ambos lados de la palanca | Neutro estrecho (15 cm) |
 
-Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 kg (brazo de palanca).
+Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 40 kg (brazo de palanca).
 
 ### Guion por fases
 - **Preparación:** Pies a ambos lados de la palanca, rodillas semiflexionadas y bisagra de cadera. · Columna neutra: pecho alto, mirada al suelo algo adelantada, abdomen firme.
@@ -138,7 +138,7 @@ Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 k
 | Ventana | Métrica | Correcto | Aviso (fuera = riesgo) | Cuándo | Confianza | Señal técnica | Por qué |
 |---|---|---|---|---|---|---|---|
 | Columna lumbar neutra | Columna lumbar · flexión | -12…6° | -18…12° | siempre | Evidencia (fenwick2009, mcgill2016) | Pecho alto y zona lumbar neutra: no redondees la espalda al bajar ni al tirar. | Con el tronco inclinado y carga en las manos, flexionar la columna lumbar aumenta mucho el estrés de los discos. |
-| Ángulo de tronco estable | Tronco · inclinación | 45…65° | 35…75° | siempre | Práctica habitual | Bisagra de cadera con el tronco a unos 45–60° de la vertical, y que no suba al tirar. | Levantar el tronco para mover la carga añade inercia y traslada el esfuerzo a la zona lumbar. |
+| Ángulo de tronco estable | Tronco · inclinación | 45…65° | 35…75° | siempre | Práctica habitual | Bisagra de cadera con el tronco a 45–65° de la vertical, y que no suba al tirar. | Levantar el tronco para mover la carga añade inercia y traslada el esfuerzo a la zona lumbar. |
 | Rodillas semiflexionadas | Rodilla · flexión | 10…35° | 5…50° | siempre | Práctica habitual | Rodillas algo flexionadas y peso en el centro del pie. | Con las rodillas bloqueadas la bisagra estira los isquiotibiales y tira de la pelvis hacia la retroversión. |
 | Escápulas juntas al final | Escápula · protracción | -30…-8° | -30…0° | contraccion | Consenso técnico (nsca) | Junta las escápulas al final del tirón, 1 s. | La retracción escapular es lo que trabaja el trapecio medio y los romboides; sin ella el remo se queda en los brazos. |
 | Recorrido del codo | Codo · flexión | 95…125° | 80…135° | contraccion | Práctica habitual | Lleva el maneral hasta el abdomen, con los codos pasando el tronco. | Llevar el maneral hasta el tronco completa el recorrido del dorsal y los retractores. |
@@ -150,9 +150,9 @@ Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 k
 ### Ángulos simulados (175 cm, técnica ideal)
 | Posición | Columna lumbar · flexión | Tronco · inclinación | Codo · flexión | Escápula · protracción | Rodilla · flexión | Escápula · elevación | Cuello · flexión | Muñeca · extensión | Momentos (N·m) |
 |---|---|---|---|---|---|---|---|---|---|
-| Estiramiento (p=0) | -4 | 54 | 10 | 10 | 24 | -2 | 4 | 4 | Hombro 26, Codo 16 |
-| Mitad (p=0,5) | -4 | 52 | 59 | -5 | 24 | -4 | 4 | 4 | Hombro 22, Codo 40 |
-| Contracción (p=1) | -4 | 50 | 108 | -20 | 24 | -6 | 4 | 4 | Hombro 18, Codo 56 |
+| Estiramiento (p=0) | -4 | 54 | 10 | 10 | 24 | -2 | 4 | 4 | Hombro 24, Codo 15 |
+| Mitad (p=0,5) | -4 | 52 | 59 | -5 | 24 | -4 | 4 | 4 | Hombro 20, Codo 37 |
+| Contracción (p=1) | -4 | 50 | 108 | -20 | 24 | -6 | 4 | 4 | Hombro 17, Codo 51 |
 
 ### Músculos
 | Músculo | Papel | Implicación (1–3) |
@@ -177,7 +177,7 @@ Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 k
 | 195 cm | Tobillos a 118 cm del anclaje | A la anchura de las caderas, a ambos lados de la palanca | Prono ancho (58 cm) |
 | 175 cm, poca movilidad | Tobillos a 124 cm del anclaje | A la anchura de las caderas, a ambos lados de la palanca | Prono ancho (58 cm) |
 
-Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 kg (brazo de palanca).
+Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 40 kg (brazo de palanca).
 
 ### Guion por fases
 - **Preparación:** Pies a ambos lados de la palanca, rodillas semiflexionadas y bisagra de cadera. · Columna neutra: pecho alto, mirada al suelo algo adelantada, abdomen firme.
@@ -190,7 +190,7 @@ Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 k
 | Ventana | Métrica | Correcto | Aviso (fuera = riesgo) | Cuándo | Confianza | Señal técnica | Por qué |
 |---|---|---|---|---|---|---|---|
 | Columna lumbar neutra | Columna lumbar · flexión | -12…6° | -18…12° | siempre | Evidencia (fenwick2009, mcgill2016) | Pecho alto y zona lumbar neutra: no redondees la espalda al bajar ni al tirar. | Con el tronco inclinado y carga en las manos, flexionar la columna lumbar aumenta mucho el estrés de los discos. |
-| Ángulo de tronco estable | Tronco · inclinación | 45…65° | 35…75° | siempre | Práctica habitual | Bisagra de cadera con el tronco a unos 45–60° de la vertical, y que no suba al tirar. | Levantar el tronco para mover la carga añade inercia y traslada el esfuerzo a la zona lumbar. |
+| Ángulo de tronco estable | Tronco · inclinación | 45…65° | 35…75° | siempre | Práctica habitual | Bisagra de cadera con el tronco a 45–65° de la vertical, y que no suba al tirar. | Levantar el tronco para mover la carga añade inercia y traslada el esfuerzo a la zona lumbar. |
 | Rodillas semiflexionadas | Rodilla · flexión | 10…35° | 5…50° | siempre | Práctica habitual | Rodillas algo flexionadas y peso en el centro del pie. | Con las rodillas bloqueadas la bisagra estira los isquiotibiales y tira de la pelvis hacia la retroversión. |
 | Escápulas juntas al final | Escápula · protracción | -30…-8° | -30…0° | contraccion | Consenso técnico (nsca) | Junta las escápulas al final del tirón, 1 s. | La retracción escapular es lo que trabaja el trapecio medio y los romboides; sin ella el remo se queda en los brazos. |
 | Recorrido del codo | Codo · flexión | 85…115° | 70…125° | contraccion | Práctica habitual | Lleva el maneral hasta la parte baja del pecho, con los codos abiertos. | Llevar el maneral hasta el tronco completa el recorrido del dorsal y los retractores. |
@@ -202,9 +202,9 @@ Carga por defecto: Palanca 10 kg + discos 30 kg = 40 kg · en el agarre ≈ 44 k
 ### Ángulos simulados (175 cm, técnica ideal)
 | Posición | Columna lumbar · flexión | Tronco · inclinación | Codo · flexión | Escápula · protracción | Rodilla · flexión | Escápula · elevación | Cuello · flexión | Muñeca · extensión | Momentos (N·m) |
 |---|---|---|---|---|---|---|---|---|---|
-| Estiramiento (p=0) | -4 | 54 | 10 | 10 | 24 | -2 | 4 | 4 | Hombro 20, Codo 5 |
-| Mitad (p=0,5) | -4 | 52 | 53 | -5 | 24 | -4 | 4 | 4 | Hombro 24, Codo 20 |
-| Contracción (p=1) | -4 | 50 | 96 | -20 | 24 | -6 | 4 | 4 | Hombro 31, Codo 35 |
+| Estiramiento (p=0) | -4 | 54 | 10 | 10 | 24 | -2 | 4 | 4 | Hombro 19, Codo 4 |
+| Mitad (p=0,5) | -4 | 52 | 53 | -5 | 24 | -4 | 4 | 4 | Hombro 22, Codo 19 |
+| Contracción (p=1) | -4 | 50 | 96 | -20 | 24 | -6 | 4 | 4 | Hombro 28, Codo 32 |
 
 ### Músculos
 | Músculo | Papel | Implicación (1–3) |

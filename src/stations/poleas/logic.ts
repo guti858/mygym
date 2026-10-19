@@ -57,7 +57,8 @@ const BASE_AXIAL: AxialKeys = {
   wristExt: [{ p: 0, v: 2 }],
 };
 
-const CURL = { attachment: 'barra', pulleyY: 0.2, facing: 1, ankleZ: -0.4, lean: [{ p: 0, v: 2 }], kneeDeg: 8, shoulderFlex: 4, abd: 7, elbow0: 10, elbow1: 135, axial: BASE_AXIAL } as const;
+// Codos pegados pero algo por delante del tronco: abajo, la barra queda delante de los muslos.
+const CURL = { attachment: 'barra', pulleyY: 0.2, facing: 1, ankleZ: -0.4, lean: [{ p: 0, v: 2 }], kneeDeg: 8, shoulderFlex: 12, abd: 7, elbow0: 10, elbow1: 135, axial: BASE_AXIAL } as const;
 
 const GEOM: Record<string, VariantGeom> = {
   'curl-barra': { ...CURL, palm: 'supino' },
@@ -66,10 +67,12 @@ const GEOM: Record<string, VariantGeom> = {
     attachment: 'barra',
     pulleyY: 2.02,
     facing: 1,
-    ankleZ: -0.36,
-    lean: [{ p: 0, v: 10 }],
-    kneeDeg: 12,
-    shoulderFlex: 2,
+    // Rodillas casi extendidas y codos algo por delante: abajo, la barra queda delante de los muslos
+    // y el cable sube por delante del pecho.
+    ankleZ: -0.5,
+    lean: [{ p: 0, v: 8 }],
+    kneeDeg: 5,
+    shoulderFlex: 13,
     abd: 8,
     elbow0: 95,
     elbow1: 6,
@@ -122,7 +125,7 @@ function leanFor(geom: VariantGeom, p: number, errorId: string | null, variantId
 function shoulderFlexFor(geom: VariantGeom, p: number, errorId: string | null, variantId: string): number {
   if (errorId !== 'codos') return geom.shoulderFlex;
   // Curl: los codos avanzan al subir. Polea alta: suben al estirar. Sobre la cabeza: caen hacia delante.
-  if (variantId.startsWith('curl')) return lerp(4, 42, p);
+  if (variantId.startsWith('curl')) return lerp(12, 44, p);
   if (variantId === 'triceps-alta') return lerp(38, 6, p);
   return lerp(122, 140, p);
 }
@@ -192,12 +195,14 @@ export const poleasLogic: StationLogic<PoleasMachine> = {
   startAt: 'estiramiento',
   load: POLEAS_LOAD,
   defaultLoadKg: 20,
-  bounds: { min: [-0.55, 0, -0.75], max: [0.55, 2.3, 1.0] },
+  bounds: { min: [-0.55, 0, -0.85], max: [0.55, 2.3, 1.35] },
   framePoints: (m) => [
     new Vector3(0.35, 2.3, 0),
     new Vector3(-0.35, 2.3, 0),
-    new Vector3(0.35, 0, -0.15),
-    new Vector3(-0.35, 0, 0.15),
+    new Vector3(0.35, 0, -0.25),
+    new Vector3(-0.35, 0, -0.25),
+    new Vector3(0.35, 0, 0.25),
+    new Vector3(-0.35, 0, 0.25),
     m.hook.clone().add(new Vector3(0.3, 0, 0)),
     m.hook.clone().add(new Vector3(-0.3, 0, 0)),
   ],

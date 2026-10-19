@@ -74,10 +74,12 @@ const GRIPS: Record<RemoGrip, GripGeom> = {
 };
 
 export const REMO_PLATFORM_Y = 0.06;
+/** Plataforma de pies (z): por delante termina antes de los discos, que bajan hasta el suelo. */
+export const REMO_PLATFORM_Z = { back: -0.88, front: 0.56 } as const;
 export const REMO_PIVOT = new Vector3(0, 0.12, -0.95);
 /** Del anclaje al maneral y al eje de los discos. */
 export const REMO_HANDLE_L = 1.5;
-export const REMO_SLEEVE_L = 1.64;
+export const REMO_SLEEVE_L = 1.72;
 /** El travesaño del maneral va sobre un soporte por encima de la palanca: así los discos pasan por debajo del tronco. */
 export const REMO_HANDLE_RISE = 0.24;
 const FLEX_START = 10;
@@ -86,7 +88,20 @@ const FEET_EXTRA = 0.07;
 /** Tobillos por delante de las caderas en la bisagra. */
 const ANKLE_AHEAD = 0.13;
 
-export const REMO_LOAD: LoadSpec = { kind: 'discos', baseKg: 10, base: 'palanca', maxPlatesKgPerSide: 50, effectiveFactor: REMO_SLEEVE_L / REMO_HANDLE_L, label: 'Palanca + discos' };
+/** Almohadilla de pecho: longitud (a lo largo del tronco) y altura mínima de su centro (posición 1). */
+export const REMO_PAD_LENGTH = 0.28;
+const REMO_PAD_MIN_Y = 0.7;
+
+export const REMO_LOAD: LoadSpec = {
+  kind: 'discos',
+  baseKg: 10,
+  base: 'palanca',
+  maxPlatesKgPerSide: 50,
+  // Los discos van más lejos del anclaje que el maneral; el peso de la palanca, a mitad de su longitud.
+  effectiveFactor: REMO_SLEEVE_L / REMO_HANDLE_L,
+  baseEffectiveFactor: REMO_SLEEVE_L / 2 / REMO_HANDLE_L,
+  label: 'Palanca + discos',
+};
 
 const AXIAL_KEYS: AxialKeys = {
   scapProt: [
@@ -184,7 +199,7 @@ export const remoLogic: StationLogic<RemoMachine> = {
   startAt: 'estiramiento',
   load: REMO_LOAD,
   defaultLoadKg: 30,
-  bounds: { min: [-0.7, 0, -1.1], max: [0.7, 1.7, 1.05] },
+  bounds: { min: [-0.7, 0, -1.1], max: [0.7, 1.85, 1.05] },
   framePoints: (m) => [
     new Vector3(0.6, 0, -1.05),
     new Vector3(-0.6, 0, -1.05),
@@ -217,10 +232,13 @@ export const remoLogic: StationLogic<RemoMachine> = {
     // Almohadilla de pecho (apoyo): regulada para tocar el esternón en la postura inicial.
     let pad: RemoMachine['pad'] = null;
     if (posture.supported) {
-      // Borde superior a la altura del esternón alto: la cabeza queda fuera del apoyo.
+      // Almohadilla corta sobre el esternón (la cabeza queda fuera y el maneral pasa por debajo);
+      // se regula en altura por posiciones y se dibuja en la posición elegida.
       const chest = chestPoint(ref).add(new Vector3(0, 0, dzUser));
-      const center = chest.clone().add(ref.thorax.dir(0, -0.06, 0.035));
-      pad = { center, q: ref.thorax.q.clone(), pos: snapPosition(center.y, 0.6, 0.025, 20).pos };
+      const center = chest.clone().add(ref.thorax.dir(0, 0.04, 0.035));
+      const snap = snapPosition(center.y, REMO_PAD_MIN_Y, 0.025, 28);
+      center.y = snap.value;
+      pad = { center, q: ref.thorax.q.clone(), pos: snap.pos };
     }
 
     // Postura de este fotograma (con el error, si lo hay) en el mismo sitio.
@@ -242,9 +260,10 @@ export const remoLogic: StationLogic<RemoMachine> = {
         near = a;
       }
     }
-    const minAngle = Math.asin((0.235 - REMO_PIVOT.y) / REMO_SLEEVE_L) / DEG; // discos apoyados en el suelo
+    // Tope inferior: discos más grandes (Ø 45 cm) apoyados en el suelo, por delante de la plataforma.
+    const minAngle = Math.asin((0.235 - REMO_PIVOT.y) / REMO_SLEEVE_L) / DEG;
     const flexTarget = errorId === 'recorrido_corto' ? lerp(FLEX_START, 60, p) : lerp(FLEX_START, g.flexTop, p);
-    const angle = Math.max(minAngle, flexAt(minAngle) >= flexTarget ? minAngle : bisect(minAngle, near, (a) => flexAt(a) >= flexTarget));
+    const angle = flexAt(minAngle) >= flexTarget ? minAngle : bisect(minAngle, near, (a) => flexAt(a) >= flexTarget);
 
     const grips = gripsAt(g, angle);
     const hands = {} as Record<Side, HandTarget>;

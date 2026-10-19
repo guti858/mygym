@@ -25,4 +25,11 @@ describe('Máquina de fondos', () => {
     expect(force(-20)).toBeLessThan(force(0));
     expect(force(20)).toBeGreaterThan(force(0));
   });
+  test('con asistencia, la pila sube cuando la rodillera baja', () => {
+    const anthro = ANTHRO_TEST_PROFILES.p50!;
+    const seg = computeSegments(anthro);
+    const lift = (p: number) => evaluateFrame(fondosLogic, fondosContent, { anthro, seg, variantId: 'pectoral', errorId: null, loadKg: -20, p, phase: 'concentrica' }).machine.stackLift;
+    expect(lift(0)).toBeGreaterThan(lift(1) + 0.08);
+    expect(lift(1)).toBeLessThan(1e-6);
+  });
 });

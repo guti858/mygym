@@ -150,36 +150,40 @@ export const fondosLogic: StationLogic<FondosMachine> = {
   solve(input: StationFrameInput): StationSolution<FondosMachine> {
     const { seg, anthro, p, errorId } = input;
     const geom = GEOM[input.variantId] ?? GEOM.pectoral!;
-    const axial = axialFor(geom, p, errorId);
-    const lean = leanFor(geom, p, errorId);
-
     const gripZ = gripZFor(geom.halfWidth);
     const grips = {} as Record<Side, Vector3>;
     for (const side of SIDES) grips[side] = new Vector3(sideSign(side) * geom.halfWidth, FONDOS_BAR_Y + 0.02, gripZ);
 
-    // Dónde debe quedar el hombro respecto a la mano: abajo, antebrazo vertical y hombro a la
-    // altura del codo; arriba, brazo casi vertical con el codo casi extendido.
-    const deep = errorId === 'profundidad';
-    const bottomArm = deep ? -24 : geom.bottomArm;
-    const bottomFlex = 90 - bottomArm;
-    const topFlex = errorId === 'bloqueo' ? 0.5 : TOP_FLEX;
-    const flex = lerp(bottomFlex, topFlex, p);
-    const reach = reachFor(seg, flex, axial.wristExt);
-    // Ángulo de la línea mano → hombro respecto a la vertical (hacia delante).
-    const fa = seg.forearm + 0.9 * seg.hand;
-    const bottomTilt = Math.atan2(seg.upperArm * Math.cos(bottomArm * DEG), fa + seg.upperArm * Math.sin(bottomArm * DEG));
-    const topTilt = (geom.lean[1]!.v * 0.35 + 3) * DEG;
-    const tilt = lerp(bottomTilt, topTilt, Math.pow(p, 0.8));
+    /** Postura de un instante `pp`: el cuerpo se traslada hasta que los hombros quedan donde toca. */
+    const placeAt = (pp: number) => {
+      const axial = axialFor(geom, pp, errorId);
+      const lean = leanFor(geom, pp, errorId);
+      // Dónde debe quedar el hombro respecto a la mano: abajo, antebrazo vertical y hombro a la
+      // altura del codo; arriba, brazo casi vertical con el codo casi extendido.
+      const deep = errorId === 'profundidad';
+      const bottomArm = deep ? -24 : geom.bottomArm;
+      const bottomFlex = 90 - bottomArm;
+      const topFlex = errorId === 'bloqueo' ? 0.5 : TOP_FLEX;
+      const flex = lerp(bottomFlex, topFlex, pp);
+      const reach = reachFor(seg, flex, axial.wristExt);
+      // Ángulo de la línea mano → hombro respecto a la vertical (hacia delante).
+      const fa = seg.forearm + 0.9 * seg.hand;
+      const bottomTilt = Math.atan2(seg.upperArm * Math.cos(bottomArm * DEG), fa + seg.upperArm * Math.sin(bottomArm * DEG));
+      const topTilt = (geom.lean[1]!.v * 0.35 + 3) * DEG;
+      const tilt = lerp(bottomTilt, topTilt, Math.pow(pp, 0.8));
 
-    const q = qAxis(new Vector3(1, 0, 0), lean - axial.lumbarFlex - axial.thoracicFlex);
-    const probe = new Frame(new Vector3(), q);
-    const pre = solveBody({ seg, anthro, pelvisRef: probe, pelvisPivot: new Vector3(), axial, feet: hangingFeet(seg, probe) });
-    const ghHalf = (Math.abs(pre.arms.L.gh.x) + Math.abs(pre.arms.R.gh.x)) / 2;
-    const dx = ghHalf - geom.halfWidth;
-    const ryz = Math.sqrt(Math.max(0.01, reach * reach - dx * dx));
-    const target = new Vector3(0, FONDOS_BAR_Y + 0.02 + Math.cos(tilt) * ryz, gripZ + Math.sin(tilt) * ryz);
-    const ghMid = pre.arms.L.gh.clone().add(pre.arms.R.gh).multiplyScalar(0.5);
-    const pelvis = new Frame(target.clone().sub(ghMid).setX(0), q);
+      const q = qAxis(new Vector3(1, 0, 0), lean - axial.lumbarFlex - axial.thoracicFlex);
+      const probe = new Frame(new Vector3(), q);
+      const pre = solveBody({ seg, anthro, pelvisRef: probe, pelvisPivot: new Vector3(), axial, feet: hangingFeet(seg, probe) });
+      const ghHalf = (Math.abs(pre.arms.L.gh.x) + Math.abs(pre.arms.R.gh.x)) / 2;
+      const dx = ghHalf - geom.halfWidth;
+      const ryz = Math.sqrt(Math.max(0.01, reach * reach - dx * dx));
+      const target = new Vector3(0, FONDOS_BAR_Y + 0.02 + Math.cos(tilt) * ryz, gripZ + Math.sin(tilt) * ryz);
+      const ghMid = pre.arms.L.gh.clone().add(pre.arms.R.gh).multiplyScalar(0.5);
+      const pelvis = new Frame(target.clone().sub(ghMid).setX(0), q);
+      return { axial, pre, pelvis };
+    };
+    const { axial, pre, pelvis } = placeAt(p);
     const feet = hangingFeet(seg, pelvis);
 
     const hands = {} as Record<Side, HandTarget>;
@@ -211,7 +215,8 @@ export const fondosLogic: StationLogic<FondosMachine> = {
         ballastKg,
         kneePad: assistKg > 0 ? kneeMid.clone().add(new Vector3(0, -seg.r.shank - 0.04, -0.02)) : null,
         belt: ballastKg > 0 ? body.pelvis.point(0, -0.02 * seg.H, -0.02 * seg.H) : null,
-        stackLift: assistKg > 0 ? Math.max(0, 0.45 - (body.pelvis.origin.y - 0.7)) * 0.4 : 0,
+        // La pila sube cuando la rodillera baja (abajo) y baja al subir el cuerpo.
+        stackLift: assistKg > 0 ? Math.max(0, placeAt(1).pelvis.origin.y - pelvis.origin.y) * 0.5 : 0,
       },
       forces,
       setup: [

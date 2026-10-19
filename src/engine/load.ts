@@ -35,6 +35,8 @@ export type LoadSpec =
       maxPlatesKgPerSide: number;
       /** Fracción del peso que actúa en el agarre (p. ej. sin 45° en un carril; brazo de palanca en una palanca). */
       effectiveFactor: number;
+      /** Fracción para el peso de la base, si difiere (p. ej. una palanca con el centro de masas a mitad). */
+      baseEffectiveFactor?: number;
       label: string;
     }
   | {
@@ -78,7 +80,7 @@ export function describeLoad(spec: LoadSpec, kg: number, bodyMassKg = 75): LoadI
     };
   }
   const total = spec.baseKg + kg;
-  const effectiveKg = total * spec.effectiveFactor;
+  const effectiveKg = kg * spec.effectiveFactor + spec.baseKg * (spec.baseEffectiveFactor ?? spec.effectiveFactor);
   const perSide = kg / 2;
   return {
     nominalKg: total,

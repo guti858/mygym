@@ -60,7 +60,7 @@ const ERRORS: readonly ErrorDef[] = [
     label: 'Codos que se mueven',
     description: 'El codo avanza (curl), sube al estirar (polea alta) o cae hacia delante (sobre la cabeza).',
     consequence: 'El deltoides o el dorsal ayudan: menos aislamiento del bíceps o del tríceps.',
-    expect: ['shoulder.flex'],
+    expect: ['shoulder.flex', 'shoulder.elev'],
   },
   {
     id: 'munecas',
@@ -204,11 +204,11 @@ const VARIANTS: readonly VariantContent[] = [
       win({
         id: 'codo_fijo',
         metric: 'shoulder.flex',
-        ok: [-15, 15],
-        warn: [-25, 30],
+        ok: [-10, 22],
+        warn: [-20, 32],
         at: 'siempre',
         label: 'Codo fijo junto al tronco',
-        cue: 'Codos pegados y quietos: solo se mueve el antebrazo.',
+        cue: 'Codos pegados, algo por delante del tronco, y quietos: solo se mueve el antebrazo.',
         why: 'Si los codos suben al estirar, el dorsal y el pectoral ayudan a empujar.',
         confidence: 'consenso',
       }),

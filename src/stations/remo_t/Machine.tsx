@@ -1,11 +1,11 @@
 import { Vector3 } from 'three';
 import { Beam, Pad, PlateLoad, Tube } from '../../scene/kit';
 import type { ScenePalette } from '../../scene/palette';
-import { REMO_PIVOT, type RemoMachine } from './logic';
+import { REMO_PAD_LENGTH, REMO_PIVOT, REMO_PLATFORM_Z, type RemoMachine } from './logic';
 
 const X = new Vector3(1, 0, 0);
 const NX = new Vector3(-1, 0, 0);
-const RAIL_X = 0.38;
+const RAIL_X = 0.44;
 
 export function RemoMachine3D({ m, palette }: { m: RemoMachine; palette: ScenePalette }) {
   const f = palette.frame;
@@ -18,8 +18,12 @@ export function RemoMachine3D({ m, palette }: { m: RemoMachine; palette: ScenePa
       {/* Plataforma: dos placas a los lados de la palanca */}
       {[-1, 1].map((s) => (
         <group key={s}>
-          <Pad position={[s * 0.27, top / 2, -0.15]} size={[0.38, top, 1.45]} color={palette.frameDark} />
-          <Beam from={[s * 0.07, 0.02, -0.88]} to={[s * 0.07, 0.02, 0.58]} w={0.04} color={f} />
+          <Pad
+            position={[s * 0.27, top / 2, (REMO_PLATFORM_Z.back + REMO_PLATFORM_Z.front) / 2]}
+            size={[0.38, top, REMO_PLATFORM_Z.front - REMO_PLATFORM_Z.back]}
+            color={palette.frameDark}
+          />
+          <Beam from={[s * 0.07, 0.02, REMO_PLATFORM_Z.back]} to={[s * 0.07, 0.02, REMO_PLATFORM_Z.front]} w={0.04} color={f} />
         </group>
       ))}
       {/* Anclaje: soporte con eje transversal */}
@@ -61,14 +65,15 @@ export function RemoMachine3D({ m, palette }: { m: RemoMachine; palette: ScenePa
 function ChestPad({ pad, top, palette }: { pad: NonNullable<RemoMachine['pad']>; top: number; palette: ScenePalette }) {
   const along = new Vector3(0, 1, 0).applyQuaternion(pad.q);
   const normal = new Vector3(0, 0, 1).applyQuaternion(pad.q);
-  const low = pad.center.clone().sub(along.clone().multiplyScalar(0.17)).add(normal.clone().multiplyScalar(0.05));
+  // Soporte desde el borde superior (junto a la cabeza): fuera del recorrido del maneral.
+  const high = pad.center.clone().add(along.clone().multiplyScalar(0.12)).add(normal.clone().multiplyScalar(0.05));
   return (
     <group>
-      <Pad position={pad.center} quaternion={pad.q} size={[0.32, 0.42, 0.07]} color={palette.pad} />
-      {/* Travesaño bajo la almohadilla y dos postes por fuera de las piernas */}
-      <Beam from={[-RAIL_X, low.y, low.z]} to={[RAIL_X, low.y, low.z]} w={0.04} color={palette.frame} />
+      <Pad position={pad.center} quaternion={pad.q} size={[0.32, REMO_PAD_LENGTH, 0.07]} color={palette.pad} />
+      {/* Travesaño bajo el borde superior y dos postes por fuera de los agarres */}
+      <Beam from={[-RAIL_X, high.y, high.z]} to={[RAIL_X, high.y, high.z]} w={0.04} color={palette.frame} />
       {[-1, 1].map((s) => (
-        <Beam key={s} from={[s * RAIL_X, low.y, low.z]} to={[s * RAIL_X, top, low.z]} w={0.045} color={palette.frame} />
+        <Beam key={s} from={[s * RAIL_X, high.y, high.z]} to={[s * RAIL_X, top, high.z]} w={0.045} color={palette.frame} />
       ))}
     </group>
   );

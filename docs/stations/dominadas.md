@@ -21,10 +21,10 @@
 ### Ajuste de la máquina según la talla
 | Perfil | Agarre | Modo | Barra |
 |---|---|---|---|
-| 150 cm | Prono, 57 cm entre manos (≈1,5× anchura de hombros) | Libre (peso corporal) | 230 cm del suelo |
-| 175 cm | Prono, 67 cm entre manos (≈1,5× anchura de hombros) | Libre (peso corporal) | 230 cm del suelo |
-| 195 cm | Prono, 74 cm entre manos (≈1,5× anchura de hombros) | Libre (peso corporal) | 230 cm del suelo |
-| 175 cm, poca movilidad | Prono, 67 cm entre manos (≈1,5× anchura de hombros) | Libre (peso corporal) | 230 cm del suelo |
+| 150 cm | Prono, 57 cm entre manos (≈1,5× anchura de hombros) | Libre (peso corporal) | 242 cm del suelo |
+| 175 cm | Prono, 67 cm entre manos (≈1,5× anchura de hombros) | Libre (peso corporal) | 242 cm del suelo |
+| 195 cm | Prono, 74 cm entre manos (≈1,5× anchura de hombros) | Libre (peso corporal) | 242 cm del suelo |
+| 175 cm, poca movilidad | Prono, 67 cm entre manos (≈1,5× anchura de hombros) | Libre (peso corporal) | 242 cm del suelo |
 
 Carga por defecto: Peso corporal 75 kg, sin asistencia ni lastre.
 
@@ -71,10 +71,10 @@ Carga por defecto: Peso corporal 75 kg, sin asistencia ni lastre.
 ### Ajuste de la máquina según la talla
 | Perfil | Agarre | Modo | Barra |
 |---|---|---|---|
-| 150 cm | Supino, 32 cm entre manos (anchura de hombros) | Libre (peso corporal) | 230 cm del suelo |
-| 175 cm | Supino, 37 cm entre manos (anchura de hombros) | Libre (peso corporal) | 230 cm del suelo |
-| 195 cm | Supino, 41 cm entre manos (anchura de hombros) | Libre (peso corporal) | 230 cm del suelo |
-| 175 cm, poca movilidad | Supino, 37 cm entre manos (anchura de hombros) | Libre (peso corporal) | 230 cm del suelo |
+| 150 cm | Supino, 32 cm entre manos (anchura de hombros) | Libre (peso corporal) | 242 cm del suelo |
+| 175 cm | Supino, 37 cm entre manos (anchura de hombros) | Libre (peso corporal) | 242 cm del suelo |
+| 195 cm | Supino, 41 cm entre manos (anchura de hombros) | Libre (peso corporal) | 242 cm del suelo |
+| 175 cm, poca movilidad | Supino, 37 cm entre manos (anchura de hombros) | Libre (peso corporal) | 242 cm del suelo |
 
 Carga por defecto: Peso corporal 75 kg, sin asistencia ni lastre.
 
@@ -121,10 +121,10 @@ Carga por defecto: Peso corporal 75 kg, sin asistencia ni lastre.
 ### Ajuste de la máquina según la talla
 | Perfil | Agarre | Modo | Barra |
 |---|---|---|---|
-| 150 cm | Neutro en las asas paralelas (48 cm) | Libre (peso corporal) | 230 cm del suelo |
-| 175 cm | Neutro en las asas paralelas (48 cm) | Libre (peso corporal) | 230 cm del suelo |
-| 195 cm | Neutro en las asas paralelas (48 cm) | Libre (peso corporal) | 230 cm del suelo |
-| 175 cm, poca movilidad | Neutro en las asas paralelas (48 cm) | Libre (peso corporal) | 230 cm del suelo |
+| 150 cm | Neutro en las asas paralelas (48 cm) | Libre (peso corporal) | 242 cm del suelo |
+| 175 cm | Neutro en las asas paralelas (48 cm) | Libre (peso corporal) | 242 cm del suelo |
+| 195 cm | Neutro en las asas paralelas (48 cm) | Libre (peso corporal) | 242 cm del suelo |
+| 175 cm, poca movilidad | Neutro en las asas paralelas (48 cm) | Libre (peso corporal) | 242 cm del suelo |
 
 Carga por defecto: Peso corporal 75 kg, sin asistencia ni lastre.
 

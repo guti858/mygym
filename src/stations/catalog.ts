@@ -74,7 +74,7 @@ export const CATALOG: readonly CatalogEntry[] = [
     ready: true,
     principal: ['biceps', 'triceps'],
     secundarios: ['braquial', 'antebrazo', 'abdominales'],
-    modalidades: ['Curl barra / EZ / cuerda', 'Tríceps polea alta', 'Tríceps sobre la cabeza'],
+    modalidades: ['Curl con barra', 'Curl martillo con cuerda', 'Tríceps polea alta', 'Tríceps sobre la cabeza'],
     hub: { x: 1.4, z: -4.4, yaw: 0 },
     placeholder: 'poleas',
   },

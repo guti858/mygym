@@ -49,9 +49,9 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 ### Ángulos simulados (175 cm, técnica ideal)
 | Posición | Codo · flexión | Hombro · flexión (sagital) | Tronco · inclinación | Muñeca · extensión | Escápula · elevación | Columna lumbar · flexión | Momentos (N·m) |
 |---|---|---|---|---|---|---|---|
-| Estiramiento (p=0) | 11 | 4 | 2 | 2 | -3 | -4 | Hombro 20, Codo 10 |
-| Mitad (p=0,5) | 73 | 4 | 2 | 2 | -3 | -4 | Hombro 19, Codo 17 |
-| Contracción (p=1) | 136 | 4 | 2 | 2 | -3 | -4 | Hombro 12, Codo 13 |
+| Estiramiento (p=0) | 11 | 12 | 2 | 2 | -3 | -4 | Hombro 17, Codo 9 |
+| Mitad (p=0,5) | 73 | 12 | 2 | 2 | -3 | -4 | Hombro 22, Codo 17 |
+| Contracción (p=1) | 136 | 12 | 2 | 2 | -3 | -4 | Hombro 13, Codo 12 |
 
 ### Músculos
 | Músculo | Papel | Implicación (1–3) |
@@ -93,9 +93,9 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 ### Ángulos simulados (175 cm, técnica ideal)
 | Posición | Codo · flexión | Hombro · flexión (sagital) | Tronco · inclinación | Muñeca · extensión | Escápula · elevación | Columna lumbar · flexión | Momentos (N·m) |
 |---|---|---|---|---|---|---|---|
-| Estiramiento (p=0) | 10 | 4 | 2 | 2 | -3 | -4 | Hombro 17, Codo 8 |
-| Mitad (p=0,5) | 73 | 4 | 2 | 2 | -3 | -4 | Hombro 19, Codo 17 |
-| Contracción (p=1) | 135 | 4 | 2 | 2 | -3 | -4 | Hombro 12, Codo 13 |
+| Estiramiento (p=0) | 10 | 12 | 2 | 2 | -3 | -4 | Hombro 14, Codo 8 |
+| Mitad (p=0,5) | 73 | 12 | 2 | 2 | -3 | -4 | Hombro 22, Codo 17 |
+| Contracción (p=1) | 135 | 12 | 2 | 2 | -3 | -4 | Hombro 13, Codo 11 |
 
 ### Músculos
 | Músculo | Papel | Implicación (1–3) |
@@ -110,10 +110,10 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 ### Ajuste de la máquina según la talla
 | Perfil | Polea | Accesorio | Distancia |
 |---|---|---|---|
-| 150 cm | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 36 cm de la columna |
-| 175 cm | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 36 cm de la columna |
-| 195 cm | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 36 cm de la columna |
-| 175 cm, poca movilidad | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 36 cm de la columna |
+| 150 cm | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 50 cm de la columna |
+| 175 cm | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 50 cm de la columna |
+| 195 cm | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 50 cm de la columna |
+| 175 cm, poca movilidad | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 50 cm de la columna |
 
 Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 
@@ -126,7 +126,7 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 ### Ventanas articulares
 | Ventana | Métrica | Correcto | Aviso (fuera = riesgo) | Cuándo | Confianza | Señal técnica | Por qué |
 |---|---|---|---|---|---|---|---|
-| Codo fijo junto al tronco | Hombro · flexión (sagital) | -15…15° | -25…30° | siempre | Consenso técnico | Codos pegados y quietos: solo se mueve el antebrazo. | Si los codos suben al estirar, el dorsal y el pectoral ayudan a empujar. |
+| Codo fijo junto al tronco | Hombro · flexión (sagital) | -10…22° | -20…32° | siempre | Consenso técnico | Codos pegados, algo por delante del tronco, y quietos: solo se mueve el antebrazo. | Si los codos suben al estirar, el dorsal y el pectoral ayudan a empujar. |
 | Extensión completa | Codo · flexión | 0…12° | 0…25° | contraccion | Práctica habitual | Abajo, codos extendidos del todo. | La contracción completa del tríceps está en la extensión. |
 | Estiramiento a ~90° | Codo · flexión | 80…110° | 65…125° | estiramiento | Práctica habitual | Arriba, hasta unos 90° de codo. | Subir más obliga a mover los codos; menos, deja el recorrido corto. |
 | Tronco estable | Tronco · inclinación | 0…20° | -10…30° | siempre | Consenso técnico | Tronco algo inclinado y quieto; no te vuelques sobre la barra. | Volcar el peso del cuerpo sobre la barra resta trabajo al tríceps. |
@@ -137,9 +137,9 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 ### Ángulos simulados (175 cm, técnica ideal)
 | Posición | Codo · flexión | Hombro · flexión (sagital) | Tronco · inclinación | Muñeca · extensión | Escápula · elevación | Columna lumbar · flexión | Momentos (N·m) |
 |---|---|---|---|---|---|---|---|
-| Estiramiento (p=0) | 94 | 2 | 10 | 2 | -3 | -4 | Hombro 14, Codo 17 |
-| Mitad (p=0,5) | 50 | 2 | 10 | 2 | -3 | -4 | Hombro 11, Codo 12 |
-| Contracción (p=1) | 5 | 2 | 10 | 2 | -3 | -4 | Hombro 5, Codo 3 |
+| Estiramiento (p=0) | 94 | 13 | 8 | 2 | -3 | -4 | Hombro 19, Codo 17 |
+| Mitad (p=0,5) | 50 | 13 | 8 | 2 | -3 | -4 | Hombro 17, Codo 15 |
+| Contracción (p=1) | 5 | 13 | 8 | 2 | -3 | -4 | Hombro 12, Codo 7 |
 
 ### Músculos
 | Músculo | Papel | Implicación (1–3) |
@@ -195,7 +195,7 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 | Error | Qué se ve | Consecuencia | Alerta en |
 |---|---|---|---|
 | **Balanceo** (`balanceo`) | El tronco se mueve para ayudar a mover la carga. | Menos trabajo del brazo y carga en la zona lumbar. | Tronco · inclinación |
-| **Codos que se mueven** (`codos`) | El codo avanza (curl), sube al estirar (polea alta) o cae hacia delante (sobre la cabeza). | El deltoides o el dorsal ayudan: menos aislamiento del bíceps o del tríceps. | Hombro · flexión (sagital) |
+| **Codos que se mueven** (`codos`) | El codo avanza (curl), sube al estirar (polea alta) o cae hacia delante (sobre la cabeza). | El deltoides o el dorsal ayudan: menos aislamiento del bíceps o del tríceps. | Hombro · flexión (sagital), Hombro · elevación del húmero |
 | **Muñecas dobladas** (`munecas`) | La muñeca se flexiona (curl) o se extiende (tríceps) bajo la carga. | Sobrecarga de los músculos del antebrazo. | Muñeca · extensión |
 | **Recorrido parcial** (`recorrido_parcial`) | No se llega a extender ni a flexionar del todo el codo. | Menos estímulo en los extremos del recorrido. | Codo · flexión |
 | **Hombros encogidos** (`encogimiento`) | El trapecio superior se tensa y los hombros suben. | Compensación del trapecio superior. | Escápula · elevación |
@@ -212,3 +212,4 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 - [ ] Cambio respecto al borrador F0: en la extensión sobre la cabeza, «hombros abajo» pasa a −5…18°: con los brazos arriba la escápula se eleva y rota de forma natural. ¿Lo aceptas?
 - [ ] La polea se ha supuesto 2:1 (en el agarre, la mitad del peso de la pila). ¿Es así en la columna de tu gimnasio o es 1:1?
 - [ ] Curl: el error «codos que avanzan» se marca a partir de 20° de flexión de hombro (aviso hasta 35°). ¿Te parece bien el umbral?
+- [ ] Cambio respecto al borrador F0: en la polea alta, «codo fijo» pasa a −10…22° (en F0, −15…15°). Con los codos pegados pero algo por delante del tronco (13° en la técnica ideal), la barra baja por delante de los muslos y el cable sube por delante del pecho; con el codo alineado con el tronco, la barra chocaría con los muslos. ¿Lo aceptas?

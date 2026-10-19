@@ -74,10 +74,11 @@ const GEOM: Record<string, VariantGeom> = {
   },
 };
 
-export const DOMINADAS_BAR_Y = 2.3;
-/** Asas paralelas: separación fija y algo por delante de la barra recta. */
+/** Barra a 2,42 m: los más altos cuelgan con las rodillas flexionadas sin tocar el suelo. */
+export const DOMINADAS_BAR_Y = 2.42;
+/** Asas paralelas: separación fija, por detrás de la barra recta (así la barra queda delante de la cara). */
 export const DOMINADAS_PARALLEL_HALF = 0.24;
-export const DOMINADAS_PARALLEL_Z = 0.16;
+export const DOMINADAS_PARALLEL_Z = -0.27;
 /** Flexión de codo colgado (casi extendido, sin bloquear). */
 const HANG_FLEX = 8;
 /** Arriba: escotadura del esternón por debajo de la barra y por detrás de ella (barbilla por encima). */
@@ -177,14 +178,14 @@ export const dominadasLogic: StationLogic<DominadasMachine> = {
   startAt: 'estiramiento',
   load: DOMINADAS_LOAD,
   defaultLoadKg: 0,
-  bounds: { min: [-0.8, 0, -0.75], max: [0.8, 2.55, 0.85] },
+  bounds: { min: [-0.8, 0, -1.1], max: [0.8, 2.7, 1.1] },
   framePoints: (m) => [
     new Vector3(0.7, 0, -0.6),
     new Vector3(-0.7, 0, -0.6),
-    new Vector3(0.7, 0, 0.8),
-    new Vector3(-0.7, 0, 0.8),
-    new Vector3(0.7, m.barY + 0.2, 0.6),
-    new Vector3(-0.7, m.barY + 0.2, 0.6),
+    new Vector3(0.7, 0, 1.0),
+    new Vector3(-0.7, 0, 1.0),
+    new Vector3(0.7, m.barY + 0.2, 0.82),
+    new Vector3(-0.7, m.barY + 0.2, 0.82),
     new Vector3(0.7, m.barY, 0),
     new Vector3(-0.7, m.barY, 0),
   ],
@@ -251,7 +252,8 @@ export const dominadasLogic: StationLogic<DominadasMachine> = {
     const assistKg = Math.max(0, -input.loadKg);
     const ballastKg = Math.max(0, input.loadKg);
     const kneeMid = body.legs.L.knee.clone().add(body.legs.R.knee).multiplyScalar(0.5);
-    const hangPelvisY = hangTarget.y - ghMid(hangBody).y;
+    // Con asistencia, la pila sube cuando la rodillera baja (colgado) y baja al llegar arriba.
+    const topPelvisY = topTarget.y - ghMid(topBody).y;
     const gripCm = Math.round(2 * halfGrip * 100);
     return {
       body,
@@ -263,7 +265,7 @@ export const dominadasLogic: StationLogic<DominadasMachine> = {
         ballastKg,
         kneePad: assistKg > 0 ? kneeMid.clone().add(new Vector3(0, -seg.r.shank - 0.04, -0.02)) : null,
         belt: ballastKg > 0 ? body.pelvis.point(0, -0.02 * seg.H, -0.02 * seg.H) : null,
-        stackLift: assistKg > 0 ? Math.max(0, body.pelvis.origin.y - hangPelvisY) * 0.5 : 0,
+        stackLift: assistKg > 0 ? Math.max(0, topPelvisY - body.pelvis.origin.y) * 0.5 : 0,
       },
       forces,
       setup: [

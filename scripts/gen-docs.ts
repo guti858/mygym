@@ -109,6 +109,7 @@ const QUESTIONS: Record<string, string[]> = {
     'Cambio respecto al borrador F0: en la extensión sobre la cabeza, «hombros abajo» pasa a −5…18°: con los brazos arriba la escápula se eleva y rota de forma natural. ¿Lo aceptas?',
     'La polea se ha supuesto 2:1 (en el agarre, la mitad del peso de la pila). ¿Es así en la columna de tu gimnasio o es 1:1?',
     'Curl: el error «codos que avanzan» se marca a partir de 20° de flexión de hombro (aviso hasta 35°). ¿Te parece bien el umbral?',
+    'Cambio respecto al borrador F0: en la polea alta, «codo fijo» pasa a −10…22° (en F0, −15…15°). Con los codos pegados pero algo por delante del tronco (13° en la técnica ideal), la barra baja por delante de los muslos y el cable sube por delante del pecho; con el codo alineado con el tronco, la barra chocaría con los muslos. ¿Lo aceptas?',
   ],
 };
 
