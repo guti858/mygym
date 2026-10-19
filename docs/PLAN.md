@@ -1,6 +1,6 @@
 # MyGym · Guion articular — Plan de proyecto (v1, pendiente de aprobación)
 
-> Estado: **APROBADO (v1.1)** con las decisiones de la sección 9. **F0–F3 y el lote F4a (empuje) entregados** y pendientes de validación (ver [`VALIDACION.md`](VALIDACION.md)). Siguiente: F4b (tracción y brazos).
+> Estado: **APROBADO (v1.1)** con las decisiones de la sección 9. **F0–F3 y los lotes F4a (empuje) y F4b (tracción y brazos) entregados** y pendientes de validación (ver [`VALIDACION.md`](VALIDACION.md)). Siguiente: F4c (abductores / aductores).
 
 ---
 
@@ -213,7 +213,7 @@ interface MachineSpec { id: string; parts: KitPart[]; driver: DriverSpec; contac
 | **F1 · Cimientos** | Proyecto Vite+TS+React+R3F, cámara isométrica, suelo y zonas del hub vacías, *design tokens*, *kit* de piezas base, *store*, consola mínima, CI (lint, tipos, tests, build) y despliegue en Pages | App desplegada con hub vacío navegable | — |
 | **F2 · Motor biomecánico** | Avatar, antropometría, articulaciones/ROM, FK/IK, escápula, pelvis/columna, medición, ventanas, fases/tempo, inyección de errores, momentos, controladores Cable y Rail | Motor con tests unitarios y banco de pruebas visual | — |
 | **F3 · Rebanada vertical** | **Jalón al pecho** (cable, tren superior, escápula) + **Prensa de pierna** (carril, tren inferior, lumbar) al 100% de la definición de terminado | 2 estaciones completas | ✅ **Validas nivel de detalle, estilo y mecánicas.** Después se congela el esquema |
-| **F4 · Resto de estaciones** (en lotes; 4a entregado) | 4a Empuje: fondos, press militar, banca, peck-deck, press inclinado · 4b Tracción/brazos: dominadas, remo T, poleas · 4c Pierna: abd/add · 4d Rack de mancuernas | 10 estaciones | Revisión al final de cada lote |
+| **F4 · Resto de estaciones** (en lotes; 4a y 4b entregados) | 4a Empuje: fondos, press militar, banca, peck-deck, press inclinado · 4b Tracción/brazos: dominadas, remo T, poleas · 4c Pierna: abd/add · 4d Rack de mancuernas | 10 estaciones | Revisión al final de cada lote |
 | **F5 · Hub y experiencia** | Navegación y transiciones, filtro por músculo, consola completa con autocompletado, URLs, persistencia, móvil, accesibilidad, rendimiento (carga diferida de estaciones) | App completa | — |
 | **F6 · QA y revisión final** | Tests de propiedades en todas las variantes y percentiles, humo E2E con capturas por estación, revisión de textos y fuentes, aviso legal | Versión 1.0 | ✅ Aprobación final |
 

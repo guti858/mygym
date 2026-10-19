@@ -13,7 +13,8 @@ Gimnasio isométrico en el navegador donde cada máquina es una **estación** co
 | F2 · Motor biomecánico (antropometría, IK, goniometría 3D, ventanas, fases, momentos) | ✅ con tests |
 | F3 · Rebanada vertical: **Jalón al pecho** y **Prensa de piernas 45°** | ✅ pendiente de tu validación |
 | F4a · Empuje: **press de banca**, **press inclinado**, **press militar**, **peck-deck** y **fondos** | ✅ pendiente de tu validación |
-| F4b–d · Tracción y brazos, pierna, rack de mancuernas | ⏳ siguientes lotes |
+| F4b · Tracción y brazos: **dominadas**, **remo en T** y **poleas** | ✅ pendiente de tu validación |
+| F4c–d · Abductores / aductores y rack de mancuernas | ⏳ siguientes lotes |
 
 Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
 

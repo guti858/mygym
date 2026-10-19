@@ -12,7 +12,7 @@ test('el gimnasio lista las 12 estaciones y navega a una disponible', async ({ p
   await open(page, '#/');
   await expect(page.getByRole('heading', { name: /Cada articulación/i })).toBeVisible();
   await expect(page.locator('.card')).toHaveCount(12);
-  await expect(page.locator('.card:not(.card--soon)')).toHaveCount(7);
+  await expect(page.locator('.card:not(.card--soon)')).toHaveCount(10);
   await page.locator('.card', { hasText: 'Jalón al pecho' }).click();
   await expect(page).toHaveURL(/#\/e\/jalon/);
   await expect(page.locator('.stage canvas')).toBeVisible();
@@ -72,6 +72,37 @@ test('fondos: la carga pasa de asistencia a lastre', async ({ page, isMobile }) 
   await expect(value).toContainText('lastre');
   await page.getByRole('radio', { name: /Tríceps/ }).click();
   await expect(page).toHaveURL(/v=triceps/);
+  expect(errors).toEqual([]);
+});
+
+test('dominadas: agarre y error en la URL', async ({ page, isMobile }) => {
+  await open(page, '#/e/dominadas');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await page.getByRole('radio', { name: /Supina/ }).click();
+  await expect(page).toHaveURL(/v=supina/);
+  await page.getByRole('button', { name: /Kipping/ }).click();
+  await expect(page).toHaveURL(/err=kipping/);
+  expect(errors).toEqual([]);
+});
+
+test('remo en T: palanca en la carga y error en la URL', async ({ page, isMobile }) => {
+  await open(page, '#/e/remo_t?v=libre-neutro');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await expect(page.locator('.fine', { hasText: 'Palanca 10 kg' })).toBeVisible();
+  await page.getByRole('button', { name: /Espalda redondeada/ }).click();
+  await expect(page).toHaveURL(/err=espalda_redondeada/);
+  expect(errors).toEqual([]);
+});
+
+test('poleas: modalidad sobre la cabeza y polea 2:1', async ({ page, isMobile }) => {
+  await open(page, '#/e/poleas?v=triceps-cabeza');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await expect(page.locator('.fine', { hasText: 'polea 2:1' })).toBeVisible();
+  await page.getByRole('button', { name: /Arco lumbar/ }).click();
+  await expect(page).toHaveURL(/err=arco_lumbar/);
   expect(errors).toEqual([]);
 });
 

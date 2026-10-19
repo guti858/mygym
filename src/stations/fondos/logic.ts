@@ -1,11 +1,10 @@
 import { Vector3 } from 'three';
-import { SIDES, sideSign, solveBody, type AxialParams, type FootTarget, type HandTarget, type Side } from '../../engine/body';
-import type { Segments } from '../../engine/anthropometry';
+import { SIDES, sideSign, solveBody, type AxialParams, type HandTarget, type Side } from '../../engine/body';
 import { describeLoad, type LoadSpec } from '../../engine/load';
 import { DEG, Frame, clamp, lerp, qAxis, sampleKeys } from '../../engine/math';
 import type { ContactForce } from '../../engine/moments';
 import type { StationFrameInput, StationLogic, StationSolution } from '../../engine/types';
-import { axialAt, reachFor, type AxialKeys, type Keys } from '../common';
+import { axialAt, hangingFeet, reachFor, type AxialKeys, type Keys } from '../common';
 
 /**
  * Fondos en paralelas (peso corporal). Las manos quedan fijas en los agarres y es el cuerpo el
@@ -131,32 +130,6 @@ function leanFor(geom: VariantGeom, p: number, errorId: string | null): number {
     );
   }
   return sampleKeys(geom.lean, p);
-}
-
-/** Piernas colgando: cadera algo flexionada, rodillas flexionadas con los pies por detrás. */
-function hangingFeet(seg: Segments, pelvis: Frame): Record<Side, FootTarget> {
-  const out = {} as Record<Side, FootTarget>;
-  const hip = 18 * DEG;
-  const knee = 80 * DEG;
-  const plantar = 35 * DEG;
-  const dirAt = (a: number) => pelvis.dir(0, -Math.cos(a), Math.sin(a));
-  for (const side of SIDES) {
-    const s = sideSign(side);
-    const hjc = pelvis.point(s * seg.hipHalfWidth, 0, 0);
-    const kneeP = hjc.clone().add(dirAt(hip).multiplyScalar(seg.thigh));
-    const ankle = kneeP.clone().add(dirAt(hip - knee).multiplyScalar(seg.shank));
-    const footA = hip - knee + Math.PI / 2 - plantar;
-    const toeDir = dirAt(footA);
-    const up = dirAt(footA - Math.PI / 2).negate();
-    out[side] = {
-      heel: ankle.clone().sub(up.clone().multiplyScalar(seg.ankleHeight)).sub(toeDir.clone().multiplyScalar(seg.heelToAnkle)),
-      toeDir,
-      up,
-      kneePole: pelvis.dir(s * 0.1, 0, 1),
-      heelLiftAllowed: false,
-    };
-  }
-  return out;
 }
 
 export const fondosLogic: StationLogic<FondosMachine> = {

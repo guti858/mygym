@@ -13,12 +13,16 @@ import { JOINT_MOMENT_LABEL } from '../src/engine/moments';
 import { PHASE_LABEL, tempoToString, type PhaseKind } from '../src/engine/timeline';
 import { CONFIDENCE_LABEL, type StationContent, type StationLogic } from '../src/engine/types';
 import { CATALOG, ZONE_LABEL } from '../src/stations/catalog';
+import { dominadasContent } from '../src/stations/dominadas/content';
+import { dominadasLogic } from '../src/stations/dominadas/logic';
 import { fondosContent } from '../src/stations/fondos/content';
 import { fondosLogic } from '../src/stations/fondos/logic';
 import { jalonContent } from '../src/stations/jalon/content';
 import { jalonLogic } from '../src/stations/jalon/logic';
 import { peckContent } from '../src/stations/peck_deck/content';
 import { peckLogic } from '../src/stations/peck_deck/logic';
+import { poleasContent } from '../src/stations/poleas/content';
+import { poleasLogic } from '../src/stations/poleas/logic';
 import { prensaContent } from '../src/stations/prensa/content';
 import { prensaLogic } from '../src/stations/prensa/logic';
 import { bancaContent } from '../src/stations/press_banca/content';
@@ -27,6 +31,8 @@ import { inclinadoContent } from '../src/stations/press_inclinado/content';
 import { inclinadoLogic } from '../src/stations/press_inclinado/logic';
 import { militarContent } from '../src/stations/press_militar/content';
 import { militarLogic } from '../src/stations/press_militar/logic';
+import { remoContent } from '../src/stations/remo_t/content';
+import { remoLogic } from '../src/stations/remo_t/logic';
 
 // Lógica y contenido sin los componentes 3D (modules.tsx arrastra React/three, innecesario aquí).
 const STATIONS: Array<{ logic: StationLogic<unknown>; content: StationContent }> = [
@@ -37,6 +43,9 @@ const STATIONS: Array<{ logic: StationLogic<unknown>; content: StationContent }>
   { logic: militarLogic as StationLogic<unknown>, content: militarContent },
   { logic: peckLogic as StationLogic<unknown>, content: peckContent },
   { logic: fondosLogic as StationLogic<unknown>, content: fondosContent },
+  { logic: dominadasLogic as StationLogic<unknown>, content: dominadasContent },
+  { logic: remoLogic as StationLogic<unknown>, content: remoContent },
+  { logic: poleasLogic as StationLogic<unknown>, content: poleasContent },
 ];
 
 /** Preguntas concretas para la validación del usuario, por estación. */
@@ -81,6 +90,25 @@ const QUESTIONS: Record<string, string[]> = {
     '¿Profundidad máxima «hombro a la altura del codo» para todos, o permitimos más en usuarios con buena movilidad?',
     'Los umbrales de inclinación del tronco (pectoral 15–35°, tríceps −5…12°) no están bien respaldados por estudios: ¿los marcamos como práctica habitual (como ahora)?',
     '¿Incluimos fondos en banco como modalidad o los dejamos fuera (requieren más extensión de hombro)?',
+  ],
+  dominadas: [
+    'Cambio respecto al borrador F0: el recorrido arriba (barbilla sobre la barra) se mide con la flexión de codo **según el agarre**: prona ancha 122–152°, supina 130–160°, neutra 128–160°. La simulación da 129–137° (prona) y 140–148° (supina) con la barbilla justo por encima de la barra. ¿Lo aceptas?',
+    '¿Exigimos «colgado activo» abajo (escápula elevada como mucho 15°) o aceptamos el colgado pasivo como correcto (es habitual y no está claro que sea perjudicial)?',
+    '¿Barbilla sobre la barra (como ahora) o pecho a la barra como criterio de recorrido completo?',
+    'La asistencia se representa con la rodillera de una máquina con contrapeso. ¿Añadimos la versión con banda elástica (ayuda mayor abajo que arriba)?',
+  ],
+  remo_t: [
+    '¿Mantenemos las dos posturas (con apoyo de pecho y libre en bisagra) en la v1? Están implementadas ambas, cada una con los dos agarres.',
+    'Tronco en la versión libre: 45–65° desde la vertical (la técnica ideal va de 54° a 50°). ¿Te parece adecuado?',
+    'Cambio respecto al borrador F0: el recorrido del codo arriba depende del agarre: neutro 95–125°, prono ancho 85–115° (en F0, 80–130° para ambos). ¿Lo aceptas?',
+    'El maneral va sobre un soporte 24 cm por encima de la palanca para que los discos pasen por debajo del tronco (con el maneral bajo la palanca, los discos chocan con el pecho al final). ¿Representa bien la máquina de tu gimnasio?',
+    'Errores nuevos respecto a F0: «pecho despegado» (versión con apoyo) y «recorrido corto». ¿Los mantenemos?',
+  ],
+  poleas: [
+    'Modalidades implementadas: curl con barra recta, curl martillo con cuerda, tríceps en polea alta (barra recta) y tríceps sobre la cabeza (cuerda). ¿Añadimos el curl con barra EZ y el curl unilateral con agarre D, o la extensión en polea alta con cuerda?',
+    'Cambio respecto al borrador F0: en la extensión sobre la cabeza, «hombros abajo» pasa a −5…18°: con los brazos arriba la escápula se eleva y rota de forma natural. ¿Lo aceptas?',
+    'La polea se ha supuesto 2:1 (en el agarre, la mitad del peso de la pila). ¿Es así en la columna de tu gimnasio o es 1:1?',
+    'Curl: el error «codos que avanzan» se marca a partir de 20° de flexión de hombro (aviso hasta 35°). ¿Te parece bien el umbral?',
   ],
 };
 

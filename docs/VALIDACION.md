@@ -1,6 +1,6 @@
-# Guía de validación (puertas F0, F3 y F4a)
+# Guía de validación (puertas F0, F3, F4a y F4b)
 
-Tu validación desbloquea los siguientes lotes de F4. Hay tres cosas que revisar.
+Tu validación desbloquea los siguientes lotes de F4. Hay cuatro cosas que revisar.
 
 ## 1. Rebanada vertical (F3): Jalón al pecho y Prensa 45°
 
@@ -24,8 +24,7 @@ Borradores con modalidades, ajuste, guion, ventanas numéricas (con nivel de con
 | Zona | Estaciones |
 |---|---|
 | Empuje | Ya implementadas (ver la sección 3) |
-| Tracción | [Dominadas](stations/dominadas.md) · [Remo en T](stations/remo_t.md) |
-| Brazos | [Poleas](stations/poleas.md) |
+| Tracción y brazos | Ya implementadas (ver la sección 4) |
 | Pierna | [Abductores / aductores](stations/abd_add.md) |
 | Zona libre | [Rack de mancuernas](stations/mancuernas.md) |
 
@@ -50,6 +49,22 @@ Para cada una, igual que en F3: detalle del guion, ajuste según tu talla, cada 
 - [ ] **Press inclinado:** nueva ventana **altura de las manos al inicio** (elevación del brazo: prono 30–58°, neutro 20–44°), que es la que detecta el asiento demasiado bajo. Con brazos cortos el asiento se baja una o dos posiciones para poder empezar a la profundidad buscada.
 - [ ] **Peck-deck:** la altura de los brazos se mide con la **elevación del brazo (62–92°)** en lugar de la abducción, que no está definida con los brazos al frente. El eje de la máquina es fijo: el codo varía de ~20° a ~34° durante la repetición.
 - [ ] **Fondos:** nueva métrica **apertura de los codos** (pectoral 10–45°, tríceps 0–22°) y profundidad en tríceps de **65–95°** de codo.
+
+## 4. Lote F4b (tracción y brazos): 3 estaciones implementadas
+
+| Estación | Modalidades | Mecánica | Documento |
+|---|---|---|---|
+| Barra de dominadas | Prona ancha · supina · neutra (asas paralelas); libre / asistida / lastrada | Manos fijas en la barra: el cuerpo sube y la barbilla pasa la barra | [`dominadas.md`](stations/dominadas.md) |
+| Remo en T | Con apoyo de pecho o libre (bisagra) × neutro estrecho o prono ancho | Palanca anclada al suelo; el ángulo de la palanca sale de la flexión del codo con el cuerpo real | [`remo_t.md`](stations/remo_t.md) |
+| Poleas | Curl con barra · curl martillo con cuerda · tríceps en polea alta · tríceps sobre la cabeza | Húmero fijo, solo gira el antebrazo; polea 2:1 | [`poleas.md`](stations/poleas.md) |
+
+Consola: `ir dominadas`, `carga asistencia 25`, `ir remo`, `variante libre-prono`, `ir poleas`, `variante triceps-cabeza`.
+
+**Cambios respecto a los borradores F0** (cada documento los recoge en sus preguntas):
+
+- [ ] **Dominadas:** el recorrido arriba se mide por agarre (prona 122–152°, supina 130–160°, neutra 128–160° de codo), según lo que da la simulación con la barbilla justo por encima de la barra.
+- [ ] **Remo en T:** recorrido del codo por agarre (neutro 95–125°, prono 85–115°); el maneral va 24 cm por encima de la palanca para que los discos no choquen con el pecho; errores nuevos «pecho despegado» y «recorrido corto».
+- [ ] **Poleas:** 4 modalidades (sin barra EZ ni curl unilateral); en la extensión sobre la cabeza «hombros abajo» pasa a −5…18° porque con los brazos arriba la escápula se eleva de forma natural; polea supuesta 2:1.
 
 ### Cómo anotar cambios
 

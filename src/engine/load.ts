@@ -30,10 +30,10 @@ export type LoadSpec =
       kind: 'discos';
       /** Peso del carro/barra sin discos. */
       baseKg: number;
-      /** Qué soporta los discos (para el texto): carro de la máquina o barra libre. */
-      base: 'carro' | 'barra';
+      /** Qué soporta los discos (para el texto): carro de la máquina, barra libre o palanca anclada. */
+      base: 'carro' | 'barra' | 'palanca';
       maxPlatesKgPerSide: number;
-      /** Fracción del peso que actúa en la dirección del movimiento (p. ej. sin 45°). */
+      /** Fracción del peso que actúa en el agarre (p. ej. sin 45° en un carril; brazo de palanca en una palanca). */
       effectiveFactor: number;
       label: string;
     }
@@ -87,7 +87,9 @@ export function describeLoad(spec: LoadSpec, kg: number, bodyMassKg = 75): LoadI
     detail:
       spec.base === 'barra'
         ? `Barra ${spec.baseKg} kg + discos ${kg} kg (${perSide} kg por lado) = ${total} kg`
-        : `Carro ${spec.baseKg} kg + discos ${kg} kg = ${total} kg · componente en el carril ≈ ${effectiveKg.toFixed(0)} kg`,
+        : spec.base === 'palanca'
+          ? `Palanca ${spec.baseKg} kg + discos ${kg} kg = ${total} kg · en el agarre ≈ ${effectiveKg.toFixed(0)} kg (brazo de palanca)`
+          : `Carro ${spec.baseKg} kg + discos ${kg} kg = ${total} kg · componente en el carril ≈ ${effectiveKg.toFixed(0)} kg`,
   };
 }
 

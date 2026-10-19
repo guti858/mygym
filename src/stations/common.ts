@@ -145,6 +145,39 @@ export function floorFeet(
   return out;
 }
 
+/**
+ * Piernas colgando (fondos, dominadas): cadera algo flexionada y rodillas flexionadas con los
+ * pies por detrás. Ángulos en grados respecto a la pelvis.
+ */
+export function hangingFeet(
+  seg: Segments,
+  pelvis: Frame,
+  opts: { hipDeg?: number; kneeDeg?: number; plantarDeg?: number } = {},
+): Record<Side, FootTarget> {
+  const out = {} as Record<Side, FootTarget>;
+  const hip = (opts.hipDeg ?? 18) * DEG;
+  const knee = (opts.kneeDeg ?? 80) * DEG;
+  const plantar = (opts.plantarDeg ?? 35) * DEG;
+  const dirAt = (a: number) => pelvis.dir(0, -Math.cos(a), Math.sin(a));
+  for (const side of SIDES) {
+    const s = sideSign(side);
+    const hjc = pelvis.point(s * seg.hipHalfWidth, 0, 0);
+    const kneeP = hjc.clone().add(dirAt(hip).multiplyScalar(seg.thigh));
+    const ankle = kneeP.clone().add(dirAt(hip - knee).multiplyScalar(seg.shank));
+    const footA = hip - knee + Math.PI / 2 - plantar;
+    const toeDir = dirAt(footA);
+    const up = dirAt(footA - Math.PI / 2).negate();
+    out[side] = {
+      heel: ankle.clone().sub(up.clone().multiplyScalar(seg.ankleHeight)).sub(toeDir.clone().multiplyScalar(seg.heelToAnkle)),
+      toeDir,
+      up,
+      kneePole: pelvis.dir(s * 0.1, 0, 1),
+      heelLiftAllowed: false,
+    };
+  }
+  return out;
+}
+
 /** Posición de un ajuste discreto (asiento, palanca…): número de posición y valor real. */
 export function snapPosition(target: number, min: number, step: number, count: number) {
   const pos = clamp(Math.round((target - min) / step) + 1, 1, count);
