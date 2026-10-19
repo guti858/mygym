@@ -15,7 +15,8 @@
     "e2e": "playwright test",
     "studio": "remotion studio src/remotion/index.ts",
     "render": "remotion render src/remotion/index.ts",
-    "docs": "tsx scripts/gen-docs.ts"
+    "docs": "tsx scripts/gen-docs.ts",
+    "build:artifact": "npm run build && node scripts/build-artifact.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "9.8.2",

@@ -57,8 +57,14 @@ export function startUrlSync(): () => void {
     if (next === last) return;
     const routeChanged = s.route !== prev.route;
     last = next;
-    if (routeChanged) window.history.pushState(null, '', next);
-    else window.history.replaceState(null, '', next);
+    // En marcos aislados (p. ej. al publicarse dentro de otra web) el historial puede no estar disponible:
+    // la navegación sigue funcionando en memoria.
+    try {
+      if (routeChanged) window.history.pushState(null, '', next);
+      else window.history.replaceState(null, '', next);
+    } catch {
+      /* sin URL compartible */
+    }
   });
   const onHash = () => {
     applyHash(window.location.hash);

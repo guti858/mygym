@@ -30,6 +30,8 @@ export interface AppState {
   settings: Record<string, StationSettings>;
   anthro: Anthropometry;
   theme: ThemeId;
+  /** true si el usuario eligió tema; si no, se sigue el tema del sistema/visor. */
+  themeLocked: boolean;
   showMuscles: boolean;
   showGauges: boolean;
   showOverlay: boolean;
@@ -42,6 +44,7 @@ export interface AppState {
   update(stationId: string, patch: Partial<StationSettings>): void;
   setVariant(stationId: string, variantId: string): void;
   setAnthro(patch: Partial<Anthropometry>): void;
+  chooseTheme(theme: ThemeId | 'auto'): void;
   set(patch: Partial<Pick<AppState, 'theme' | 'showMuscles' | 'showGauges' | 'showOverlay' | 'hubRotation' | 'muscleFilter' | 'consoleOpen' | 'anthroOpen'>>): void;
   print(...lines: LogLine[]): void;
   clearLog(): void;
@@ -67,6 +70,7 @@ const STORAGE_KEY = 'mygym:v1';
 interface Persisted {
   anthro?: Anthropometry;
   theme?: ThemeId;
+  themeLocked?: boolean;
   showMuscles?: boolean;
   showGauges?: boolean;
   showOverlay?: boolean;
@@ -84,11 +88,25 @@ function loadPersisted(): Persisted {
 
 const persisted = typeof window === 'undefined' ? {} : loadPersisted();
 
+/** Tema del sistema o del visor que aloja la página (data-theme="light|dark" o prefers-color-scheme). */
+export function hostTheme(): ThemeId {
+  if (typeof window === 'undefined') return 'oscuro';
+  const t = document.documentElement.getAttribute('data-theme');
+  if (t === 'light') return 'claro';
+  if (t === 'dark') return 'oscuro';
+  try {
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'claro' : 'oscuro';
+  } catch {
+    return 'oscuro';
+  }
+}
+
 export const useApp = create<AppState>((set, get) => ({
   route: { name: 'hub' },
   settings: persisted.settings ?? {},
   anthro: { ...DEFAULT_ANTHRO, ...persisted.anthro },
-  theme: persisted.theme ?? 'oscuro',
+  theme: persisted.themeLocked && persisted.theme ? persisted.theme : hostTheme(),
+  themeLocked: !!persisted.themeLocked,
   showMuscles: persisted.showMuscles ?? true,
   showGauges: persisted.showGauges ?? true,
   showOverlay: persisted.showOverlay ?? true,
@@ -122,6 +140,10 @@ export const useApp = create<AppState>((set, get) => ({
   setAnthro(patch) {
     set({ anthro: { ...get().anthro, ...patch } });
   },
+  chooseTheme(theme) {
+    if (theme === 'auto') set({ theme: hostTheme(), themeLocked: false });
+    else set({ theme, themeLocked: true });
+  },
   set(patch) {
     set(patch);
   },
@@ -143,6 +165,7 @@ if (typeof window !== 'undefined') {
       const data: Persisted = {
         anthro: s.anthro,
         theme: s.theme,
+        themeLocked: s.themeLocked,
         showMuscles: s.showMuscles,
         showGauges: s.showGauges,
         showOverlay: s.showOverlay,

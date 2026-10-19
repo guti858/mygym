@@ -38,11 +38,17 @@ export function Header() {
           <span aria-hidden>⌖</span> <span className="mono">{app.anthro.heightCm} cm</span>
         </button>
         <div className="theme-switch" role="radiogroup" aria-label="Tema">
-          {THEMES.map(([id, label]) => (
-            <button key={id} role="radio" aria-checked={app.theme === id} className={`swatch swatch--${id}${app.theme === id ? ' is-on' : ''}`} onClick={() => app.set({ theme: id })} title={label}>
-              <span className="sr-only">{label}</span>
-            </button>
-          ))}
+          <button role="radio" aria-checked={!app.themeLocked} className={`swatch swatch--auto${!app.themeLocked ? ' is-on' : ''}`} onClick={() => app.chooseTheme('auto')} title="Automático (como el sistema)">
+            <span className="sr-only">Automático</span>
+          </button>
+          {THEMES.map(([id, label]) => {
+            const on = app.themeLocked && app.theme === id;
+            return (
+              <button key={id} role="radio" aria-checked={on} className={`swatch swatch--${id}${on ? ' is-on' : ''}`} onClick={() => app.chooseTheme(id)} title={label}>
+                <span className="sr-only">{label}</span>
+              </button>
+            );
+          })}
         </div>
         <button className="console-btn" onClick={() => app.set({ consoleOpen: !app.consoleOpen })} aria-expanded={app.consoleOpen}>
           <span className="mono">&gt;_</span> Consola <kbd>:</kbd>

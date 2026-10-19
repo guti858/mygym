@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { startUrlSync } from '../state/url';
-import { useApp } from '../state/store';
+import { hostTheme, useApp } from '../state/store';
 import { AnthroPanel } from '../ui/AnthroPanel';
 import { Console } from '../ui/Console';
 import { Header } from './Header';
@@ -10,11 +10,26 @@ import { StationView } from './StationView';
 export function App() {
   const route = useApp((s) => s.route);
   const theme = useApp((s) => s.theme);
+  const themeLocked = useApp((s) => s.themeLocked);
 
   useEffect(() => startUrlSync(), []);
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.skin = theme;
   }, [theme]);
+  // Sin elección explícita, el tema sigue al sistema o al visor que aloja la página.
+  useEffect(() => {
+    if (themeLocked) return;
+    const sync = () => useApp.setState({ theme: hostTheme() });
+    sync();
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    mq.addEventListener('change', sync);
+    const mo = new MutationObserver(sync);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => {
+      mq.removeEventListener('change', sync);
+      mo.disconnect();
+    };
+  }, [themeLocked]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;

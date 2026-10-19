@@ -16,6 +16,12 @@ Gimnasio isométrico en el navegador donde cada máquina es una **estación** co
 
 Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
 
+## Ver la app sin instalar nada
+
+Versión publicada en Claude (privada para el propietario; se comparte desde su menú *Compartir*): https://claude.ai/artifact/6zr9EbEEPmuqVm97Gruwm6
+
+Para republicarla tras cambios: `npm run build:artifact` y publicar `dist/artifact.html` con los ficheros de `dist/assets/`.
+
 ## Uso
 
 ```bash

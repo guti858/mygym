@@ -359,13 +359,17 @@ export const COMMANDS: Command[] = [
   },
   {
     name: 'tema',
-    usage: 'tema <oscuro|claro|terminal>',
-    help: 'Cambia el tema visual.',
-    complete: () => ['oscuro', 'claro', 'terminal'],
+    usage: 'tema <auto|oscuro|claro|terminal>',
+    help: 'Cambia el tema visual (auto sigue al sistema).',
+    complete: () => ['auto', 'oscuro', 'claro', 'terminal'],
     run: ([t]) => {
-      const n = norm(t ?? '') as ThemeId;
-      if (!['oscuro', 'claro', 'terminal'].includes(n)) return fail('Temas: oscuro, claro, terminal.');
-      useApp.getState().set({ theme: n });
+      const n = norm(t ?? '');
+      if (n === 'auto') {
+        useApp.getState().chooseTheme('auto');
+        return 'Tema: automático';
+      }
+      if (!['oscuro', 'claro', 'terminal'].includes(n)) return fail('Temas: auto, oscuro, claro, terminal.');
+      useApp.getState().chooseTheme(n as ThemeId);
       return `Tema: ${n}`;
     },
   },
