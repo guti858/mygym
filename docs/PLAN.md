@@ -1,6 +1,6 @@
 # MyGym · Guion articular — Plan de proyecto (v1, pendiente de aprobación)
 
-> Estado: **PROPUESTA**. No se ha escrito código. Este documento es para revisar, retocar y aprobar antes de ejecutar.
+> Estado: **APROBADO (v1.1)** con las decisiones de la sección 9. **F0–F3 entregadas** y pendientes de validación (ver [`VALIDACION.md`](VALIDACION.md)). Siguiente: F4.
 
 ---
 
@@ -40,6 +40,7 @@ Objetivo pedagógico: que la persona sepa *qué hace cada articulación en cada 
 | Assets | **Geometría procedural** (sin modelos externos) a partir de un *kit* de piezas | Coherencia visual entre estaciones, sin problemas de licencias, todo parametrizable |
 | Avatar | **Maniquí articulado procedural** (tipo maniquí de dibujo) con "carcasas" musculares superpuestas | Las articulaciones se ven bien, que es justo el foco del proyecto |
 | Movimiento | **Guiado por datos**: la máquina mueve sus puntos de contacto, la IK coloca el cuerpo y los fotogramas clave solo se usan para tronco, escápula y cabeza | Evita animar a mano 12 estaciones × variantes |
+| Animación | **Remotion** (`@remotion/player` + `@remotion/three`): cada estación es una *composición* cuyo fotograma (`useCurrentFrame`) determina la fase y la pose. El Player embebido da reproducir/pausa/arrastrar/velocidad, y la misma composición se puede **exportar a MP4** desde Remotion Studio/CLI | Animación determinista (fotograma → pose), línea de tiempo nativa y vídeos de cada técnica para compartir. Licencia de Remotion: gratuita para particulares y empresas de ≤3 personas |
 | "Terminal" | **Híbrido**: app web + **consola de comandos** integrada (tecla `:` o `~`) con autocompletado, y tema visual "terminal" opcional | Cumple "tipo terminal/app-web". Comandos y botones ejecutan las mismas acciones |
 | Estado/URL | Rutas *hash* que codifican el estado (`#/estacion/jalon?agarre=supino&carga=45`) | Enlaces compartibles y reproducibles |
 | Persistencia | `localStorage` (antropometría, últimas cargas), con *fallback* | No hace falta backend |
@@ -74,8 +75,8 @@ Cada familia es **un único controlador** reutilizable. El progreso del movimien
 | Familia | Controlador | Estaciones |
 |---|---|---|
 | Cable/polea | `CableDriver` (agarre en la línea polea→mano, relación 1:1 o 2:1) | Jalón al pecho, Poleas bíceps/tríceps |
-| Palanca con pivote (pila o discos) | `PivotDriver` (brazo que gira alrededor de un eje; en el remo en T el eje está en el suelo) | Press militar máquina, Peck-deck, Abductores/aductores, Remo en T |
-| Carril lineal + discos | `RailDriver` (trineo sobre un carril con ángulo) | Prensa de pierna, Prensa inclinada |
+| Palanca con pivote (pila o discos) | `PivotDriver` (brazo que gira alrededor de un eje; en el remo en T el eje está en el suelo) | Press militar máquina, Press inclinado de pecho, Peck-deck, Abductores/aductores, Remo en T |
+| Carril lineal + discos | `RailDriver` (trineo sobre un carril con ángulo) | Prensa de pierna 45° |
 | Peso libre | `FreeWeightDriver` (trayectoria técnica de barra o mancuerna, p. ej. la curva en J del press banca) | Press banca con barra, Rack de mancuernas |
 | Peso corporal | `BodyweightDriver` (**las manos quedan fijas y se mueve el cuerpo**: IK invertida) | Fondos, Dominadas |
 
@@ -171,20 +172,20 @@ interface MachineSpec { id: string; parts: KitPart[]; driver: DriverSpec; contac
 
 | # | Estación | Modalidades / agarres | Carga | Articulaciones clave | Errores demostrables (mín. 3) |
 |---|---|---|---|---|---|
-| 1 | **Fondos** | Pectoral (tronco inclinado, agarre algo más ancho, codos algo abiertos) · Tríceps (tronco vertical, agarre estrecho, codos pegados) · Asistida / libre / lastrada | Peso corporal ± lastre o asistencia | Hombro (extensión al final del descenso), escápula (depresión), codo, muñeca neutra | Bajar demasiado (hombro en extensión extrema), encoger hombros, codos abiertos en modo tríceps, balanceo |
-| 2 | **Prensa de pierna** | Pies altos/bajos, anchos/estrechos, rotación de pies, unilateral, *gemelo en prensa* | Discos o pila | Rodilla (flexión y alineación frontal), cadera (flexión hasta el inicio de la retroversión), **pelvis/lumbar**, tobillo | Retroversión pélvica abajo (*butt wink*), valgo de rodilla, bloqueo/hiperextensión de rodilla, talones despegados |
+| 1 | **Fondos** (una estación: libre / asistida con contrapeso / lastrada) | Pectoral (tronco inclinado, agarre algo más ancho, codos algo abiertos) · Tríceps (tronco vertical, agarre estrecho, codos pegados) | Peso corporal ± lastre o asistencia | Hombro (extensión al final del descenso), escápula (depresión), codo, muñeca neutra | Bajar demasiado (hombro en extensión extrema), encoger hombros, codos abiertos en modo tríceps, balanceo |
+| 2 | **Prensa de pierna (45°, carril con discos)** | Pies altos/bajos, anchos/estrechos, rotación de pies, unilateral, *gemelo en prensa* | Discos o pila | Rodilla (flexión y alineación frontal), cadera (flexión hasta el inicio de la retroversión), **pelvis/lumbar**, tobillo | Retroversión pélvica abajo (*butt wink*), valgo de rodilla, bloqueo/hiperextensión de rodilla, talones despegados |
 | 3 | **Press militar (máquina)** | Agarre prono / neutro · ancho medio o estrecho | Pila | Hombro (elevación en plano escapular), escápula (rotación superior), codo bajo la muñeca, lumbar apoyada | Hiperextensión lumbar, codos por detrás del plano, encoger hombros, rango inferior incompleto |
-| 4 | **Press libre con barra (banca)** | Agarre medio (≤1,5× biacromial) · cerrado (tríceps) · ancho · banco plano / inclinado | Barra + discos | Escápula (retracción + depresión), hombro (abducción ≈45–70°), antebrazo vertical, muñeca apilada, trayectoria en J | Codos a 90° del tronco, muñeca en extensión, rebote en el pecho, glúteos despegados, barra hacia el cuello |
+| 4 | **Press libre con barra (banca plana)** | Agarre medio (≤1,5× biacromial) · cerrado (tríceps) · ancho. **Sin banco inclinado** (decisión) | Barra + discos | Escápula (retracción + depresión), hombro (abducción ≈45–70°), antebrazo vertical, muñeca apilada, trayectoria en J | Codos a 90° del tronco, muñeca en extensión, rebote en el pecho, glúteos despegados, barra hacia el cuello |
 | 5 | **Jalón al pecho** | Prono ancho · supino estrecho · neutro (V) | Pila (cable) | Escápula (depresión primero), hombro (aducción/extensión), codo, tronco ligeramente inclinado, cuello neutro | Balanceo de tronco, encoger hombros, tirar con los brazos sin escápula, jalón tras nuca (se muestra como opción no recomendada por defecto) |
 | 6 | **Poleas (bíceps / tríceps)** | Curl (barra recta, EZ, cuerda martillo) · extensión de tríceps en polea alta (barra, cuerda, V) · tríceps sobre la cabeza (cuerda) · altura de polea | Pila (cable) | Codo como único motor, hombro estable, muñeca neutra, tronco estable | Codos que avanzan (flexión de hombro), balanceo, muñecas flexionadas, rango incompleto |
 | 7 | **Barra de dominadas** | Prona ancha · supina (*chin-up*) · neutra · asistida / lastrada | Peso corporal ± | Escápula (depresión desde colgado activo), hombro, codo, tronco, cuello | *Kipping*, rango parcial, encoger hombros, hiperextender el cuello para "llegar" |
 | 8 | **Remo en T** | Con apoyo de pecho / libre (bisagra) · neutro estrecho / prono ancho | Discos (palanca anclada) | **Columna neutra**, cadera (bisagra), rodillas semiflexionadas, escápula (retracción), codos | Flexión lumbar, tirar con extensión de cadera (inercia), encoger hombros, cuello en hiperextensión |
 | 9 | **Abductores / aductores** | Abducción · aducción · respaldo vertical o inclinado · rango inicial ajustable | Pila (pivote) | Cadera en plano frontal, pelvis estable, lumbar apoyada | Rango inicial excesivo (aductores en estiramiento máximo con carga), golpear las placas o rebotar, bascular la pelvis |
 | 10 | **Peck-deck** | Aperturas (pectoral) · pájaro invertido (deltoides posterior) · brazo extendido / codo en almohadilla | Pila (pivote) | Hombro (aducción/abducción horizontal), codo semiflexionado fijo, escápula contra el respaldo, altura del asiento | Abducción horizontal excesiva por detrás del cuerpo, hombros adelantados, asiento mal regulado |
-| 11 | **Prensa inclinada** | ⚠️ **Por decidir** (ver preguntas): prensa 45° de pierna o press inclinado de pecho en máquina | Discos | Según la decisión | Según la decisión |
+| 11 | **Press inclinado de pecho (máquina)** | Agarre prono / neutro · ancho medio o estrecho | Pila (pivote convergente) | Hombro (flexión ~30–45° respecto al tronco + abducción moderada), escápula (retracción + depresión), codo bajo la muñeca, lumbar apoyada | Codos a 90° del tronco, hombros adelantados (protracción en el bloqueo), arco lumbar excesivo, asiento mal regulado (manos por encima de los hombros) |
 | 12 | **Rack de mancuernas (estación variable)** | Catálogo inicial cerrado: curl, press de hombro sentado, elevaciones laterales, remo unilateral, press inclinado, peso muerto rumano, sentadilla *goblet* · banco regulable | Pares de 2–50 kg | Según el ejercicio | ≥3 por ejercicio |
 
-**Cobertura muscular:** pectoral (1, 4, 10, ¿11?), deltoides anterior (3, 4), lateral (3, 12), posterior (10-inv, 8 prono), dorsal (5, 7, 8), trapecio medio/romboides (8, 10-inv), bíceps (6, 7 supino, 12), tríceps (1-T, 4 cerrado, 6), cuádriceps/glúteo (2, ¿11?, 12), **isquios (12: peso muerto rumano; es el grupo más débil, se cubre en el rack)**, abductores/aductores (9), gemelos (2: modalidad de gemelo), core (estabilizador en todas). Se entregará como matriz en `docs/muscles-matrix.md`.
+**Cobertura muscular:** pectoral (1, 4, 10, 11 — 11 con énfasis en porción clavicular), deltoides anterior (3, 4), lateral (3, 12), posterior (10-inv, 8 prono), dorsal (5, 7, 8), trapecio medio/romboides (8, 10-inv), bíceps (6, 7 supino, 12), tríceps (1-T, 4 cerrado, 6), cuádriceps/glúteo (2, 12), **isquios (12: peso muerto rumano; es el grupo más débil, se cubre en el rack)**, abductores/aductores (9), gemelos (2: modalidad de gemelo), core (estabilizador en todas). Se entregará como matriz en `docs/muscles-matrix.md`.
 
 ---
 
@@ -212,7 +213,7 @@ interface MachineSpec { id: string; parts: KitPart[]; driver: DriverSpec; contac
 | **F1 · Cimientos** | Proyecto Vite+TS+React+R3F, cámara isométrica, suelo y zonas del hub vacías, *design tokens*, *kit* de piezas base, *store*, consola mínima, CI (lint, tipos, tests, build) y despliegue en Pages | App desplegada con hub vacío navegable | — |
 | **F2 · Motor biomecánico** | Avatar, antropometría, articulaciones/ROM, FK/IK, escápula, pelvis/columna, medición, ventanas, fases/tempo, inyección de errores, momentos, controladores Cable y Rail | Motor con tests unitarios y banco de pruebas visual | — |
 | **F3 · Rebanada vertical** | **Jalón al pecho** (cable, tren superior, escápula) + **Prensa de pierna** (carril, tren inferior, lumbar) al 100% de la definición de terminado | 2 estaciones completas | ✅ **Validas nivel de detalle, estilo y mecánicas.** Después se congela el esquema |
-| **F4 · Resto de estaciones** (en lotes) | 4a Empuje: fondos, press militar, banca, peck-deck · 4b Tracción/brazos: dominadas, remo T, poleas · 4c Pierna: abd/add, prensa inclinada · 4d Rack de mancuernas | 10 estaciones | Revisión al final de cada lote |
+| **F4 · Resto de estaciones** (en lotes) | 4a Empuje: fondos, press militar, banca, peck-deck, press inclinado · 4b Tracción/brazos: dominadas, remo T, poleas · 4c Pierna: abd/add · 4d Rack de mancuernas | 10 estaciones | Revisión al final de cada lote |
 | **F5 · Hub y experiencia** | Navegación y transiciones, filtro por músculo, consola completa con autocompletado, URLs, persistencia, móvil, accesibilidad, rendimiento (carga diferida de estaciones) | App completa | — |
 | **F6 · QA y revisión final** | Tests de propiedades en todas las variantes y percentiles, humo E2E con capturas por estación, revisión de textos y fuentes, aviso legal | Versión 1.0 | ✅ Aprobación final |
 
@@ -239,16 +240,15 @@ Revisé un primer borrador y cambié lo siguiente:
 
 ---
 
-## 9. Preguntas abiertas (necesito tu decisión)
+## 9. Decisiones tomadas (respuestas del usuario)
 
-1. **"Máquina de prensa inclinada"**: ¿es la **prensa 45° de pierna** (y entonces la "prensa de pierna" sería la horizontal/sentada) o el **press inclinado de pecho en máquina**? *Recomendación:* press inclinado de pecho, porque aporta pectoral superior y evita dos estaciones casi iguales. El motor sirve para ambas.
-2. **"Máquina de fondos"**: ¿paralelas libres, máquina asistida con contrapeso, o ambas como modalidad? *Recomendación:* una estación con modo libre / asistido / lastrado.
-3. **"Press libre con barra"**: confirmo que es **press de banca**. ¿Incluyo banco inclinado como modalidad?
-4. **Formato "terminal"**: (A) app web con consola integrada y tema terminal opcional *(recomendado)*, (B) estética terminal total (monoespaciada, fósforo), o (C) CLI real en Node con ASCII (descartaría el escenario isométrico).
-5. **Validación del contenido**: ¿lo revisas tú (¿eres entrenador/fisio?) o alguien de tu confianza? Afecta al nivel de detalle técnico de los textos.
-6. **Dispositivo prioritario**: ¿escritorio, móvil o ambos por igual?
-
----
+1. **Estación 11** = **press inclinado de pecho en máquina**. La prensa de pierna es la de 45° con carril y discos.
+2. **Fondos**: una estación con modo libre / asistido (contrapeso) / lastrado.
+3. **Press libre con barra** = **press de banca plano**. Sin variante inclinada.
+4. **Formato**: (A) app web con consola integrada y tema terminal opcional.
+5. **Validación del contenido**: la hace el usuario.
+6. **Dispositivos**: escritorio y móvil por igual.
+7. **Animaciones con Remotion** (Player embebido + `@remotion/three`; exportación a vídeo como extra).
 
 ## 10. Fuentes de referencia (para F0)
 

@@ -1,0 +1,65 @@
+# MyGym · Guion articular
+
+Gimnasio isométrico en el navegador donde cada máquina es una **estación** con un avatar que ejecuta el ejercicio siguiendo un **guion articular**: fases, ángulos objetivo, rangos seguros por articulación, señales técnicas, músculos implicados y **errores típicos que se pueden demostrar**. Carga, agarre/modalidad, tempo y antropometría son configurables y recalculan la cinemática.
+
+> Contenido educativo basado en literatura y consenso técnico (fuentes en cada estación). No sustituye la valoración de un profesional.
+
+## Estado
+
+| Fase | Estado |
+|---|---|
+| F0 · Contenido biomecánico de las 12 estaciones | ✅ Borrador para validar en [`docs/stations/`](docs/stations) · guía en [`docs/VALIDACION.md`](docs/VALIDACION.md) |
+| F1 · Cimientos (Vite + React + TS + Remotion + three.js, CI, Pages) | ✅ |
+| F2 · Motor biomecánico (antropometría, IK, goniometría 3D, ventanas, fases, momentos) | ✅ con tests |
+| F3 · Rebanada vertical: **Jalón al pecho** y **Prensa de piernas 45°** | ✅ pendiente de tu validación |
+| F4 · Resto de estaciones | ⏳ tras validar F0 y F3 |
+
+Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
+
+## Uso
+
+```bash
+npm install
+npm run dev          # app en http://localhost:5173
+npm test             # tests del motor y contrato de cada estación
+npm run e2e          # pruebas de extremo a extremo (escritorio y móvil); requiere `npm run build`
+npm run studio       # Remotion Studio: una composición por estación y variante
+npm run docs         # regenera docs/stations/{jalon,prensa}.md y la matriz muscular desde el código
+```
+
+### Exportar un vídeo de la técnica
+
+Cada estación es una composición de Remotion, así que la misma serie que ves en la app se puede renderizar a MP4:
+
+```bash
+npx remotion render src/remotion/index.ts prensa-medios out/prensa.mp4
+npx remotion render src/remotion/index.ts jalon-prono-ancho out/jalon.mp4 --props='{"errorId":"balanceo", ...}'
+```
+
+En la app, el comando de consola `exportar` imprime el comando exacto con tus ajustes actuales.
+
+### Consola
+
+Pulsa `:` (o el botón *Consola*). Ejemplos: `ir jalon`, `variante supino-estrecho`, `carga 45`, `error balanceo`, `tempo 3-1-1-1`, `vista lateral`, `fase siguiente`, `angulos`, `ajuste`, `momentos`, `altura 182`, `movilidad cadera 110`, `tema terminal`, `ayuda`.
+
+## Arquitectura
+
+```
+src/
+  engine/        motor puro (sin React): antropometría, cuerpo (FK + IK de dos huesos), métricas
+                 goniométricas 3D, ventanas articulares, línea de tiempo por fases, momentos, carga
+  stations/      una carpeta por estación: logic.ts (cinemática de la máquina + errores),
+                 content.ts (variantes, guion, ventanas, músculos, fuentes), Machine.tsx (3D) y tests
+  scene/         kit de piezas paramétricas, avatar maniquí, transportadores, cámara ortográfica
+  remotion/      composiciones (estación y gimnasio): el fotograma determina fase y pose
+  app/, ui/      vistas, paneles, consola, mapa muscular SVG
+  state/         estado global (zustand), URL compartible, comandos
+```
+
+- **Animación:** Remotion (`@remotion/player` en la app, `@remotion/three` para el 3D). Todo depende de `useCurrentFrame()`: no hay bucles de animación propios.
+- **Coherencia entre estaciones:** cinco mecánicas compartidas (cable, palanca con pivote, carril, peso libre, peso corporal) y el mismo esquema de contenido.
+- **Tests de contrato** (por estación): la técnica ideal no genera alertas para perfiles de 150 a 195 cm, fémur largo, brazos cortos/largos y poca movilidad; cada error demostrable dispara las alertas que declara.
+
+## Dependencias con licencia propia
+
+Remotion es gratuito para particulares y empresas de hasta 3 personas; por encima hace falta licencia de empresa ([licencia de Remotion](https://www.remotion.dev/license)).
