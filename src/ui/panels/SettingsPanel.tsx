@@ -1,5 +1,5 @@
 import { findVariant } from '../../engine/evaluate';
-import { describeLoad, loadStep } from '../../engine/load';
+import { describeLoad, loadRange, loadStep, loadValueLabel } from '../../engine/load';
 import { parseTempo, type Tempo } from '../../engine/timeline';
 import type { StationModule } from '../../stations/modules';
 import { useApp, type StationSettings } from '../../state/store';
@@ -16,10 +16,10 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
   const app = useApp();
   const variant = findVariant(mod.content, st.variantId);
   const load = mod.logic.load;
-  const info = describeLoad(load, st.loadKg);
+  const info = describeLoad(load, st.loadKg, app.anthro.massKg);
   const step = loadStep(load);
-  const max = load.kind === 'pila' ? load.maxKg : load.maxPlatesKgPerSide * 2;
-  const min = load.kind === 'pila' ? load.minKg : 0;
+  const { min, max } = loadRange(load);
+  const shown = loadValueLabel(load, st.loadKg);
 
   return (
     <div className="panel-stack">
@@ -50,8 +50,8 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
             −
           </button>
           <output className="stepper__value mono">
-            {st.loadKg}
-            <small> kg</small>
+            {shown.value}
+            <small> {shown.unit}</small>
           </output>
           <button className="icon-btn" onClick={() => app.update(id, { loadKg: st.loadKg + step })} aria-label="Más carga">
             +

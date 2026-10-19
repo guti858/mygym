@@ -26,6 +26,7 @@ const METRIC_JOINT: Record<MetricBase, JointKey> = {
   'shoulder.flex': 'hombro',
   'shoulder.abd': 'hombro',
   'shoulder.behind': 'hombro',
+  'shoulder.flare': 'hombro',
   'shoulder.horizElev': 'hombro',
   'elbow.flex': 'codo',
   'wrist.ext': 'muneca',
@@ -217,6 +218,8 @@ export interface AvatarProps {
   showMuscles: boolean;
   /** Fase de pulso para articulaciones en riesgo (driven por el fotograma). */
   pulse: number;
+  /** Sombra del modelo anatómico (por defecto, sí). */
+  castShadow?: boolean;
 }
 
 /** Avatar: modelo anatómico (Z-Anatomy) sobre el rig del motor; maniquí simple mientras carga. */
@@ -232,6 +235,7 @@ export function Avatar(props: AvatarProps) {
         muscles={props.muscles}
         activation={props.activation}
         showMuscles={props.showMuscles}
+        castShadow={props.castShadow}
       />
       <JointMarkers body={props.body} palette={props.palette} statuses={props.statuses} pulse={props.pulse} xray />
     </group>

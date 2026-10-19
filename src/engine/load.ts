@@ -30,9 +30,19 @@ export type LoadSpec =
       kind: 'discos';
       /** Peso del carro/barra sin discos. */
       baseKg: number;
+      /** Qué soporta los discos (para el texto): carro de la máquina o barra libre. */
+      base: 'carro' | 'barra';
       maxPlatesKgPerSide: number;
       /** Fracción del peso que actúa en la dirección del movimiento (p. ej. sin 45°). */
       effectiveFactor: number;
+      label: string;
+    }
+  | {
+      /** Peso corporal: el valor de carga es + lastre (kg) o − asistencia (kg); 0 = libre. */
+      kind: 'corporal';
+      maxAssistKg: number;
+      maxBallastKg: number;
+      stepKg: number;
       label: string;
     };
 
@@ -44,7 +54,17 @@ export interface LoadInfo {
   detail: string;
 }
 
-export function describeLoad(spec: LoadSpec, kg: number): LoadInfo {
+export function describeLoad(spec: LoadSpec, kg: number, bodyMassKg = 75): LoadInfo {
+  if (spec.kind === 'corporal') {
+    const effectiveKg = Math.max(0, bodyMassKg + kg);
+    const detail =
+      kg < 0
+        ? `Peso corporal ${bodyMassKg} kg − asistencia ${-kg} kg = ${effectiveKg} kg`
+        : kg > 0
+          ? `Peso corporal ${bodyMassKg} kg + lastre ${kg} kg = ${effectiveKg} kg`
+          : `Peso corporal ${bodyMassKg} kg, sin asistencia ni lastre`;
+    return { nominalKg: effectiveKg, effectiveKg, forceN: effectiveKg * G, detail };
+  }
   if (spec.kind === 'pila') {
     const effectiveKg = kg / spec.ratio;
     return {
@@ -59,23 +79,50 @@ export function describeLoad(spec: LoadSpec, kg: number): LoadInfo {
   }
   const total = spec.baseKg + kg;
   const effectiveKg = total * spec.effectiveFactor;
+  const perSide = kg / 2;
   return {
     nominalKg: total,
     effectiveKg,
     forceN: effectiveKg * G,
-    detail: `Carro ${spec.baseKg} kg + discos ${kg} kg = ${total} kg · componente en el carril ≈ ${effectiveKg.toFixed(0)} kg`,
+    detail:
+      spec.base === 'barra'
+        ? `Barra ${spec.baseKg} kg + discos ${kg} kg (${perSide} kg por lado) = ${total} kg`
+        : `Carro ${spec.baseKg} kg + discos ${kg} kg = ${total} kg · componente en el carril ≈ ${effectiveKg.toFixed(0)} kg`,
   };
 }
 
-export function clampLoad(spec: LoadSpec, kg: number): number {
-  if (spec.kind === 'pila') {
-    const snapped = Math.round(kg / spec.stepKg) * spec.stepKg;
-    return Math.min(spec.maxKg, Math.max(spec.minKg, snapped));
+/** Rango del control de carga. */
+export function loadRange(spec: LoadSpec): { min: number; max: number } {
+  if (spec.kind === 'pila') return { min: spec.minKg, max: spec.maxKg };
+  if (spec.kind === 'corporal') return { min: -spec.maxAssistKg, max: spec.maxBallastKg };
+  return { min: 0, max: spec.maxPlatesKgPerSide * 2 };
+}
+
+/** Valor y unidad del control de carga (p. ej. «−20 kg asistencia»). */
+export function loadValueLabel(spec: LoadSpec, kg: number): { value: string; unit: string } {
+  if (spec.kind === 'corporal') {
+    if (kg < 0) return { value: `−${-kg}`, unit: 'kg asistencia' };
+    if (kg > 0) return { value: `+${kg}`, unit: 'kg lastre' };
+    return { value: '0', unit: 'kg · libre' };
   }
-  const snapped = Math.round(kg / 2.5) * 2.5;
-  return Math.min(spec.maxPlatesKgPerSide * 2, Math.max(0, snapped));
+  if (spec.kind === 'discos') return { value: String(kg), unit: 'kg en discos' };
+  return { value: String(kg), unit: 'kg' };
+}
+
+/** Etiqueta breve de la carga para cabeceras (p. ej. «Asistida −20 kg»). */
+export function loadShort(spec: LoadSpec, kg: number): string {
+  if (spec.kind === 'corporal') return kg < 0 ? `Asistida −${-kg} kg` : kg > 0 ? `Lastre +${kg} kg` : 'Peso corporal';
+  const l = loadValueLabel(spec, kg);
+  return `${l.value} ${l.unit}`;
+}
+
+export function clampLoad(spec: LoadSpec, kg: number): number {
+  const { min, max } = loadRange(spec);
+  const step = spec.kind === 'discos' ? 2.5 : spec.stepKg;
+  const snapped = Math.round(kg / step) * step;
+  return Math.min(max, Math.max(min, snapped));
 }
 
 export function loadStep(spec: LoadSpec): number {
-  return spec.kind === 'pila' ? spec.stepKg : 5;
+  return spec.kind === 'discos' ? 5 : spec.stepKg;
 }

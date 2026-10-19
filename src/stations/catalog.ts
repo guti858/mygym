@@ -18,7 +18,7 @@ export interface CatalogEntry {
   name: string;
   short: string;
   zone: Zone;
-  /** Implementada (true) o planificada para F4. */
+  /** Implementada (true) o pendiente de un lote posterior de F4. */
   ready: boolean;
   /** Músculos principales y secundarios (para el filtro del hub). */
   principal: readonly MuscleId[];
@@ -107,7 +107,7 @@ export const CATALOG: readonly CatalogEntry[] = [
     short: 'Press de banca',
     name: 'Press de banca con barra',
     zone: 'empuje',
-    ready: false,
+    ready: true,
     principal: ['pectoral_esternal'],
     secundarios: ['pectoral_clavicular', 'deltoides_anterior', 'triceps', 'serrato'],
     modalidades: ['Agarre medio', 'Agarre cerrado', 'Agarre ancho'],
@@ -119,7 +119,7 @@ export const CATALOG: readonly CatalogEntry[] = [
     short: 'Press inclinado',
     name: 'Press inclinado de pecho (máquina)',
     zone: 'empuje',
-    ready: false,
+    ready: true,
     principal: ['pectoral_clavicular'],
     secundarios: ['deltoides_anterior', 'triceps', 'serrato'],
     modalidades: ['Prono', 'Neutro'],
@@ -131,7 +131,7 @@ export const CATALOG: readonly CatalogEntry[] = [
     short: 'Press militar',
     name: 'Press militar (máquina)',
     zone: 'empuje',
-    ready: false,
+    ready: true,
     principal: ['deltoides_anterior', 'deltoides_lateral'],
     secundarios: ['triceps', 'trapecio_superior', 'serrato'],
     modalidades: ['Prono', 'Neutro'],
@@ -143,7 +143,7 @@ export const CATALOG: readonly CatalogEntry[] = [
     short: 'Peck-deck',
     name: 'Peck-deck',
     zone: 'empuje',
-    ready: false,
+    ready: true,
     principal: ['pectoral_esternal', 'deltoides_posterior'],
     secundarios: ['pectoral_clavicular', 'deltoides_anterior', 'trapecio_medio'],
     modalidades: ['Aperturas (pecho)', 'Pájaro invertido (deltoides posterior)'],
@@ -155,7 +155,7 @@ export const CATALOG: readonly CatalogEntry[] = [
     short: 'Fondos',
     name: 'Máquina de fondos',
     zone: 'empuje',
-    ready: false,
+    ready: true,
     principal: ['pectoral_esternal', 'triceps'],
     secundarios: ['deltoides_anterior', 'pectoral_clavicular'],
     modalidades: ['Pectoral', 'Tríceps', 'Libre / asistida / lastrada'],

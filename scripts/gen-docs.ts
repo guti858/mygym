@@ -13,14 +13,30 @@ import { JOINT_MOMENT_LABEL } from '../src/engine/moments';
 import { PHASE_LABEL, tempoToString, type PhaseKind } from '../src/engine/timeline';
 import { CONFIDENCE_LABEL, type StationContent, type StationLogic } from '../src/engine/types';
 import { CATALOG, ZONE_LABEL } from '../src/stations/catalog';
+import { fondosContent } from '../src/stations/fondos/content';
+import { fondosLogic } from '../src/stations/fondos/logic';
 import { jalonContent } from '../src/stations/jalon/content';
 import { jalonLogic } from '../src/stations/jalon/logic';
+import { peckContent } from '../src/stations/peck_deck/content';
+import { peckLogic } from '../src/stations/peck_deck/logic';
 import { prensaContent } from '../src/stations/prensa/content';
 import { prensaLogic } from '../src/stations/prensa/logic';
+import { bancaContent } from '../src/stations/press_banca/content';
+import { bancaLogic } from '../src/stations/press_banca/logic';
+import { inclinadoContent } from '../src/stations/press_inclinado/content';
+import { inclinadoLogic } from '../src/stations/press_inclinado/logic';
+import { militarContent } from '../src/stations/press_militar/content';
+import { militarLogic } from '../src/stations/press_militar/logic';
 
+// Lógica y contenido sin los componentes 3D (modules.tsx arrastra React/three, innecesario aquí).
 const STATIONS: Array<{ logic: StationLogic<unknown>; content: StationContent }> = [
   { logic: jalonLogic as StationLogic<unknown>, content: jalonContent },
   { logic: prensaLogic as StationLogic<unknown>, content: prensaContent },
+  { logic: bancaLogic as StationLogic<unknown>, content: bancaContent },
+  { logic: inclinadoLogic as StationLogic<unknown>, content: inclinadoContent },
+  { logic: militarLogic as StationLogic<unknown>, content: militarContent },
+  { logic: peckLogic as StationLogic<unknown>, content: peckContent },
+  { logic: fondosLogic as StationLogic<unknown>, content: fondosContent },
 ];
 
 /** Preguntas concretas para la validación del usuario, por estación. */
@@ -36,6 +52,35 @@ const QUESTIONS: Record<string, string[]> = {
     'Con pies medios, la simulación llega a ~83° de rodilla para 175 cm. ¿Esperas más profundidad como objetivo (90°) aunque implique más flexión de cadera?',
     'Arriba se deja ≥5° de flexión de rodilla. ¿Prefieres un margen mayor (10°)?',
     '¿Quieres la variante unilateral en esta primera versión?',
+  ],
+  press_banca: [
+    'Cambio respecto al borrador F0: la profundidad (codo abajo) pasa de 75–110° a **100–142°**. Con la barra tocando el esternón bajo y los antebrazos verticales, la simulación da ~130–135° de flexión de codo (175 cm). ¿Lo aceptas?',
+    '¿Arco lumbar: lo limitamos (como ahora, −25°) o lo dejamos libre mientras los glúteos sigan apoyados?',
+    '¿Tempo con pausa en el pecho (3-1-1-0) o sin pausa (3-0-1-0)?',
+    'El error «Glúteos despegados» se detecta por la extensión de cadera (fuera de −8…45°) y por el arco lumbar. ¿Te sirve este criterio?',
+  ],
+  press_inclinado: [
+    '¿Inclinación del respaldo fija a 30° (donde la literatura sitúa el mayor énfasis clavicular sin disparar el deltoides) o regulable?',
+    'Nueva ventana respecto al borrador F0: **altura de las manos al inicio** (elevación del brazo: prono 30–58°, neutro 20–44°), que detecta el asiento demasiado bajo. ¿La mantenemos?',
+    'Con brazos cortos (P5), el arco de la máquina queda lejos del hombro: la simulación baja el asiento una o dos posiciones para poder empezar con los codos poco por detrás del tronco. ¿Es el ajuste que harías tú, o prefieres indicar otra solución (p. ej. adelantar el inicio de la palanca)?',
+  ],
+  press_militar: [
+    'Cambio respecto al borrador F0: la profundidad (codo abajo) pasa de 80–110° a **108–138°**. Con las manos a la altura de la barbilla, la simulación da ~120° de flexión de codo. ¿Lo aceptas?',
+    '¿Profundidad hasta la barbilla para todos o permitimos bajar hasta los hombros si hay buena movilidad?',
+    'El respaldo se ha dejado a 5° de inclinación. ¿Prefieres vertical (0°) o algo más reclinado (10–15°)?',
+  ],
+  peck_deck: [
+    'Cambio respecto al borrador F0: la altura de los brazos se mide como **elevación del brazo (62–92°)** en lugar de abducción, porque con los brazos al frente la abducción no está definida. ¿Te parece bien?',
+    '¿Ambas modalidades con manetas, o la versión de codos en almohadillas como alternativa?',
+    'El eje de la máquina es fijo y las escápulas se mueven poco (8–10°); aun así el codo pasa de ~20° a ~34° en las aperturas porque el hombro se acerca al maneral. ¿Aceptamos ese margen en «Codos fijos» (10–35°)?',
+    'En aperturas, las manos se juntan delante del pecho y el inicio queda en el plano del cuerpo (no por detrás). ¿Quieres permitir algo más de estiramiento (hasta 10–15° por detrás)?',
+  ],
+  fondos: [
+    'Nueva métrica respecto al borrador F0: **apertura de los codos** (ángulo del brazo hacia fuera del plano sagital), porque la abducción clásica no es fiable con el brazo horizontal. Pectoral 10–45°, tríceps 0–22°. ¿Te parecen razonables?',
+    'Cambio respecto al borrador F0: en tríceps (tronco vertical) la profundidad pasa a **65–95°** de flexión de codo; en pectoral se mantiene 80–100°. ¿Lo aceptas?',
+    '¿Profundidad máxima «hombro a la altura del codo» para todos, o permitimos más en usuarios con buena movilidad?',
+    'Los umbrales de inclinación del tronco (pectoral 15–35°, tríceps −5…12°) no están bien respaldados por estudios: ¿los marcamos como práctica habitual (como ahora)?',
+    '¿Incluimos fondos en banco como modalidad o los dejamos fuera (requieren más extensión de hombro)?',
   ],
 };
 
@@ -83,7 +128,7 @@ function stationDoc({ logic, content }: { logic: StationLogic<unknown>; content:
       out.push(`| ${name} | ${labels.map((l) => esc(r.setup.find((x) => x.label === l)?.value ?? '')).join(' | ')} |`);
     }
     out.push('');
-    out.push(`Carga por defecto: ${describeLoad(logic.load, logic.defaultLoadKg).detail}.`);
+    out.push(`Carga por defecto: ${describeLoad(logic.load, logic.defaultLoadKg, p50.massKg).detail}.`);
     out.push('');
 
     out.push('### Guion por fases');
@@ -155,7 +200,7 @@ function matrixDoc(): string {
   const out: string[] = [];
   out.push('# Matriz de cobertura muscular');
   out.push('');
-  out.push('> Generada con `npm run docs` desde `src/stations/catalog.ts`. **P** = motor principal, **s** = secundario. Las estaciones marcadas con ○ están planificadas para F4.');
+  out.push('> Generada con `npm run docs` desde `src/stations/catalog.ts`. **P** = motor principal, **s** = secundario. ● = implementada · ○ = pendiente de los siguientes lotes de F4.');
   out.push('');
   const cols = CATALOG.map((c) => `${c.ready ? '●' : '○'} ${c.short}`);
   out.push(`| Músculo | ${cols.join(' | ')} | Cobertura |`);

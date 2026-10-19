@@ -12,7 +12,7 @@ test('el gimnasio lista las 12 estaciones y navega a una disponible', async ({ p
   await open(page, '#/');
   await expect(page.getByRole('heading', { name: /Cada articulación/i })).toBeVisible();
   await expect(page.locator('.card')).toHaveCount(12);
-  await expect(page.locator('.card:not(.card--soon)')).toHaveCount(2);
+  await expect(page.locator('.card:not(.card--soon)')).toHaveCount(7);
   await page.locator('.card', { hasText: 'Jalón al pecho' }).click();
   await expect(page).toHaveURL(/#\/e\/jalon/);
   await expect(page.locator('.stage canvas')).toBeVisible();
@@ -44,6 +44,37 @@ test('jalón: variante, carga y error se reflejan en la URL y en el guion', asyn
   expect(errors).toEqual([]);
 });
 
+test('press de banca: agarre y error en la URL; barra en el ajuste', async ({ page, isMobile }) => {
+  await open(page, '#/e/press_banca');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await expect(page.locator('.fine', { hasText: 'Barra 20 kg' })).toBeVisible();
+  await page.getByRole('radio', { name: /Agarre cerrado/ }).click();
+  await expect(page).toHaveURL(/v=cerrado/);
+  await page.getByRole('button', { name: /Escápulas sueltas/ }).click();
+  await expect(page).toHaveURL(/err=escapulas_sueltas/);
+  await page.getByRole('tab', { name: /Articulaciones/ }).click();
+  await expect(page.locator('.joint').first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('fondos: la carga pasa de asistencia a lastre', async ({ page, isMobile }) => {
+  await open(page, '#/e/fondos');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  const value = page.locator('.stepper__value');
+  await expect(value).toContainText('libre');
+  await page.getByRole('button', { name: 'Menos carga' }).click();
+  await expect(value).toContainText('asistencia');
+  await expect(page).toHaveURL(/kg=-5/);
+  await page.getByRole('button', { name: 'Más carga' }).click();
+  await page.getByRole('button', { name: 'Más carga' }).click();
+  await expect(value).toContainText('lastre');
+  await page.getByRole('radio', { name: /Tríceps/ }).click();
+  await expect(page).toHaveURL(/v=triceps/);
+  expect(errors).toEqual([]);
+});
+
 test('la consola ejecuta comandos', async ({ page, isMobile }) => {
   test.skip(isMobile, 'La consola se prueba con teclado físico en escritorio');
   await open(page, '#/');
@@ -66,6 +97,12 @@ test('la consola ejecuta comandos', async ({ page, isMobile }) => {
   await input.press('Enter');
   await expect(page.locator('.console__log')).toContainText('Profundidad recomendada');
   await page.screenshot({ path: 'test-results/prensa-consola.png' });
+  await input.fill('ir peck_deck');
+  await input.press('Enter');
+  await expect(page).toHaveURL(/#\/e\/peck_deck/);
+  await input.fill('variante pajaro');
+  await input.press('Enter');
+  await expect(page).toHaveURL(/v=pajaro/);
   expect(errors).toEqual([]);
 });
 

@@ -498,6 +498,7 @@ input[type='range'] {
 .stepper__value {
   font-size: 30px;
   font-weight: 600;
+  white-space: nowrap;
 }
 .stepper__value small {
   font-size: 14px;

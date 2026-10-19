@@ -6,7 +6,8 @@ const args = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
 
 export default defineConfig({
   testDir: 'tests/e2e',
-  timeout: 60_000,
+  // WebGL por software (SwiftShader): con dos navegadores a la vez, una captura del lienzo puede tardar.
+  timeout: 120_000,
   expect: { timeout: 15_000 },
   reporter: [['list']],
   use: {

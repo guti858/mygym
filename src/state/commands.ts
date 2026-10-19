@@ -1,6 +1,8 @@
 import { MUSCLES, ROLE_LABEL } from '../content/muscles';
 import { findVariant } from '../engine/evaluate';
+import { loadValueLabel } from '../engine/load';
 import { JOINT_MOMENT_LABEL } from '../engine/moments';
+import { compositionId } from '../remotion/props';
 import { PHASE_LABEL, parseTempo, tempoToString } from '../engine/timeline';
 import type { ThemeId } from '../scene/palette';
 import { CATALOG } from '../stations/catalog';
@@ -73,7 +75,7 @@ export const COMMANDS: Command[] = [
         return 'Gimnasio.';
       }
       const entry = CATALOG.find((c) => c.id === d || norm(c.name).includes(d)) ?? fail(`No hay ninguna estación «${dest}».`);
-      if (!entry.ready) return fail(`«${entry.name}» está planificada para la fase F4 (aún no disponible).`);
+      if (!entry.ready) return fail(`«${entry.name}» llegará en un próximo lote de F4 (aún no disponible).`);
       useApp.getState().go({ name: 'station', id: entry.id });
       return `→ ${entry.name}`;
     },
@@ -107,15 +109,29 @@ export const COMMANDS: Command[] = [
     name: 'carga',
     aliases: ['peso-carga', 'kg'],
     usage: 'carga <kg|+5|-5>',
-    help: 'Ajusta la carga de la estación.',
-    run: ([v]) => {
-      const { id, st } = activeStation();
-      if (!v) return `Carga actual: ${st.loadKg} kg`;
+    help: 'Ajusta la carga. En fondos: «carga asistencia 20», «carga lastre 10» o «carga libre».',
+    run: ([v, amount]) => {
+      const { id, mod, st } = activeStation();
+      const label = (kg: number) => {
+        const l = loadValueLabel(mod.logic.load, kg);
+        return `${l.value} ${l.unit}`;
+      };
+      if (!v) return `Carga actual: ${label(st.loadKg)}`;
+      // Admite el signo menos tipográfico (−) que muestra la propia interfaz.
+      v = v.replace(/\u2212/g, '-');
+      const mode = norm(v);
+      if (mode === 'asistencia' || mode === 'lastre' || mode === 'libre') {
+        if (mod.logic.load.kind !== 'corporal') return fail('Asistencia y lastre solo existen en las estaciones de peso corporal.');
+        const a = mode === 'libre' ? 0 : Math.abs(Number((amount ?? '').replace(',', '.')));
+        if (!Number.isFinite(a) || (mode !== 'libre' && !amount)) return fail(`Indica los kg: «carga ${mode} 20».`);
+        useApp.getState().update(id, { loadKg: mode === 'asistencia' ? -a : a });
+        return `Carga: ${label(settingsFor(useApp.getState(), id).loadKg)}`;
+      }
       const n = Number(v.replace(',', '.'));
       if (!Number.isFinite(n)) return fail('Número no válido.');
       const kg = /^[+-]/.test(v) ? st.loadKg + n : n;
       useApp.getState().update(id, { loadKg: kg });
-      return `Carga: ${settingsFor(useApp.getState(), id).loadKg} kg`;
+      return `Carga: ${label(settingsFor(useApp.getState(), id).loadKg)}`;
     },
   },
   {
@@ -397,7 +413,7 @@ export const COMMANDS: Command[] = [
       const { id, st } = activeStation();
       const s = useApp.getState();
       const props = JSON.stringify({ ...st, stationId: id, anthro: s.anthro, theme: s.theme, showMuscles: s.showMuscles, showGauges: s.showGauges, showOverlay: true });
-      return ['Desde el repositorio:', `  npx remotion render src/remotion/index.ts ${id}-${st.variantId} out/${id}.mp4 --props='${props}'`];
+      return ['Desde el repositorio:', `  npx remotion render src/remotion/index.ts ${compositionId(id, st.variantId)} out/${id}.mp4 --props='${props}'`];
     },
   },
   {

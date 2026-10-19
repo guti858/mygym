@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Vector3 } from 'three';
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { STATUS_RANK, evaluateFrame } from '../engine/evaluate';
+import { loadShort } from '../engine/load';
 import { METRIC_INFO } from '../engine/metrics';
 import { PHASE_LABEL, tempoToString } from '../engine/timeline';
 import type { Evaluation, Status } from '../engine/types';
@@ -34,6 +35,13 @@ const SHORT_LABEL: Partial<Record<string, string>> = {
   'ankle.dorsi': 'Tobillo',
   'scap.elev': 'Escápula',
   'knee.valgus': 'Valgo',
+  'shoulder.abd': 'Codos (aper.)',
+  'shoulder.flare': 'Codos (aper.)',
+  'shoulder.flex': 'Hombro (flex.)',
+  'shoulder.behind': 'Codo vs tronco',
+  'scap.prot': 'Escápula (prot.)',
+  'wrist.ext': 'Muñeca',
+  'lumbar.flex': 'Lumbar',
 };
 
 /** Marcadores numerados: separa los que caen demasiado cerca para que no se tapen. */
@@ -257,7 +265,7 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
             <div style={{ fontSize: (compact ? 24 : 30) * unit, fontWeight: 800, letterSpacing: -0.5 }}>{compact ? variant.short : mod.content.name}</div>
             {!compact && (
               <div style={{ fontSize: 19 * unit, opacity: 0.85, marginTop: 4 * unit }}>
-                {variant.name} · {props.loadKg} kg · tempo {tempoToString(props.tempo)}
+                {variant.name} · {loadShort(mod.logic.load, props.loadKg)} · tempo {tempoToString(props.tempo)}
               </div>
             )}
           </div>

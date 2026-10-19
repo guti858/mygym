@@ -97,7 +97,7 @@ describe('carga', () => {
     expect(platesPerSide(0)).toEqual([]);
   });
   test('carga efectiva en carril a 45°', () => {
-    const info = describeLoad({ kind: 'discos', baseKg: 40, maxPlatesKgPerSide: 100, effectiveFactor: Math.SQRT1_2, label: '' }, 60);
+    const info = describeLoad({ kind: 'discos', baseKg: 40, base: 'carro', maxPlatesKgPerSide: 100, effectiveFactor: Math.SQRT1_2, label: '' }, 60);
     expect(info.nominalKg).toBe(100);
     expect(info.effectiveKg).toBeCloseTo(70.71, 1);
   });

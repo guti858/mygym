@@ -2,7 +2,7 @@ import { Composition, Folder } from 'remotion';
 import { STATION_MODULES } from '../stations/modules';
 import { DEFAULT_HUB_PROPS, defaultStationProps } from './defaults';
 import { HubComposition } from './HubComposition';
-import { COMP_H, COMP_W, FPS, type StationCompProps } from './props';
+import { COMP_H, COMP_W, compositionId, FPS, type StationCompProps } from './props';
 import { StationComposition } from './StationComposition';
 import { durationInFrames, stationTimeline } from './timing';
 
@@ -16,7 +16,7 @@ export const RemotionRoot: React.FC = () => {
           mod.content.variants.map((v) => (
             <Composition
               key={`${mod.content.id}-${v.id}`}
-              id={`${mod.content.id}-${v.id}`}
+              id={compositionId(mod.content.id, v.id)}
               component={StationComposition}
               durationInFrames={10 * FPS}
               fps={FPS}

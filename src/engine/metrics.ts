@@ -18,6 +18,7 @@ export const METRIC_INFO = {
   'shoulder.flex': { label: 'Hombro · flexión (sagital)', unit: '°', hint: '+ flexión / − extensión' },
   'shoulder.abd': { label: 'Hombro · abducción (frontal)', unit: '°', hint: 'separación del brazo respecto al tronco' },
   'shoulder.behind': { label: 'Hombro · por detrás del plano frontal', unit: '°', hint: '+ húmero por detrás del tronco' },
+  'shoulder.flare': { label: 'Hombro · apertura del codo', unit: '°', hint: 'ángulo del brazo respecto al plano sagital (0 = codo pegado)' },
   'shoulder.horizElev': {
     label: 'Hombro · abducción horizontal con brazo elevado',
     unit: '°',
@@ -42,6 +43,7 @@ export const LIMB_METRICS: ReadonlySet<MetricBase> = new Set<MetricBase>([
   'shoulder.flex',
   'shoulder.abd',
   'shoulder.behind',
+  'shoulder.flare',
   'shoulder.horizElev',
   'elbow.flex',
   'wrist.ext',
@@ -88,6 +90,7 @@ export function measure(body: SolvedBody, ref: MeasureRef): Metrics {
     m[k('shoulder.flex')] = unwrap(Math.atan2(u.z, -u.y) * RAD);
     m[k('shoulder.abd')] = unwrap(Math.atan2(s * u.x, -u.y) * RAD);
     const behind = Math.asin(clamp(-u.z, -1, 1)) * RAD;
+    m[k('shoulder.flare')] = Math.asin(clamp(s * u.x, -1, 1)) * RAD;
     m[k('shoulder.behind')] = behind;
     m[k('shoulder.horizElev')] = behind * clamp((m[k('shoulder.elev')]! - 70) / 20, 0, 1);
     m[k('elbow.flex')] =
@@ -105,8 +108,8 @@ export function measure(body: SolvedBody, ref: MeasureRef): Metrics {
   return m;
 }
 
-/** Lleva ángulos de (−180, −90) a (180, 270) para que las elevaciones por encima de la cabeza no salten de signo. */
-const unwrap = (deg: number) => (deg < -90 ? deg + 360 : deg);
+/** Lleva ángulos de (−180, −120) a (180, 240) para que las elevaciones por encima de la cabeza no salten de signo. */
+const unwrap = (deg: number) => (deg < -120 ? deg + 360 : deg);
 
 /**
  * Desvío de la rodilla respecto a la dirección del pie, alrededor del eje cadera–tobillo.

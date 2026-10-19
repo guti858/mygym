@@ -58,6 +58,31 @@ export function gaugeArcs(body: SolvedBody, metrics: Metrics, keys: readonly Met
       case 'ankle.dorsi':
         push(key, leg.ankle, leg.footUp, leg.knee.clone().sub(leg.ankle), r * 0.8, true);
         break;
+      case 'shoulder.flex':
+      case 'shoulder.abd':
+      case 'shoulder.flare':
+      case 'shoulder.behind': {
+        // Ángulo del húmero proyectado en el plano del tórax que define cada métrica.
+        const th = body.thorax;
+        const u = arm.elbow.clone().sub(arm.gh);
+        const drop = (v: Vector3, axis: Vector3) => v.clone().sub(axis.clone().multiplyScalar(v.dot(axis)));
+        if (key === 'shoulder.flex') push(key, arm.gh, th.dir(0, -1, 0), drop(u, th.x), r, true);
+        else if (key === 'shoulder.abd') push(key, arm.gh, th.dir(0, -1, 0), drop(u, th.z), r, true);
+        else if (key === 'shoulder.flare') push(key, arm.gh, drop(u, th.x), u, r * 0.9, true);
+        else push(key, arm.gh, drop(u, th.z), u, r * 0.9, true);
+        break;
+      }
+      case 'wrist.ext':
+        push(key, arm.wrist, arm.wrist.clone().sub(arm.elbow), arm.grip.clone().sub(arm.wrist), r * 0.55, true);
+        break;
+      case 'scap.prot':
+        out.push({ metric: key, side, center: arm.sc, from: UP, to: UP, radius: 0, value: metrics[`${key}.${side}`] ?? 0, label: arm.sc.clone().add(body.thorax.dir(0, 0.02 * H, 0.07 * H)) });
+        break;
+      case 'lumbar.flex': {
+        const c = body.s1.clone().lerp(body.l1, 0.5);
+        out.push({ metric: key, center: c, from: UP, to: UP, radius: 0, value: metrics[key] ?? 0, label: c.clone().add(body.lumbar.dir(0, 0, -0.08 * H)) });
+        break;
+      }
       case 'scap.elev':
         out.push({ metric: key, side, center: arm.sc, from: UP, to: UP, radius: 0, value: metrics[`${key}.${side}`] ?? 0, label: arm.sc.clone().add(new Vector3(0, 0.06 * H, 0)) });
         break;

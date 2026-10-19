@@ -63,6 +63,7 @@ const FEET: Record<string, FootGeom> = {
 export const PRENSA_LOAD: LoadSpec = {
   kind: 'discos',
   baseKg: 40,
+  base: 'carro',
   maxPlatesKgPerSide: 120,
   effectiveFactor: Math.sin(RAIL_DEG * DEG),
   label: 'Carro + discos',

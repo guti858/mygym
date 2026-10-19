@@ -1,8 +1,8 @@
 # Matriz de cobertura muscular
 
-> Generada con `npm run docs` desde `src/stations/catalog.ts`. **P** = motor principal, **s** = secundario. Las estaciones marcadas con ○ están planificadas para F4.
+> Generada con `npm run docs` desde `src/stations/catalog.ts`. **P** = motor principal, **s** = secundario. ● = implementada · ○ = pendiente de los siguientes lotes de F4.
 
-| Músculo | ○ Dominadas | ● Jalón al pecho | ○ Remo en T | ○ Poleas | ● Prensa 45° | ○ Abd. / aduct. | ○ Press de banca | ○ Press inclinado | ○ Press militar | ○ Peck-deck | ○ Fondos | ○ Mancuernas | Cobertura |
+| Músculo | ○ Dominadas | ● Jalón al pecho | ○ Remo en T | ○ Poleas | ● Prensa 45° | ○ Abd. / aduct. | ● Press de banca | ● Press inclinado | ● Press militar | ● Peck-deck | ● Fondos | ○ Mancuernas | Cobertura |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
 | Pectoral mayor (porción clavicular) |  |  |  |  |  |  | s | P |  | s | s | s | Suficiente |
 | Pectoral mayor (porción esternal) |  |  |  |  |  |  | P |  |  | P | P |  | Buena |

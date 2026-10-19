@@ -2,6 +2,7 @@ import { Player, type PlayerRef } from '@remotion/player';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { computeSegments } from '../engine/anthropometry';
 import { evaluateFrame, findVariant } from '../engine/evaluate';
+import { loadShort } from '../engine/load';
 import { COMP_H, COMP_W, FPS, type StationCompProps } from '../remotion/props';
 import { StationComposition } from '../remotion/StationComposition';
 import { durationInFrames, stationTimeline } from '../remotion/timing';
@@ -224,7 +225,7 @@ export function StationView({ id }: { id: string }) {
           </div>
           <div className="station__chips">
             <span className="tag">{variant.short}</span>
-            <span className="tag mono">{st.loadKg} kg</span>
+            <span className="tag mono">{loadShort(mod.logic.load, st.loadKg)}</span>
             {st.errorId && <span className="tag tag--risk">Error: {mod.content.errors.find((e) => e.id === st.errorId)?.label}</span>}
           </div>
         </header>

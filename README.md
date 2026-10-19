@@ -12,7 +12,8 @@ Gimnasio isométrico en el navegador donde cada máquina es una **estación** co
 | F1 · Cimientos (Vite + React + TS + Remotion + three.js, CI, Pages) | ✅ |
 | F2 · Motor biomecánico (antropometría, IK, goniometría 3D, ventanas, fases, momentos) | ✅ con tests |
 | F3 · Rebanada vertical: **Jalón al pecho** y **Prensa de piernas 45°** | ✅ pendiente de tu validación |
-| F4 · Resto de estaciones | ⏳ tras validar F0 y F3 |
+| F4a · Empuje: **press de banca**, **press inclinado**, **press militar**, **peck-deck** y **fondos** | ✅ pendiente de tu validación |
+| F4b–d · Tracción y brazos, pierna, rack de mancuernas | ⏳ siguientes lotes |
 
 Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
 
@@ -30,7 +31,7 @@ npm run dev          # app en http://localhost:5173
 npm test             # tests del motor y contrato de cada estación
 npm run e2e          # pruebas de extremo a extremo (escritorio y móvil); requiere `npm run build`
 npm run studio       # Remotion Studio: una composición por estación y variante
-npm run docs         # regenera docs/stations/{jalon,prensa}.md y la matriz muscular desde el código
+npm run docs         # regenera docs/stations/<estación>.md (las implementadas) y la matriz muscular desde el código
 ```
 
 ### Exportar un vídeo de la técnica

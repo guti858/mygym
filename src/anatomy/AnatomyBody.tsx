@@ -50,7 +50,6 @@ function createInstance(model: AnatomyModel): Instance {
     mesh.bindMode = DetachedBindMode;
     mesh.bind(skeleton, new Matrix4());
     mesh.frustumCulled = false;
-    mesh.castShadow = name !== 'ojo' && name !== 'iris';
     // Sin picking: la selección en el gimnasio usa volúmenes invisibles propios.
     mesh.raycast = () => {};
     group.add(mesh);
@@ -67,14 +66,21 @@ export interface AnatomyBodyProps {
   /** 0–1: intensidad de activación según la fase. */
   activation: number;
   showMuscles: boolean;
+  /** Sombra propia (se desactiva en el gimnasio, donde hay varios avatares pequeños). */
+  castShadow?: boolean;
 }
 
 const tmp = new Color();
 
 /** Cuerpo anatómico (músculos, huesos visibles y piel de cabeza, manos y pies) deformado por el rig. */
-export function AnatomyBody({ model, body, palette, muscles, activation, showMuscles }: AnatomyBodyProps) {
+export function AnatomyBody({ model, body, palette, muscles, activation, showMuscles, castShadow = true }: AnatomyBodyProps) {
   const inst = useMemo(() => createInstance(model), [model]);
   const invalidate = useThree((s) => s.invalidate);
+
+  useLayoutEffect(() => {
+    for (const mesh of inst.group.children) mesh.castShadow = castShadow && mesh.name !== 'ojo' && mesh.name !== 'iris';
+    invalidate();
+  }, [inst, castShadow, invalidate]);
 
   useLayoutEffect(() => {
     const xfs = solveRig({ landmarks: model.manifest.landmarks, bones: model.manifest.bones }, body);

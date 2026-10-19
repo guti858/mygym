@@ -40,7 +40,7 @@ export function HubView() {
         const entry = CATALOG.find((c) => c.id === id);
         if (entry?.ready) useApp.getState().go({ name: 'station', id });
         else {
-          useApp.getState().print({ kind: 'out', text: `«${entry?.name}» llegará en la fase F4. Disponibles ahora: «ir jalon», «ir prensa».` });
+          useApp.getState().print({ kind: 'out', text: `«${entry?.name}» llegará en un próximo lote de F4. Escribe «estaciones» para ver las disponibles.` });
           useApp.getState().set({ consoleOpen: true });
         }
       },
@@ -124,7 +124,7 @@ export function HubView() {
                     onMouseLeave={() => setHovered(null)}
                     aria-disabled={!c.ready}
                   >
-                    <span className="card__status">{c.ready ? 'Disponible' : 'Próximamente · F4'}</span>
+                    <span className="card__status">{c.ready ? 'Disponible' : 'Próximamente'}</span>
                     <span className="card__name">{c.name}</span>
                     <span className="card__mods">{c.modalidades.join(' · ')}</span>
                     <span className="card__muscles">{c.principal.map((m) => MUSCLES[m].name).join(', ')}</span>

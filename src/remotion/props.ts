@@ -7,6 +7,9 @@ export const SETUP_SEC = 2;
 export const COMP_W = 1200;
 export const COMP_H = 900;
 
+/** Id de la composición de una estación y variante (Remotion solo admite letras, números y guiones). */
+export const compositionId = (station: string, variant: string) => `${station}-${variant}`.replace(/_/g, '-');
+
 export type StationCompProps = {
   stationId: string;
   variantId: string;

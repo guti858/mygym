@@ -45,7 +45,7 @@ function ActiveStation({ entry, t, props }: { entry: CatalogEntry; t: number; pr
   return (
     <group>
       <mod.Machine m={r.machine} palette={palette} H={seg.H} />
-      <Avatar body={r.body} palette={palette} statuses={jointStatuses([])} muscles={variant.muscles} activation={0.8} showMuscles pulse={0} />
+      <Avatar body={r.body} palette={palette} statuses={jointStatuses([])} muscles={variant.muscles} activation={0.8} showMuscles pulse={0} castShadow={false} />
     </group>
   );
 }
