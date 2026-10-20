@@ -70,6 +70,32 @@ entre lo que exporta Blender y lo que espera la app (escenas, paredes, modos de 
   vuelven translúcidas (pila de placas, torre de poleas, rodillos…), así que cualquier ángulo sirve.
 - **Paredes**: las que se interponen entre la cámara y la máquina se desvanecen de forma gradual con
   el giro y dejan el zócalo, como en un corte de maqueta.
-- **Gimnasio**: giro animado en cuartos de vuelta, arrastre libre que se ajusta al cuarto más
-  cercano y acercamiento a la máquina antes de abrir su estación.
+- **Gimnasio**: giro animado en cuartos de vuelta y arrastre libre que se ajusta al cuarto más
+  cercano.
+- **Del gimnasio a una estación** (`src/ui/zoomTransition.ts`): se copia el plano en un lienzo
+  superpuesto que se acerca a la máquina con una animación de `transform`; la ejecuta el compositor
+  del navegador, así que no se entrecorta aunque la estación se esté montando debajo. Cuando la
+  estación ya ha pintado, la copia se funde. La estación arranca mirando la máquina desde el mismo
+  lado que en el plano y orbita hasta su vista (si la diferencia es de más de 120°, empieza ya en
+  su vista).
 - El enlace guarda el ángulo (`giro`, `incl`) además de la vista.
+
+## 5. Carga sin tirones
+
+Medido con el perfilador de Chrome (WebGL por software, que exagera lo gráfico pero sitúa bien
+dónde se bloquea el hilo principal):
+
+| Causa | Qué pasaba | Solución |
+|---|---|---|
+| Salir del gimnasio | R3F destruye el contexto WebGL al desmontar (`forceContextLoss`, bloqueo síncrono) y la estación crea otro y recompila todo | Las dos vistas quedan montadas; la oculta, en pausa. Volver es instantáneo |
+| Shaders nuevos (sala, modelo anatómico) | three.js espera al driver nada más usar cada programa (`onFirstUse`, `WebGLUniforms`) | Se preparan antes de mostrarlos: texturas a la GPU (una por fotograma) y `compileAsync`, que con `KHR_parallel_shader_compile` (Chrome, Edge, Firefox y Safari con GPU) compila fuera del hilo principal; mientras, se ve lo de antes (maniquí, sala procedural) |
+| Comprobación de errores de shaders | Consultas síncronas al driver por cada programa | Desactivada (`tuneRenderer`): los shaders son los de three.js |
+| Recursos de varios MB | Decodificar base64 en un bucle de JavaScript; evaluación encima de los primeros fotogramas | Decodificación nativa (`Uint8Array.fromBase64` donde existe); la carga empieza con el navegador libre y la sala después del modelo anatómico |
+| Peso de la sala | 2,68 MB con normales y UV que no se usan | `compact_glb.py`: 1,86 MB (−31 %) |
+| Esfera envolvente del avatar | three.js la calculaba aplicando los huesos a cada vértice la primera vez | Esfera fija |
+| Ratón sobre el gimnasio | Los eventos probaban todas las mallas de máquinas y avatares | Solo una caja invisible por máquina |
+| Gimnasio animado | 12 máquinas con avatar repintadas a 30 fps | Memoizadas y a 15 fps (la mitad de trabajo de React y de GPU) |
+
+Sigue costando, la primera vez que se abre una estación, crear su contexto WebGL y compilar sus
+shaders: lo tapa la transición. Para reducirlo más habría que precrear la vista de estación en
+reposo (otro contexto vivo en segundo plano) o pasar a un único lienzo compartido.

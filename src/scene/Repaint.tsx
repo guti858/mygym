@@ -1,4 +1,4 @@
-import { useThree } from '@react-three/fiber';
+import { useThree, type RootState } from '@react-three/fiber';
 import { useEffect } from 'react';
 import { useRemotionEnvironment } from 'remotion';
 
@@ -18,4 +18,13 @@ export function Repaint({ ready }: { ready: readonly unknown[] }) {
     else invalidate();
   }, [key, isRendering, advance, invalidate]);
   return null;
+}
+
+/**
+ * Ajustes del renderizador al crear cada lienzo. Sin la comprobación de errores de shaders, three.js
+ * no pregunta al driver por el enlazado de cada programa nada más usarlo, una espera síncrona que
+ * daba tirones al aparecer materiales nuevos (los shaders son los de three.js, ya probados).
+ */
+export function tuneRenderer({ gl }: RootState) {
+  gl.debug.checkShaderErrors = false;
 }

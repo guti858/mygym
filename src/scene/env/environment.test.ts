@@ -85,6 +85,9 @@ describe('contrato con el glTF generado por Blender (scripts/environment/build_r
           expect(p.attributes.TEXCOORD_1).toBeDefined();
         }
         if (mode === 'vertex') expect(p.attributes.COLOR_0).toBeDefined();
+        // Compactado (compact_glb.py): ni normales ni UV de detalle sin textura de detalle.
+        expect(p.attributes.NORMAL).toBeUndefined();
+        expect(p.attributes.TEXCOORD_0 !== undefined).toBe(!!mat.pbrMetallicRoughness?.baseColorTexture);
       }
     }
   });

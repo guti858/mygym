@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { startUrlSync } from '../state/url';
 import { hostTheme, useApp } from '../state/store';
 import { catalogEntry } from '../stations/catalog';
@@ -12,6 +12,10 @@ export function App() {
   const route = useApp((s) => s.route);
   const theme = useApp((s) => s.theme);
   const themeLocked = useApp((s) => s.themeLocked);
+  // Las dos vistas se quedan montadas: al ir y volver entre el gimnasio y una estación no se destruye
+  // ni se recrea su contexto WebGL (eso bloqueaba la página) y la oculta queda en pausa.
+  const [stationId, setStationId] = useState<string | null>(route.name === 'station' ? route.id : null);
+  if (route.name === 'station' && route.id !== stationId) setStationId(route.id);
 
   useEffect(() => startUrlSync(), []);
   // Antes del pintado: sin fotograma con el tema anterior.
@@ -59,7 +63,10 @@ export function App() {
   return (
     <div className="app">
       <Header />
-      <main className="main">{route.name === 'station' ? <StationView key={route.id} id={route.id} /> : <HubView />}</main>
+      <main className="main">
+        <HubView active={route.name === 'hub'} />
+        {stationId && <StationView id={stationId} active={route.name === 'station'} />}
+      </main>
       <footer className="footer fine">
         Contenido educativo basado en literatura y consenso técnico (fuentes en cada estación). No sustituye la valoración de un profesional. Animación con Remotion · 3D con three.js.
       </footer>

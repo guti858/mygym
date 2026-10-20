@@ -47,12 +47,11 @@ export type HubCompProps = {
   uiScale: number;
   /** Giros de 90° (admite fracciones mientras la sala gira). Azimut = −45° + 90° × rotation. */
   rotation: number;
-  /** Acercamiento a una estación antes de abrirla (t de 0 a 1). */
-  focus?: { id: string; t: number } | null;
   zoom: number;
   hovered: string | null;
   highlight: Record<string, 'principal' | 'secundario'>;
   anthro: Anthropometry;
-  onSelect?: (id: string) => void;
+  /** Máquina elegida y su posición en el plano (fracción del ancho y el alto de la composición). */
+  onSelect?: (id: string, point?: { x: number; y: number }) => void;
   onHover?: (id: string | null) => void;
 };

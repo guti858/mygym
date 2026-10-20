@@ -1,23 +1,33 @@
-import { Player } from '@remotion/player';
+import { Player, type PlayerRef } from '@remotion/player';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DEG } from '../engine/math';
 import { MUSCLES, type MuscleId } from '../content/muscles';
 import { FPS, type HubCompProps } from '../remotion/props';
 import { HubComposition } from '../remotion/HubComposition';
 import { CATALOG, ZONE_LABEL, roleInStation, type Zone } from '../stations/catalog';
-import { useApp } from '../state/store';
+import { getModule } from '../stations/modules';
+import { settingsFor, useApp } from '../state/store';
 import { BodyMap, type BodyMapEntry } from '../ui/BodyMap';
 import { useMedia } from '../ui/useMedia';
-import { useSmoothCamera } from '../ui/useSmoothCamera';
+import { angleDelta, useSmoothCamera } from '../ui/useSmoothCamera';
+import { zoomInto } from '../ui/zoomTransition';
 
 /** Píxeles de arrastre por cada giro de 90°. */
 const DRAG_PX = 220;
-/** Duración del acercamiento a una máquina antes de abrir su estación (ms). */
-const FOCUS_MS = 520;
+/** Elevación de la cámara isométrica del gimnasio. */
+const HUB_ELEVATION = 35.264;
 
 const ZONE_ORDER: Zone[] = ['traccion', 'brazos', 'empuje', 'pierna', 'libre'];
 
-export function HubView() {
+/**
+ * Gimnasio. Se queda montado (oculto y en pausa) mientras se ve una estación: al volver no se
+ * recrea el contexto WebGL ni se recompilan los shaders.
+ */
+export function HubView({ active }: { active: boolean }) {
   const app = useApp();
+  const playerRef = useRef<PlayerRef>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const opening = useRef(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
   const narrow = !useMedia('(min-width: 700px)');
@@ -31,22 +41,39 @@ export function HubView() {
   const goal = useMemo(() => ({ azimuth: -45 + 90 * (app.hubRotation + drag), elevation: 0 }), [app.hubRotation, drag]);
   const shown = useSmoothCamera(goal, reduceMotion);
   const rotation = (shown.azimuth + 45) / 90;
-  // Acercamiento a la máquina elegida; al terminar se abre la estación.
-  const [focus, setFocus] = useState<{ id: string; t: number } | null>(null);
-  useEffect(() => {
-    if (!focus) return;
-    if (focus.t >= 1) {
-      useApp.getState().go({ name: 'station', id: focus.id });
-      return;
-    }
-    const start = performance.now() - focus.t * FOCUS_MS;
-    const raf = requestAnimationFrame((now) => setFocus({ id: focus.id, t: Math.min(1, (now - start) / FOCUS_MS) }));
-    return () => cancelAnimationFrame(raf);
-  }, [focus]);
+  // Abrir una estación desde el plano: la copia del plano se acerca a la máquina (en el compositor,
+  // sin tirones) mientras la estación se monta debajo. La estación arranca mirando la máquina desde
+  // el mismo lado que en el plano y después orbita hasta su vista.
   const open = useCallback(
-    (id: string) => (reduceMotion ? useApp.getState().go({ name: 'station', id }) : setFocus((f) => f ?? { id, t: 0 })),
+    (id: string, point?: { x: number; y: number }) => {
+      const entry = CATALOG.find((c) => c.id === id);
+      if (!entry || opening.current) return;
+      const enter = () => {
+        const s = useApp.getState();
+        const azimuth = -45 + 90 * s.hubRotation - entry.hub.yaw / DEG;
+        // Solo si la vista de la estación queda cerca: un barrido de media vuelta desorienta más que ayuda.
+        const st = settingsFor(s, id);
+        const view = getModule(id)?.content.views.find((v) => v.id === st.viewId);
+        const near = view && Math.abs(angleDelta(azimuth, view.azimuth + st.azimuthOffset)) <= 120;
+        useApp.setState({ entryCamera: near ? { stationId: id, azimuth, elevation: HUB_ELEVATION, key: performance.now() } : null });
+        s.go({ name: 'station', id });
+      };
+      const canvas = stageRef.current?.querySelector('canvas');
+      if (reduceMotion || !point || !canvas) return enter();
+      opening.current = true;
+      const r = canvas.getBoundingClientRect();
+      void zoomInto(canvas, { x: r.left + point.x * r.width, y: r.top + point.y * r.height }, enter).finally(() => (opening.current = false));
+    },
     [reduceMotion],
   );
+  // Oculto: en pausa y sin máquina resaltada; al volver, sigue la animación.
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!active) {
+      p?.pause();
+      setHovered(null);
+    } else if (!reduceMotion) p?.play();
+  }, [active, reduceMotion]);
 
   const highlight = useMemo(() => {
     const out: Record<string, 'principal' | 'secundario'> = {};
@@ -63,16 +90,15 @@ export function HubView() {
       theme: app.theme,
       uiScale: narrow ? 1.9 : 1,
       rotation,
-      focus,
       zoom: 1,
       hovered,
       highlight,
       anthro: app.anthro,
-      onSelect: (id: string) => {
+      onSelect: (id: string, point?: { x: number; y: number }) => {
         // El clic que cierra un arrastre de giro no abre la máquina que haya debajo.
         if (dragged.current) return;
         const entry = CATALOG.find((c) => c.id === id);
-        if (entry?.ready) open(id);
+        if (entry?.ready) open(id, point);
         else {
           useApp.getState().print({ kind: 'out', text: `«${entry?.name}» aún no está disponible. Escribe «estaciones» para ver las disponibles.` });
           useApp.getState().set({ consoleOpen: true });
@@ -83,16 +109,17 @@ export function HubView() {
         document.body.style.cursor = id ? 'pointer' : '';
       },
     }),
-    [app.theme, rotation, focus, app.anthro, hovered, highlight, narrow, open],
+    [app.theme, rotation, app.anthro, hovered, highlight, narrow, open],
   );
 
   const mapActive: Partial<Record<MuscleId, BodyMapEntry>> = {};
   if (filter) mapActive[filter] = { role: 'principal', level: 3 };
 
   return (
-    <div className={`hub${filter ? ' hub--filtering' : ''}`}>
+    <div className={`hub${filter ? ' hub--filtering' : ''}`} hidden={!active}>
       <section className="hub__stage">
         <div
+          ref={stageRef}
           className="hub__player"
           role="img"
           aria-label="Plano del gimnasio con las 12 estaciones; elige una en la lista de abajo"
@@ -124,6 +151,7 @@ export function HubView() {
           }}
         >
           <Player
+            ref={playerRef}
             component={HubComposition}
             inputProps={props}
             durationInFrames={8 * FPS}

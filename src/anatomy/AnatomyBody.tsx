@@ -1,12 +1,13 @@
 import { useThree } from '@react-three/fiber';
-import { useLayoutEffect, useMemo } from 'react';
-import { Bone, Color, DetachedBindMode, Group, Matrix4, MeshPhysicalMaterial, MeshStandardMaterial, Skeleton, SkinnedMesh } from 'three';
+import { useLayoutEffect, useMemo, type ReactNode } from 'react';
+import { Bone, Color, DetachedBindMode, Group, Matrix4, MeshPhysicalMaterial, MeshStandardMaterial, Skeleton, SkinnedMesh, Sphere, Vector3 } from 'three';
 import { MUSCLE_IDS, type MuscleId } from '../content/muscles';
 import type { SolvedBody } from '../engine/body';
 import type { MuscleActivation } from '../engine/types';
 import type { ScenePalette } from '../scene/palette';
 import type { AnatomyModel } from './model';
 import { boneMatrix, solveRig } from './rig';
+import { useWarmReveal } from '../scene/warm';
 
 const MUSCLE_SET = new Set<string>(MUSCLE_IDS);
 
@@ -50,6 +51,9 @@ function createInstance(model: AnatomyModel): Instance {
     mesh.bindMode = DetachedBindMode;
     mesh.bind(skeleton, new Matrix4());
     mesh.frustumCulled = false;
+    // Esfera fija (solo sirve para ordenar por profundidad): sin ella three.js la calcula aplicando
+    // los huesos a cada vértice de cada malla la primera vez que la pinta (un tirón al cargar).
+    mesh.boundingSphere = new Sphere(new Vector3(0, 1, 0), 3);
     // Sin picking: la selección en el gimnasio usa volúmenes invisibles propios.
     mesh.raycast = () => {};
     group.add(mesh);
@@ -68,14 +72,21 @@ export interface AnatomyBodyProps {
   showMuscles: boolean;
   /** Sombra propia (se desactiva en el gimnasio, donde hay varios avatares pequeños). */
   castShadow?: boolean;
+  /** Preparar texturas y shaders antes de mostrarlo (llega con la escena ya a la vista). */
+  warm?: boolean;
+  /** Lo que se ve mientras se prepara (el maniquí). */
+  fallback?: ReactNode;
+  /** Lo que acompaña al cuerpo una vez a la vista (marcadores articulares). */
+  overlay?: ReactNode;
 }
 
 const tmp = new Color();
 
 /** Cuerpo anatómico (músculos, huesos visibles y piel de cabeza, manos y pies) deformado por el rig. */
-export function AnatomyBody({ model, body, palette, muscles, activation, showMuscles, castShadow = true }: AnatomyBodyProps) {
+export function AnatomyBody({ model, body, palette, muscles, activation, showMuscles, castShadow = true, warm = false, fallback, overlay }: AnatomyBodyProps) {
   const inst = useMemo(() => createInstance(model), [model]);
   const invalidate = useThree((s) => s.invalidate);
+  const ready = useWarmReveal(inst.group, warm);
 
   useLayoutEffect(() => {
     for (const mesh of inst.group.children) mesh.castShadow = castShadow && mesh.name !== 'ojo' && mesh.name !== 'iris';
@@ -123,5 +134,11 @@ export function AnatomyBody({ model, body, palette, muscles, activation, showMus
     [inst],
   );
 
-  return <primitive object={inst.group} />;
+  return (
+    <>
+      {!ready && fallback}
+      <primitive object={inst.group} visible={ready} />
+      {ready && overlay}
+    </>
+  );
 }

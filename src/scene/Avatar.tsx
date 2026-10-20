@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Quaternion, Vector3 } from 'three';
 import { AnatomyBody } from '../anatomy/AnatomyBody';
 import { useAnatomy } from '../anatomy/useAnatomy';
@@ -225,20 +226,22 @@ export interface AvatarProps {
 /** Avatar: modelo anatómico (Z-Anatomy) sobre el rig del motor; maniquí simple mientras carga. */
 export function Avatar(props: AvatarProps) {
   const model = useAnatomy();
+  // Si el modelo llega con la escena ya a la vista, se prepara antes de sustituir al maniquí.
+  const [modelAtMount] = useState(() => model !== null);
   if (!model) return <Mannequin {...props} />;
   return (
-    <group>
-      <AnatomyBody
-        model={model}
-        body={props.body}
-        palette={props.palette}
-        muscles={props.muscles}
-        activation={props.activation}
-        showMuscles={props.showMuscles}
-        castShadow={props.castShadow}
-      />
-      <JointMarkers body={props.body} palette={props.palette} statuses={props.statuses} pulse={props.pulse} xray />
-    </group>
+    <AnatomyBody
+      model={model}
+      body={props.body}
+      palette={props.palette}
+      muscles={props.muscles}
+      activation={props.activation}
+      showMuscles={props.showMuscles}
+      castShadow={props.castShadow}
+      warm={!modelAtMount}
+      fallback={<Mannequin {...props} />}
+      overlay={<JointMarkers body={props.body} palette={props.palette} statuses={props.statuses} pulse={props.pulse} xray />}
+    />
   );
 }
 

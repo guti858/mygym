@@ -1,6 +1,6 @@
 import { ThreeCanvas } from '@remotion/three';
 import { useAnatomy } from '../anatomy/useAnatomy';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Vector3, type Group } from 'three';
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { STATUS_RANK, evaluateFrame } from '../engine/evaluate';
@@ -15,7 +15,7 @@ import { Lights } from '../scene/Environment';
 import { GymRoom, RoomLighting } from '../scene/GymRoom';
 import { BakedRoom } from '../scene/env/BakedRoom';
 import { useEnvironment } from '../scene/env/useEnvironment';
-import { Repaint } from '../scene/Repaint';
+import { Repaint, tuneRenderer } from '../scene/Repaint';
 import { STATION_ROOM } from '../scene/layout';
 import { Gauges } from '../scene/Gauges';
 import { XRay } from '../scene/XRay';
@@ -92,6 +92,8 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
   // Fuera del lienzo 3D: aquí sí llega el contexto de Remotion (espera al modelo al renderizar).
   const anatomy = useAnatomy();
   const env = useEnvironment();
+  // Si la sala llega con la estación ya a la vista, se prepara antes de sustituir a la procedural.
+  const [envAtMount] = useState(() => env !== null);
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const { mod, seg, variant, timeline, state, result } = useStationFrame(props, frame, fps);
@@ -178,30 +180,28 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: palette.bg, fontFamily: props.theme === 'terminal' ? MONO : SANS }}>
-      <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: true }}>
+      <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: true }} onCreated={tuneRenderer}>
         <color attach="background" args={[palette.bg]} />
         <CameraRig spec={cam} />
         {/* Con la sala horneada, las sombras caen de las luminarias del techo (no giran con la cámara). */}
         <Lights keyPosition={keyLightFor(cam)} shadowPosition={env ? [floorCenter[0] + 2.2, 7.5, floorCenter[1] + 1.3] : undefined} />
         <RoomLighting />
-        {env ? (
-          <BakedRoom
-            asset={env.rooms.station}
-            palette={palette}
-            azimuth={azimuth}
-            position={[floorCenter[0], 0, floorCenter[1]]}
-            floorSize={[STATION_ROOM.size, STATION_ROOM.size]}
-          />
-        ) : (
-          <GymRoom
-            palette={palette}
-            center={floorCenter}
-            size={roomSize}
-            azimuth={azimuth}
-            elevation={elevation}
-            variant="station"
-          />
-        )}
+        {(() => {
+          const procedural = <GymRoom palette={palette} center={floorCenter} size={roomSize} azimuth={azimuth} elevation={elevation} variant="station" />;
+          return env ? (
+            <BakedRoom
+              asset={env.rooms.station}
+              palette={palette}
+              azimuth={azimuth}
+              position={[floorCenter[0], 0, floorCenter[1]]}
+              floorSize={[STATION_ROOM.size, STATION_ROOM.size]}
+              warm={!envAtMount}
+              fallback={procedural}
+            />
+          ) : (
+            procedural
+          );
+        })()}
         <group ref={machineRef}>
           <mod.Machine m={result.machine} palette={palette} H={seg.H} />
         </group>

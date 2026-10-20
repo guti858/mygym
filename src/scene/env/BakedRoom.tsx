@@ -1,5 +1,6 @@
 import { useThree } from '@react-three/fiber';
-import { useEffect, useLayoutEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo, type ReactNode } from 'react';
+import { useWarmReveal } from '../warm';
 import { BufferAttribute, Color, MeshBasicMaterial, MeshStandardMaterial, type Material, type Mesh, type Object3D } from 'three';
 import { mirrorTexture } from '../GymRoom';
 import type { ScenePalette } from '../palette';
@@ -93,11 +94,16 @@ export interface BakedRoomProps {
   /** Tamaño del plano que recibe las sombras en tiempo real (x, z). */
   floorSize: readonly [number, number];
   shadowOpacity?: number;
+  /** Preparar texturas y shaders antes de mostrarla (llega con la escena ya a la vista). */
+  warm?: boolean;
+  /** Lo que se ve mientras se prepara (la sala procedural). */
+  fallback?: ReactNode;
 }
 
-export function BakedRoom({ asset, palette, azimuth, position = [0, 0, 0], floorSize, shadowOpacity = 0.32 }: BakedRoomProps) {
+export function BakedRoom({ asset, palette, azimuth, position = [0, 0, 0], floorSize, shadowOpacity = 0.32, warm = false, fallback }: BakedRoomProps) {
   const invalidate = useThree((s) => s.invalidate);
   const room = useMemo(() => instantiate(asset, palette), [asset, palette]);
+  const ready = useWarmReveal(room.root, warm);
   useEffect(() => room.dispose, [room]);
   useLayoutEffect(() => {
     for (const g of room.groups) {
@@ -116,12 +122,15 @@ export function BakedRoom({ asset, palette, azimuth, position = [0, 0, 0], floor
     invalidate();
   }, [room, azimuth, invalidate]);
   return (
-    <group position={[position[0], position[1], position[2]]}>
-      <primitive object={room.root} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]} receiveShadow>
-        <planeGeometry args={[floorSize[0], floorSize[1]]} />
-        <shadowMaterial transparent opacity={shadowOpacity} depthWrite={false} />
-      </mesh>
-    </group>
+    <>
+      {!ready && fallback}
+      <group position={[position[0], position[1], position[2]]} visible={ready}>
+        <primitive object={room.root} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]} receiveShadow>
+          <planeGeometry args={[floorSize[0], floorSize[1]]} />
+          <shadowMaterial transparent opacity={shadowOpacity} depthWrite={false} />
+        </mesh>
+      </group>
+    </>
   );
 }

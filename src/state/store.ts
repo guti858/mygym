@@ -38,6 +38,11 @@ export interface AppState {
   showGauges: boolean;
   showOverlay: boolean;
   hubRotation: number;
+  /**
+   * Cámara con la que se abre una estación desde el plano del gimnasio (el mismo lado desde el que
+   * se veía la máquina); la estación la consume al montarse y orbita hasta su vista.
+   */
+  entryCamera: { stationId: string; azimuth: number; elevation: number; key: number } | null;
   muscleFilter: MuscleId | null;
   consoleOpen: boolean;
   anthroOpen: boolean;
@@ -121,6 +126,7 @@ export const useApp = create<AppState>((set, get) => ({
   showGauges: persisted.showGauges ?? true,
   showOverlay: persisted.showOverlay ?? true,
   hubRotation: 0,
+  entryCamera: null,
   muscleFilter: null,
   consoleOpen: false,
   anthroOpen: false,

@@ -201,3 +201,23 @@ test('cámara: giro, inclinación y ajuste a la vista se guardan en el enlace', 
   await expect(page).toHaveURL(/giro=-30/);
   expect(errors).toEqual([]);
 });
+
+test('gimnasio → estación: el plano se acerca a la máquina y la vista del gimnasio se conserva al volver', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Se pulsa la máquina en el plano 3D con ratón');
+  await open(page, '#/');
+  await expect(page.locator('.hub__player canvas')).toBeVisible();
+  const label = page.locator('.hub__player div', { hasText: /^Jalón al pecho$/ }).first();
+  await expect(label).toBeVisible();
+  const box = (await label.boundingBox())!;
+  // La máquina queda justo debajo de su rótulo.
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height + 45);
+  await expect(page).toHaveURL(/#\/e\/jalon/);
+  // La copia del plano se retira cuando la estación ya ha pintado.
+  await expect(page.locator('.zoom-snap')).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  await page.goBack();
+  await expect(page.locator('.hub__player canvas')).toBeVisible();
+  // Ningún lienzo se ha destruido ni recreado: el del gimnasio y el de la estación siguen ahí.
+  await expect(page.locator('canvas')).toHaveCount(2);
+  expect(errors).toEqual([]);
+});

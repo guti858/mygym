@@ -34,11 +34,12 @@ Uso (Blender 5.2 como módulo de Python: `pip install bpy==5.2.2` en un entorno 
   npx tsx scripts/environment/layout.ts
   python -I scripts/environment/build_rooms.py scripts/environment/layout.json src/scene/env/gym-env
 Opciones: --samples N (64), --station-res N (1024), --hub-res N (2048), --quick (prueba rápida).
+Al final, compact_glb.py quita lo que la app no usa (normales, UV de detalle de materiales lisos).
 """
 
-import base64
 import json
 import math
+import os
 import sys
 import time
 
@@ -1135,12 +1136,12 @@ def main():
         export_cameras=False,
         export_apply=True,
     )
-    data = open(glb, 'rb').read()
-    with open(OUT + '.generated.ts', 'w') as f:
-        f.write('// Generado por scripts/environment/build_rooms.py (Blender + Cycles). No editar a mano.\n')
-        f.write(f'// Salas «station» y «hub» en glTF binario ({len(data)} bytes) codificado en base64.\n')
-        f.write(f"export const GYM_ENV_GLB = '{base64.b64encode(data).decode()}';\n")
-    log('exportado', glb, f'{len(data) / 1e6:.2f} MB', '→', OUT + '.generated.ts')
+    # Sin normales ni UV de detalle que no se usen, y el módulo base64 para la app.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import compact_glb  # noqa: E402
+
+    compact_glb.main(OUT)
+    log('exportado', glb, '→', OUT + '.generated.ts')
 
 
 main()

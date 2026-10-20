@@ -16,12 +16,16 @@ const CAMERA_TAU = 0.11;
  * camino angular más corto. Al cambiar de vista la cámara orbita hasta la nueva en lugar de saltar,
  * y el arrastre se siente continuo. Con «reducir movimiento» va directa.
  */
-export function useSmoothCamera(target: CameraAngles, instant: boolean): CameraAngles {
+export function useSmoothCamera(target: CameraAngles, instant: boolean, jumpKey = 0): CameraAngles {
   const [cur, setCur] = useState(target);
   const ref = useRef(target);
+  // Un `jumpKey` nuevo (distinto de 0) pide colocar la cámara directamente en el objetivo.
+  const lastJump = useRef(jumpKey);
   const { azimuth, elevation } = target;
   useEffect(() => {
-    if (instant) {
+    const jump = jumpKey !== 0 && jumpKey !== lastJump.current;
+    lastJump.current = jumpKey;
+    if (instant || jump) {
       ref.current = { azimuth, elevation };
       setCur(ref.current);
       return;
@@ -42,6 +46,6 @@ export function useSmoothCamera(target: CameraAngles, instant: boolean): CameraA
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [azimuth, elevation, instant]);
+  }, [azimuth, elevation, instant, jumpKey]);
   return cur;
 }

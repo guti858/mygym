@@ -1680,3 +1680,19 @@ input[type='range'] {
     translate: none;
   }
 }
+
+/* Copia del plano del gimnasio que se acerca a la máquina al abrir una estación (src/ui/zoomTransition.ts). */
+.zoom-snap {
+  position: fixed;
+  /* Por debajo de la barra superior (30): la cabecera sigue visible durante el acercamiento. */
+  z-index: 25;
+  pointer-events: none;
+  transform-origin: 0 0;
+  will-change: transform, opacity;
+}
+
+/* Vistas montadas pero ocultas (gimnasio mientras se ve una estación y viceversa). */
+.hub[hidden],
+.station[hidden] {
+  display: none;
+}

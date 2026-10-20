@@ -1,9 +1,9 @@
 import { ThreeCanvas } from '@remotion/three';
 import { useAnatomy } from '../anatomy/useAnatomy';
-import { useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
-import { computeSegments } from '../engine/anthropometry';
+import { computeSegments, type Anthropometry } from '../engine/anthropometry';
 import { evaluateFrame } from '../engine/evaluate';
 import { Avatar, jointStatuses } from '../scene/Avatar';
 import { CameraRig } from '../scene/CameraRig';
@@ -12,10 +12,10 @@ import { Lights } from '../scene/Environment';
 import { GymRoom, RoomLighting } from '../scene/GymRoom';
 import { BakedRoom } from '../scene/env/BakedRoom';
 import { useEnvironment } from '../scene/env/useEnvironment';
-import { Repaint } from '../scene/Repaint';
+import { Repaint, tuneRenderer } from '../scene/Repaint';
 import { HUB_FLOOR, HUB_HEIGHT, HUB_ZONES } from '../scene/layout';
 import { Mat } from '../scene/kit';
-import { PALETTES } from '../scene/palette';
+import { PALETTES, type ThemeId } from '../scene/palette';
 import { Placeholder } from '../scene/Placeholder';
 import { CATALOG, ZONE_LABEL, type CatalogEntry, type Zone } from '../stations/catalog';
 import { getModule } from '../stations/modules';
@@ -33,14 +33,18 @@ function rectGap(a: Rect, b: Rect): number {
   return dx < 0 && dy < 0 ? Math.max(dx, dy) : Math.hypot(Math.max(0, dx), Math.max(0, dy));
 }
 
-function ActiveStation({ entry, t, props }: { entry: CatalogEntry; t: number; props: HubCompProps }) {
+/**
+ * Máquina con su avatar en el plano. Memoizada y animada a 15 fps (la mitad que el resto): en los
+ * fotogramas intermedios ni React ni la GPU repiten el trabajo de las 12 máquinas.
+ */
+const ActiveStation = memo(function ActiveStation({ entry, t, theme, anthro }: { entry: CatalogEntry; t: number; theme: ThemeId; anthro: Anthropometry }) {
   const mod = getModule(entry.id)!;
-  const palette = PALETTES[props.theme];
-  const seg = useMemo(() => computeSegments(props.anthro), [props.anthro]);
+  const palette = PALETTES[theme];
+  const seg = useMemo(() => computeSegments(anthro), [anthro]);
   const variant = mod.content.variants[0]!;
   const p = 0.5 - 0.5 * Math.cos((2 * Math.PI * t) / 4);
   const r = evaluateFrame(mod.logic, mod.content, {
-    anthro: props.anthro,
+    anthro,
     seg,
     variantId: variant.id,
     errorId: null,
@@ -54,18 +58,21 @@ function ActiveStation({ entry, t, props }: { entry: CatalogEntry; t: number; pr
       <Avatar body={r.body} palette={palette} statuses={jointStatuses([])} muscles={variant.muscles} activation={0.8} showMuscles pulse={0} castShadow={false} />
     </group>
   );
-}
+});
 
 export const HubComposition: React.FC<HubCompProps> = (props) => {
   // Fuera del lienzo 3D: aquí sí llega el contexto de Remotion (espera al modelo al renderizar).
   const anatomy = useAnatomy();
   const env = useEnvironment();
+  // Si la sala llega con el plano ya a la vista, se prepara antes de sustituir a la procedural.
+  const [envAtMount] = useState(() => env !== null);
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const palette = PALETTES[props.theme];
-  const t = frame / fps;
+  // Las máquinas del plano se animan a 15 fps (ver ActiveStation).
+  const tStations = (Math.floor(frame / 2) * 2) / fps;
   const azimuth = -45 + 90 * props.rotation;
-  const overview = fitCamera({
+  const cam = fitCamera({
     azimuth,
     elevation: 35.264,
     points: boxCorners([-FLOOR[0] / 2, 0, -FLOOR[1] / 2], [FLOOR[0] / 2, 1.2, FLOOR[1] / 2]),
@@ -74,28 +81,6 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
     margins: { top: 0.06, bottom: 0.02, side: 0.02 },
     zoomFactor: props.zoom,
   });
-  // Al elegir una máquina la cámara se acerca a ella antes de abrir la estación.
-  const focusEntry = props.focus ? CATALOG.find((c) => c.id === props.focus!.id) : undefined;
-  const ft = focusEntry ? Math.min(1, Math.max(0, props.focus!.t)) : 0;
-  const ease = ft < 0.5 ? 2 * ft * ft : 1 - (-2 * ft + 2) ** 2 / 2;
-  let cam = overview;
-  if (focusEntry && ease > 0) {
-    const bb = getModule(focusEntry.id)?.logic.bounds;
-    const r = bb ? Math.max(bb.max[0] - bb.min[0], bb.max[2] - bb.min[2]) / 2 : 1.2;
-    const { x, z } = focusEntry.hub;
-    const close = fitCamera({
-      azimuth,
-      elevation: 35.264,
-      points: boxCorners([x - r, 0, z - r], [x + r, bb?.max[1] ?? 2.2, z + r]),
-      width,
-      height,
-      margins: { top: 0.12, bottom: 0.08, side: 0.15 },
-    });
-    const target = overview.target.clone().lerp(close.target, ease);
-    const dir = overview.position.clone().sub(overview.target).normalize();
-    cam = { ...overview, target, position: target.clone().add(dir.multiplyScalar(30)), zoom: overview.zoom * (close.zoom / overview.zoom) ** ease };
-  }
-  const labelOpacity = 1 - ease;
   const unit = (Math.min(width, height) / 900) * (props.uiScale ?? 1);
   // Rótulo de cada estación justo encima de su máquina (a altura fija, el de una máquina baja
   // flotaría sobre la de detrás).
@@ -137,26 +122,34 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: palette.bg, fontFamily: props.theme === 'terminal' ? MONO : SANS }}>
-      <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand">
+      {/* preserveDrawingBuffer: la transición a una estación copia el plano (src/ui/zoomTransition.ts). */}
+      <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand" gl={{ preserveDrawingBuffer: true }} onCreated={tuneRenderer}>
         <color attach="background" args={[palette.bg]} />
         <CameraRig spec={cam} />
-        <Lights extent={12} keyPosition={keyLightFor(overview)} shadowPosition={env ? [4, 12, 2.5] : undefined} />
+        <Lights extent={12} keyPosition={keyLightFor(cam)} shadowPosition={env ? [4, 12, 2.5] : undefined} />
         <RoomLighting />
-        {env ? (
-          <BakedRoom asset={env.rooms.hub} palette={palette} azimuth={azimuth} floorSize={FLOOR} shadowOpacity={0.24} />
-        ) : (
-          <GymRoom palette={palette} center={[0, 0]} size={FLOOR} azimuth={azimuth} elevation={35.264} height={HUB_HEIGHT} variant="hub" />
-        )}
-        {/* Con la sala horneada el suelo de cada zona ya viene pintado. */}
-        {!env && (Object.keys(ZONES) as Zone[]).map((z) => {
-          const zr = ZONES[z];
-          return (
-            <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[zr.x, 0.006, zr.z]} receiveShadow>
-              <planeGeometry args={[zr.w, zr.d]} />
-              <meshStandardMaterial color={palette.zone[z]} roughness={0.9} transparent opacity={0.72} />
-            </mesh>
+        {(() => {
+          // Sala procedural con el suelo de cada zona pintado encima (la horneada ya lo trae).
+          const procedural = (
+            <>
+              <GymRoom palette={palette} center={[0, 0]} size={FLOOR} azimuth={azimuth} elevation={35.264} height={HUB_HEIGHT} variant="hub" />
+              {(Object.keys(ZONES) as Zone[]).map((z) => {
+                const zr = ZONES[z];
+                return (
+                  <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[zr.x, 0.006, zr.z]} receiveShadow>
+                    <planeGeometry args={[zr.w, zr.d]} />
+                    <meshStandardMaterial color={palette.zone[z]} roughness={0.9} transparent opacity={0.72} />
+                  </mesh>
+                );
+              })}
+            </>
           );
-        })}
+          return env ? (
+            <BakedRoom asset={env.rooms.hub} palette={palette} azimuth={azimuth} floorSize={FLOOR} shadowOpacity={0.24} warm={!envAtMount} fallback={procedural} />
+          ) : (
+            procedural
+          );
+        })()}
         {CATALOG.map((entry) => {
           const mod = getModule(entry.id);
           const hl = props.highlight[entry.id];
@@ -169,15 +162,6 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
               key={entry.id}
               position={[entry.hub.x, 0, entry.hub.z]}
               rotation={[0, entry.hub.yaw, 0]}
-              onClick={(e) => {
-                e.stopPropagation();
-                props.onSelect?.(entry.id);
-              }}
-              onPointerOver={(e) => {
-                e.stopPropagation();
-                props.onHover?.(entry.id);
-              }}
-              onPointerOut={() => props.onHover?.(null)}
             >
               {ring && (
                 <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
@@ -185,12 +169,26 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
                   <Mat color={ring} emissive={ring} emissiveIntensity={0.6} />
                 </mesh>
               )}
-              <mesh position={[0, 1.2, 0]}>
+              {/* Caja invisible de selección: los eventos solo prueban esta caja, no las mallas de
+                  la máquina ni las del avatar (que, con piel animada, cuestan mucho de intersecar). */}
+              <mesh
+                position={[0, 1.2, 0]}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const [sx, sy] = project(cam, new Vector3(entry.hub.x, 0.9, entry.hub.z));
+                  props.onSelect?.(entry.id, { x: sx / width, y: sy / height });
+                }}
+                onPointerOver={(e) => {
+                  e.stopPropagation();
+                  props.onHover?.(entry.id);
+                }}
+                onPointerOut={() => props.onHover?.(null)}
+              >
                 <boxGeometry args={[2.4, 2.4, 2.4]} />
-                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+                <meshBasicMaterial visible={false} />
               </mesh>
               <group position={[-center[0], 0, -center[2]]}>
-                {mod ? <ActiveStation entry={entry} t={t} props={props} /> : <Placeholder kind={entry.placeholder} palette={palette} />}
+                {mod ? <ActiveStation entry={entry} t={tStations} theme={props.theme} anthro={props.anthro} /> : <Placeholder kind={entry.placeholder} palette={palette} />}
               </group>
             </group>
           );
@@ -208,7 +206,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
               left: x,
               top: y,
               color: palette.label,
-              opacity: 0.75 * labelOpacity,
+              opacity: 0.75,
               textShadow: `0 0 ${4 * unit}px ${palette.bg}, 0 0 ${2 * unit}px ${palette.bg}`,
               translate: '-50% -50%',
               whiteSpace: 'nowrap',
@@ -245,7 +243,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
               fontWeight: 700,
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
-              opacity: (entry.ready || hovered ? 1 : 0.72) * labelOpacity,
+              opacity: entry.ready || hovered ? 1 : 0.72,
             }}
           >
             {!entry.ready && <span style={{ opacity: 0.6 }}>○ </span>}

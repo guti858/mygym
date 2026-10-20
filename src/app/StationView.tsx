@@ -32,6 +32,7 @@ const TAB_LABEL: Record<Tab, string> = {
 const Stage = memo(function Stage({
   props,
   target,
+  jumpKey,
   duration,
   playerRef,
   onOrbit,
@@ -39,6 +40,8 @@ const Stage = memo(function Stage({
 }: {
   props: StationCompProps;
   target: CameraAngles;
+  /** Al cambiar (y no ser 0), la cámara salta al objetivo en lugar de orbitar hasta él. */
+  jumpKey: number;
   duration: number;
   playerRef: React.RefObject<PlayerRef | null>;
   /** Giro (azimut) e inclinación (elevación) relativos, en grados. */
@@ -49,7 +52,7 @@ const Stage = memo(function Stage({
   const rate = useFrame((s) => s.rate);
   // Con «reducir movimiento» la serie no arranca sola y la cámara no se anima entre vistas.
   const reduceMotion = useMedia('(prefers-reduced-motion: reduce)');
-  const cam = useSmoothCamera(target, reduceMotion);
+  const cam = useSmoothCamera(target, reduceMotion, jumpKey);
   // Rótulos a escala del tamaño real del reproductor: legibles aunque el vídeo se muestre pequeño.
   const stageRef = useRef<HTMLDivElement>(null);
   const [uiScale, setUiScale] = useState(props.uiScale);
@@ -212,11 +215,30 @@ function LivePanels({ mod, st, props, playerRef }: { mod: StationModule; st: Sta
   );
 }
 
-export function StationView({ id }: { id: string }) {
+/** Tiempo con la cámara en el ángulo del plano antes de orbitar hasta la vista (tapa la transición). */
+const ENTRY_HOLD_MS = 450;
+
+/**
+ * Estación. Se queda montada (oculta y en pausa) al volver al gimnasio y se reutiliza al abrir otra:
+ * el contexto WebGL no se destruye ni se recrea.
+ */
+export function StationView({ id, active }: { id: string; active: boolean }) {
   const mod = getModule(id)!;
   const app = useApp();
   const st = settingsFor(app, id);
   const playerRef = useRef<PlayerRef | null>(null);
+  const reduceMotion = useMedia('(prefers-reduced-motion: reduce)');
+  // Entrada desde el plano del gimnasio: la cámara arranca mirando la máquina desde el mismo lado y,
+  // cuando la estación ya se ve, orbita hasta su vista.
+  const entryCamera = useApp((s) => s.entryCamera);
+  const [entering, setEntering] = useState(() => (entryCamera?.stationId === id ? entryCamera : null));
+  if (entryCamera && entryCamera.stationId === id && entryCamera.key !== entering?.key) setEntering(entryCamera);
+  useEffect(() => {
+    if (!entering) return;
+    useApp.setState({ entryCamera: null });
+    const t = setTimeout(() => setEntering(null), ENTRY_HOLD_MS);
+    return () => clearTimeout(t);
+  }, [entering]);
   const variant = findVariant(mod.content, st.variantId);
 
   const props = useMemo<StationCompProps>(
@@ -255,7 +277,9 @@ export function StationView({ id }: { id: string }) {
     p.addEventListener('seeked', onFrame);
     p.addEventListener('play', onPlay);
     p.addEventListener('pause', onPause);
-    useFrame.setState({ playing: p.isPlaying(), frame: p.getCurrentFrame() });
+    // Otra estación en el mismo reproductor: la serie empieza desde el principio.
+    p.seekTo(0);
+    useFrame.setState({ playing: p.isPlaying(), frame: 0 });
     return () => {
       p.removeEventListener('frameupdate', onFrame);
       p.removeEventListener('seeked', onFrame);
@@ -269,7 +293,24 @@ export function StationView({ id }: { id: string }) {
   const view = mod.content.views.find((v) => v.id === st.viewId) ?? mod.content.views[0]!;
   const targetAz = view.azimuth + st.azimuthOffset;
   const targetEl = clampElevation(view.elevation + st.elevationOffset);
-  const target = useMemo(() => ({ azimuth: targetAz, elevation: targetEl }), [targetAz, targetEl]);
+  const enterAz = entering?.azimuth;
+  const enterEl = entering?.elevation;
+  const target = useMemo(
+    () => (enterAz !== undefined && enterEl !== undefined ? { azimuth: enterAz, elevation: enterEl } : { azimuth: targetAz, elevation: targetEl }),
+    [targetAz, targetEl, enterAz, enterEl],
+  );
+  // Oculta (en el gimnasio): en pausa y fuera del puente de la consola.
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (!active) {
+      p.pause();
+      if (bridge.player === p) bridge.player = null;
+    } else {
+      bridge.player = p;
+      if (!reduceMotion) p.play();
+    }
+  }, [active, reduceMotion]);
 
   const orbit = useMemo(() => {
     const current = () => {
@@ -297,7 +338,7 @@ export function StationView({ id }: { id: string }) {
   }, [id, mod]);
 
   return (
-    <div className="station">
+    <div className="station" hidden={!active}>
       <section className="station__center">
         <header className="station__title">
           <div>
@@ -310,7 +351,7 @@ export function StationView({ id }: { id: string }) {
             {st.errorId && <span className="tag tag--risk">Error: {mod.content.errors.find((e) => e.id === st.errorId)?.label}</span>}
           </div>
         </header>
-        <Stage props={props} target={target} duration={duration} playerRef={playerRef} onOrbit={orbit.onOrbit} onRelease={orbit.onRelease} />
+        <Stage props={props} target={target} jumpKey={entering?.key ?? 0} duration={duration} playerRef={playerRef} onOrbit={orbit.onOrbit} onRelease={orbit.onRelease} />
       </section>
       <LivePanels mod={mod} st={st} props={props} playerRef={playerRef} />
     </div>

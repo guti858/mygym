@@ -1,4 +1,5 @@
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Uint16BufferAttribute, Uint32BufferAttribute } from 'three';
+import { decodeBase64, whenIdle } from '../scene/base64';
 import type { Landmarks } from './rig';
 
 /** Manifiesto del modelo anatómico exportado (ver scripts/anatomy/export_zanatomy.py). */
@@ -22,13 +23,6 @@ export interface AnatomyModel {
   manifest: AnatomyManifest;
   /** Una geometría con skinning por grupo de render (músculo del catálogo, huesos, piel...). */
   geometries: Map<string, BufferGeometry>;
-}
-
-function decodeBase64(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
 }
 
 /** Índice del hueso simétrico (.L ↔ .R); los axiales se mantienen. */
@@ -122,11 +116,14 @@ const listeners = new Set<() => void>();
 /** Carga diferida del modelo (el binario va en un fragmento aparte del bundle). */
 export function loadAnatomy(): Promise<AnatomyModel> {
   if (cache) return Promise.resolve(cache);
-  pending ??= import('./data.generated').then((m) => {
-    cache = buildModel(m.ANATOMY_MANIFEST as unknown as AnatomyManifest, m.ANATOMY_BIN);
-    for (const l of listeners) l();
-    return cache;
-  });
+  // Con el navegador libre: la evaluación y la decodificación no caen encima de los primeros fotogramas.
+  pending ??= whenIdle()
+    .then(() => import('./data.generated'))
+    .then((m) => {
+      cache = buildModel(m.ANATOMY_MANIFEST as unknown as AnatomyManifest, m.ANATOMY_BIN);
+      for (const l of listeners) l();
+      return cache;
+    });
   return pending;
 }
 
