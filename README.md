@@ -16,6 +16,7 @@ Gimnasio isométrico en el navegador donde cada máquina es una **estación** co
 | F4b · Tracción y brazos: **dominadas**, **remo en T** y **poleas** | ✅ pendiente de tu validación |
 | F4c–d · **Abductores / aductores** y **rack de mancuernas** (7 ejercicios) | ✅ pendiente de tu validación |
 | Sala realista generada con **Blender** (luz horneada con Cycles) y cámara en órbita por estación | ✅ ver [`docs/ENTORNO_3D.md`](docs/ENTORNO_3D.md) |
+| Interfaz **single-view**: cada vista cabe en la pantalla sin desplazarse (Técnica = guion + errores + articulaciones; vista dentro de la escena) | ✅ acta del consejo en [`docs/UX_CONSEJO.md`](docs/UX_CONSEJO.md) |
 
 Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
 

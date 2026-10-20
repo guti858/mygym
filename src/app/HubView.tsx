@@ -18,6 +18,8 @@ const DRAG_PX = 220;
 const HUB_ELEVATION = 35.264;
 
 const ZONE_ORDER: Zone[] = ['traccion', 'brazos', 'empuje', 'pierna', 'libre'];
+/** Músculos que trabaja alguna estación, por orden alfabético (selector del filtro). */
+const FILTER_MUSCLES = [...new Set(CATALOG.flatMap((c) => [...c.principal, ...c.secundarios]))].sort((a, b) => MUSCLES[a].name.localeCompare(MUSCLES[b].name, 'es'));
 
 /**
  * Gimnasio. Se queda montado (oculto y en pausa) mientras se ve una estación: al volver no se
@@ -88,7 +90,7 @@ export function HubView({ active }: { active: boolean }) {
   const props = useMemo<HubCompProps>(
     () => ({
       theme: app.theme,
-      uiScale: narrow ? 1.9 : 1,
+      uiScale: narrow ? 1.5 : 1,
       rotation,
       zoom: 1,
       hovered,
@@ -114,131 +116,170 @@ export function HubView({ active }: { active: boolean }) {
 
   const mapActive: Partial<Record<MuscleId, BodyMapEntry>> = {};
   if (filter) mapActive[filter] = { role: 'principal', level: 3 };
+  // Vista previa: la estación señalada en el plano o en el índice (ratón o foco).
+  const preview = hovered ? CATALOG.find((c) => c.id === hovered) : undefined;
+  const previewRole = preview && filter ? roleInStation(preview, filter) : null;
 
-  return (
-    <div className={`hub${filter ? ' hub--filtering' : ''}`} hidden={!active}>
-      <section className="hub__stage">
-        <div
-          ref={stageRef}
-          className="hub__player"
-          role="img"
-          aria-label="Plano del gimnasio con las 12 estaciones; elige una en la lista de abajo"
-          onPointerDown={(e) => {
-            if (e.button !== 0) return;
-            const startX = e.clientX;
-            dragged.current = false;
-            const move = (ev: PointerEvent) => {
-              const dx = ev.clientX - startX;
-              if (Math.abs(dx) > 6) dragged.current = true;
-              if (dragged.current) setDrag(dx / DRAG_PX);
-            };
-            const up = (ev: PointerEvent) => {
-              window.removeEventListener('pointermove', move);
-              window.removeEventListener('pointerup', up);
-              window.removeEventListener('pointercancel', up);
-              if (dragged.current) {
-                // Si el navegador se queda el gesto (desplazamiento), la sala vuelve a su cuarto.
-                const quarters = ev.type === 'pointercancel' ? 0 : Math.round((ev.clientX - startX) / DRAG_PX);
-                setDrag(0);
-                useApp.getState().set({ hubRotation: (((useApp.getState().hubRotation + quarters) % 4) + 4) % 4 });
-                // El clic llega después del pointerup: se descarta y luego se rearma.
-                setTimeout(() => (dragged.current = false), 0);
-              }
-            };
-            window.addEventListener('pointermove', move);
-            window.addEventListener('pointerup', up);
-            window.addEventListener('pointercancel', up);
-          }}
-        >
-          <Player
-            ref={playerRef}
-            component={HubComposition}
-            inputProps={props}
-            durationInFrames={8 * FPS}
-            compositionWidth={compW}
-            compositionHeight={compH}
-            fps={FPS}
-            loop
-            autoPlay={!reduceMotion}
-            controls={false}
-            clickToPlay={false}
-            acknowledgeRemotionLicense
-            style={{ width: '100%', aspectRatio: `${compW} / ${compH}` }}
-          />
-          <div className="hub__rotate">
-            <button className="ghost-btn" onClick={() => app.set({ hubRotation: (app.hubRotation + 3) % 4 })} aria-label="Girar a la izquierda">
-              ↺
-            </button>
-            <button className="ghost-btn" onClick={() => app.set({ hubRotation: (app.hubRotation + 1) % 4 })} aria-label="Girar a la derecha">
-              ↻
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <aside className="hub__side">
-          <div className="hub__intro">
-          <p className="eyebrow">Gimnasio isométrico · 12 estaciones</p>
-          <h1>
-            Cada articulación, <em>en su sitio</em>.
-          </h1>
-          <p className="lede">
-            Elige una máquina para ver la técnica fase a fase: ángulos objetivo, rangos seguros, músculos implicados y los errores que conviene evitar.
-          </p>
-        </div>
-        <div className="hub__filter block" ref={filterRef} tabIndex={-1}>
-        <h2 className="block__title">
-          Filtrar por músculo
-          {filter && (
-            <button
-              className="link-btn"
-              onClick={() => {
-                app.set({ muscleFilter: null });
-                // El botón desaparece: el foco pasa al bloque del filtro en lugar de perderse.
-                filterRef.current?.focus();
-              }}
-            >
-              Quitar filtro
-            </button>
-          )}
-        </h2>
-        <BodyMap active={mapActive} selected={filter} onSelect={(m) => app.set({ muscleFilter: filter === m ? null : m })} compact />
-        <p className="fine">{filter ? `${MUSCLES[filter].name}: estaciones resaltadas (rojo = motor principal, naranja = secundario: sinergista o estabilizador).` : 'Pulsa un músculo para resaltar las estaciones que lo trabajan.'}</p>
-        </div>
-      </aside>
-
-      <section className="hub__list">
+  // Índice de estaciones: sobre el plano (como barra de navegación) o, en móvil, en la columna.
+  const index = (
+    <nav className={`block hub__index${narrow ? ' hub__index--list' : ''}`} aria-labelledby="hub-index">
+      <h2 className="block__title" id="hub-index">
+        Estaciones
+      </h2>
+      <ul className="zones">
         {ZONE_ORDER.map((z) => (
-          <div key={z} className="zone">
-            <h2 className="zone__title">{ZONE_LABEL[z]}</h2>
-            <div className="zone__cards">
+          <li key={z} className="zone">
+            <h3 className="zone__title">{ZONE_LABEL[z]}</h3>
+            <div className="zone__chips">
               {CATALOG.filter((c) => c.zone === z).map((c) => {
                 const role = filter ? roleInStation(c, filter) : null;
                 return (
                   <button
                     key={c.id}
-                    className={`card${c.ready ? '' : ' card--soon'}${role ? ` card--${role}` : ''}${hovered === c.id ? ' is-hover' : ''}`}
-                    onClick={() => (c.ready ? app.go({ name: 'station', id: c.id }) : undefined)}
+                    className={`st-chip${role ? ` st-chip--${role}` : ''}${hovered === c.id ? ' is-hover' : ''}`}
+                    onClick={() => (c.ready ? open(c.id) : undefined)}
                     onMouseEnter={() => setHovered(c.id)}
                     onMouseLeave={() => setHovered(null)}
+                    onFocus={() => setHovered(c.id)}
+                    onBlur={() => setHovered(null)}
                     aria-disabled={!c.ready}
+                    title={c.name}
                   >
-                    {/* Con las 12 disponibles, el estado solo se muestra si aporta algo: el papel del músculo filtrado. */}
-                    {!c.ready ? (
-                      <span className="card__status">Próximamente</span>
-                    ) : (
-                      role && <span className={`card__status card__status--${role}`}>{role === 'principal' ? 'Motor principal' : 'Secundario'}</span>
-                    )}
-                    <span className="card__name">{c.name}</span>
-                    <span className="card__mods">{c.modalidades.join(' · ')}</span>
-                    <span className="card__muscles">{c.principal.map((m) => MUSCLES[m].name).join(', ')}</span>
+                    {c.short}
+                    {role && <span className="sr-only"> ({role === 'principal' ? 'motor principal' : 'secundario'})</span>}
                   </button>
                 );
               })}
             </div>
-          </div>
+          </li>
         ))}
+      </ul>
+      {/* Hueco fijo: lo que antes contaban las tarjetas (modalidades y músculos) de la estación señalada. */}
+      <p className="hub__preview">
+        {preview ? (
+          <>
+            <strong>{preview.name}</strong>
+            {previewRole && <span className={`hub__role hub__role--${previewRole}`}> · {previewRole === 'principal' ? 'motor principal' : 'secundario'}</span>} · {preview.modalidades.join(' · ')} ·{' '}
+            <em>{preview.principal.map((m) => MUSCLES[m].name).join(', ')}</em>
+          </>
+        ) : (
+          'Señala una estación (aquí o en el plano) para ver sus modalidades y músculos principales.'
+        )}
+      </p>
+    </nav>
+  );
+
+  return (
+    <div className={`hub${filter ? ' hub--filtering' : ''}`} hidden={!active}>
+      <section className="hub__stage">
+        {!narrow && index}
+        <div className="hub__plan">
+          <div
+            ref={stageRef}
+            className="hub__player"
+            style={{ '--ar': `${compW} / ${compH}` } as React.CSSProperties}
+            role="img"
+            aria-label="Plano del gimnasio con las 12 estaciones; elige una en el índice de estaciones"
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              const startX = e.clientX;
+              dragged.current = false;
+              const move = (ev: PointerEvent) => {
+                const dx = ev.clientX - startX;
+                if (Math.abs(dx) > 6) dragged.current = true;
+                if (dragged.current) setDrag(dx / DRAG_PX);
+              };
+              const up = (ev: PointerEvent) => {
+                window.removeEventListener('pointermove', move);
+                window.removeEventListener('pointerup', up);
+                window.removeEventListener('pointercancel', up);
+                if (dragged.current) {
+                  // Si el navegador se queda el gesto (desplazamiento), la sala vuelve a su cuarto.
+                  const quarters = ev.type === 'pointercancel' ? 0 : Math.round((ev.clientX - startX) / DRAG_PX);
+                  setDrag(0);
+                  useApp.getState().set({ hubRotation: (((useApp.getState().hubRotation + quarters) % 4) + 4) % 4 });
+                  // El clic llega después del pointerup: se descarta y luego se rearma.
+                  setTimeout(() => (dragged.current = false), 0);
+                }
+              };
+              window.addEventListener('pointermove', move);
+              window.addEventListener('pointerup', up);
+              window.addEventListener('pointercancel', up);
+            }}
+          >
+            <Player
+              ref={playerRef}
+              component={HubComposition}
+              inputProps={props}
+              durationInFrames={8 * FPS}
+              compositionWidth={compW}
+              compositionHeight={compH}
+              fps={FPS}
+              loop
+              autoPlay={!reduceMotion}
+              controls={false}
+              clickToPlay={false}
+              acknowledgeRemotionLicense
+              style={{ width: '100%', height: '100%' }}
+            />
+            <div className="hud hub__rotate">
+              <button className="hud__btn" onClick={() => app.set({ hubRotation: (app.hubRotation + 3) % 4 })} aria-label="Girar a la izquierda" title="Girar a la izquierda">
+                ↺
+              </button>
+              <button className="hud__btn" onClick={() => app.set({ hubRotation: (app.hubRotation + 1) % 4 })} aria-label="Girar a la derecha" title="Girar a la derecha">
+                ↻
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
+
+      <aside className="hub__side" data-fit="gimnasio">
+        <div className="hub__intro">
+          <p className="eyebrow">Gimnasio isométrico · 12 estaciones</p>
+          <h1>
+            Cada articulación, <em>en su sitio</em>.
+          </h1>
+          <p className="lede">Elige una máquina para ver la técnica fase a fase: ángulos objetivo, rangos seguros, músculos y los errores que conviene evitar.</p>
+        </div>
+
+{narrow && index}
+
+        <section className="hub__filter block" ref={filterRef} tabIndex={-1} aria-labelledby="hub-filter">
+          <h2 className="block__title" id="hub-filter">
+            Filtrar por músculo
+            {filter && (
+              <button
+                className="link-btn"
+                onClick={() => {
+                  app.set({ muscleFilter: null });
+                  // El botón desaparece: el foco pasa al bloque del filtro en lugar de perderse.
+                  filterRef.current?.focus();
+                }}
+              >
+                Quitar filtro
+              </button>
+            )}
+          </h2>
+          <select className="select" value={filter ?? ''} onChange={(e) => app.set({ muscleFilter: (e.target.value || null) as MuscleId | null })} aria-label="Músculo">
+            <option value="">Todos los músculos</option>
+            {FILTER_MUSCLES.map((m) => (
+              <option key={m} value={m}>
+                {MUSCLES[m].name}
+              </option>
+            ))}
+          </select>
+          {/* El mapa, si hay alto para él (en ventanas bajas queda el selector). */}
+          <BodyMap active={mapActive} selected={filter} onSelect={(m) => app.set({ muscleFilter: filter === m ? null : m })} compact />
+          <p className="fine">{filter ? `${MUSCLES[filter].name}: estaciones resaltadas (rojo = motor principal, naranja = secundario).` : 'Pulsa un músculo para resaltar las estaciones que lo trabajan.'}</p>
+        </section>
+        <p className="disclaimer fine">
+          Contenido educativo: no sustituye la valoración de un profesional.{' '}
+          <button className="link-btn" onClick={() => app.set({ infoOpen: true })}>
+            Fuentes y avisos
+          </button>
+        </p>
+      </aside>
     </div>
   );
 }

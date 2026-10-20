@@ -27,6 +27,26 @@ export function classify(value: number, ok: readonly [number, number], warn: rea
   return 'riesgo';
 }
 
+/** Ventanas articulares que el error saca de rango (las de las métricas que declara). */
+export function errorWindows(variant: VariantContent, error: { expect: readonly string[] }): JointWindow[] {
+  return variant.windows.filter((w) => error.expect.includes(w.metric));
+}
+
+/** Cuándo se evalúa una ventana, para frases como «se ve en la contracción». */
+export const WINDOW_AT_TEXT: Record<JointWindow['at'], string> = {
+  contraccion: 'en la contracción',
+  estiramiento: 'en el estiramiento',
+  movimiento: 'durante el movimiento',
+  siempre: 'en toda la serie',
+};
+
+/** «en la contracción y durante el movimiento»: momentos en los que se ve un error. */
+export function errorMoment(variant: VariantContent, error: { expect: readonly string[] }): string {
+  const ats = [...new Set(errorWindows(variant, error).map((w) => w.at))];
+  if (ats.includes('siempre') || !ats.length) return WINDOW_AT_TEXT.siempre;
+  return ats.map((a) => WINDOW_AT_TEXT[a]).join(' y ');
+}
+
 export function windowActive(w: JointWindow, p: number, phase: PhaseKind): boolean {
   switch (w.at) {
     case 'siempre':

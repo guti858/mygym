@@ -1,19 +1,18 @@
 import { findVariant } from '../../engine/evaluate';
 import { describeLoad, loadRange, loadStep, loadValueLabel } from '../../engine/load';
-import { parseTempo, type Tempo } from '../../engine/timeline';
+import { parseTempo, type PhaseKind, type Tempo } from '../../engine/timeline';
 import type { StationModule } from '../../stations/modules';
 import { useApp, type StationSettings } from '../../state/store';
+import { KIND_CLASS, PHASE_SHORT } from '../phases';
 
-/** Rótulos cortos para los botones de vista (el nombre completo va en el título). */
-const VIEW_SHORT: Record<string, string> = { 'Desde los pies': 'Pies', 'Rodillas (desde la cabeza)': 'Rodillas' };
-
-const TEMPO_FIELDS: Array<[keyof Tempo, string, string]> = [
-  ['excentrica', 'Exc.', 'Excéntrica (s)'],
-  ['pausaEstiramiento', 'P. est.', 'Pausa en estiramiento (s)'],
-  ['concentrica', 'Conc.', 'Concéntrica (s)'],
-  ['pausaContraccion', 'P. cont.', 'Pausa en contracción (s)'],
+const TEMPO_FIELDS: Array<[keyof Tempo, PhaseKind, string]> = [
+  ['excentrica', 'excentrica', 'Excéntrica (s)'],
+  ['pausaEstiramiento', 'pausa_estiramiento', 'Pausa en estiramiento (s)'],
+  ['concentrica', 'concentrica', 'Concéntrica (s)'],
+  ['pausaContraccion', 'pausa_contraccion', 'Pausa en contracción (s)'],
 ];
 
+/** Ajustes: lo que se elige antes de mirar (variante, carga y tempo). La vista va en la escena y el error en Técnica. */
 export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSettings }) {
   const id = mod.content.id;
   const app = useApp();
@@ -23,26 +22,33 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
   const step = loadStep(load);
   const { min, max } = loadRange(load);
   const shown = loadValueLabel(load, st.loadKg);
-  const view = mod.content.views.find((v) => v.id === st.viewId) ?? mod.content.views[0]!;
-  const elevation = view.elevation + st.elevationOffset;
-  const tilt = (deg: number) => app.update(id, { elevationOffset: Math.min(89, Math.max(0, elevation + deg)) - view.elevation });
+  const descId = `variant-desc-${id}`;
+  const tempoChanged = TEMPO_FIELDS.some(([k]) => st.tempo[k] !== variant.tempo[k]);
 
   return (
-    <div className="panel-stack">
+    <div className="settings">
       <section className="block">
         <h3 className="block__title">Agarre / modalidad</h3>
-        <div className="variant-list" role="radiogroup" aria-label="Variante">
+        <div className="variant-grid" role="radiogroup" aria-label="Variante">
           {mod.content.variants.map((v) => (
             <button
               key={v.id}
               role="radio"
               aria-checked={v.id === variant.id}
+              aria-describedby={v.id === variant.id ? descId : undefined}
               className={`variant${v.id === variant.id ? ' is-on' : ''}`}
               onClick={() => app.setVariant(id, v.id)}
             >
-              <span className="variant__name">{v.short}</span>
-              <span className="variant__desc">{v.description}</span>
+              {v.short}
             </button>
+          ))}
+        </div>
+        {/* Todas las descripciones apiladas: el bloque mide lo que la más larga y no salta al cambiar. */}
+        <div className="variant-desc">
+          {mod.content.variants.map((v) => (
+            <p key={v.id} id={v.id === variant.id ? descId : undefined} data-on={v.id === variant.id || undefined} aria-hidden={v.id !== variant.id || undefined}>
+              {v.description}
+            </p>
           ))}
         </div>
       </section>
@@ -77,30 +83,15 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
       </section>
 
       <section className="block">
-        <h3 className="block__title">Demostrar un error</h3>
-        <div className="chip-list">
-          <button className={`chip${st.errorId === null ? ' is-on is-ok' : ''}`} aria-pressed={st.errorId === null} onClick={() => app.update(id, { errorId: null })}>
-            ✔ Técnica ideal
-          </button>
-          {variant.errors.map((eid) => {
-            const e = mod.content.errors.find((x) => x.id === eid)!;
-            return (
-              <button key={eid} className={`chip${st.errorId === eid ? ' is-on is-risk' : ''}`} aria-pressed={st.errorId === eid} onClick={() => app.update(id, { errorId: eid })} title={e.description}>
-                ✖ {e.label}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="block">
         <h3 className="block__title">
           Tempo y serie <span className="block__hint">segundos por fase</span>
         </h3>
         <div className="tempo">
-          {TEMPO_FIELDS.map(([k, short, label]) => (
+          {TEMPO_FIELDS.map(([k, phase, label]) => (
             <label key={k} className="tempo__field">
-              <span>{short}</span>
+              <span>
+                <i className={`dot ${KIND_CLASS[phase]}`} aria-hidden /> {PHASE_SHORT[phase]}
+              </span>
               <input
                 type="number"
                 min={0}
@@ -120,60 +111,17 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
             <input type="number" min={1} max={10} value={st.reps} aria-label="Repeticiones" onChange={(e) => app.update(id, { reps: Math.min(10, Math.max(1, Math.round(Number(e.target.value)) || 1)) })} />
           </label>
         </div>
-        <button className="link-btn" onClick={() => app.update(id, { tempo: variant.tempo })}>
+        <button className="link-btn" onClick={() => app.update(id, { tempo: variant.tempo })} disabled={!tempoChanged}>
           Restablecer tempo recomendado
         </button>
       </section>
 
-      <section className="block">
-        <h3 className="block__title">Vista</h3>
-        <div className="segmented" role="radiogroup" aria-label="Vista de cámara">
-          {mod.content.views.map((v) => (
-            <button
-              key={v.id}
-              role="radio"
-              aria-checked={st.viewId === v.id}
-              aria-label={v.label}
-              title={v.label}
-              className={st.viewId === v.id ? 'is-on' : ''}
-              onClick={() => app.update(id, { viewId: v.id, azimuthOffset: 0, elevationOffset: 0 })}
-            >
-              {VIEW_SHORT[v.label] ?? v.label}
-            </button>
-          ))}
-        </div>
-        <div className="row-gap">
-          <button className="ghost-btn" onClick={() => app.update(id, { azimuthOffset: st.azimuthOffset - 30 })} aria-label="Girar 30° a la izquierda">
-            ↺ 30°
-          </button>
-          <button className="ghost-btn" onClick={() => app.update(id, { azimuthOffset: st.azimuthOffset + 30 })} aria-label="Girar 30° a la derecha">
-            ↻ 30°
-          </button>
-          <button className="ghost-btn" onClick={() => tilt(15)} aria-label="Subir la cámara 15°" disabled={elevation >= 89}>
-            ⤒
-          </button>
-          <button className="ghost-btn" onClick={() => tilt(-15)} aria-label="Bajar la cámara 15°" disabled={elevation <= 0}>
-            ⤓
-          </button>
-          <button className="ghost-btn" onClick={() => app.update(id, { zoom: Math.min(2.2, st.zoom * 1.15) })} aria-label="Acercar">
-            +
-          </button>
-          <button className="ghost-btn" onClick={() => app.update(id, { zoom: Math.max(0.6, st.zoom / 1.15) })} aria-label="Alejar">
-            −
-          </button>
-        </div>
-        <div className="toggles">
-          <label>
-            <input type="checkbox" checked={app.showMuscles} onChange={(e) => app.set({ showMuscles: e.target.checked })} /> Músculos
-          </label>
-          <label>
-            <input type="checkbox" checked={app.showGauges} onChange={(e) => app.set({ showGauges: e.target.checked })} /> Ángulos
-          </label>
-          <label>
-            <input type="checkbox" checked={app.showOverlay} onChange={(e) => app.set({ showOverlay: e.target.checked })} /> Rótulos
-          </label>
-        </div>
-      </section>
+      <p className="disclaimer fine">
+        Contenido educativo: no sustituye la valoración de un profesional.{' '}
+        <button className="link-btn" onClick={() => app.set({ infoOpen: true })}>
+          Fuentes y avisos
+        </button>
+      </p>
     </div>
   );
 }

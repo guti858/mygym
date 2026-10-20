@@ -3,7 +3,7 @@ import { useAnatomy } from '../anatomy/useAnatomy';
 import { useMemo, useRef, useState } from 'react';
 import { Vector3, type Group } from 'three';
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
-import { STATUS_RANK, evaluateFrame } from '../engine/evaluate';
+import { STATUS_RANK, errorMoment, evaluateFrame } from '../engine/evaluate';
 import { loadShort } from '../engine/load';
 import { METRIC_INFO } from '../engine/metrics';
 import { PHASE_LABEL, tempoToString } from '../engine/timeline';
@@ -125,11 +125,12 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
     stable: true,
     width,
     height,
+    // Dentro de la app no hay caja de pauta ni leyenda de ángulos: abajo solo queda la barra de vista.
     margins: {
       top: props.showOverlay ? (props.embedded ? 0.09 : 0.13) : 0.05,
-      bottom: props.showOverlay ? (props.embedded ? 0.13 : 0.2) : 0.05,
+      bottom: props.embedded ? 0.1 : props.showOverlay ? 0.2 : 0.05,
       side: 0.04,
-      right: props.showGauges ? ((props.uiScale ?? 1) > 1.2 ? 0.3 : 0.22) : 0.04,
+      right: props.showGauges && !props.embedded ? ((props.uiScale ?? 1) > 1.2 ? 0.3 : 0.22) : 0.04,
     },
     zoomFactor: props.zoom,
   });
@@ -160,6 +161,8 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
     easing: Easing.bezier(0.16, 1, 0.3, 1),
   });
   const error = props.errorId ? mod.content.errors.find((e) => e.id === props.errorId) : undefined;
+  // Error elegido pero sin alertas en este fotograma: se evalúa en otro momento de la repetición.
+  const errorLater = error && !worst ? errorMoment(variant, error) : undefined;
   const repSegments = timeline.segments.filter((s) => s.rep === (state.rep || 1));
   const repStart = repSegments[0]?.start ?? 0;
   const repEnd = repSegments[repSegments.length - 1]?.end ?? 1;
@@ -245,7 +248,8 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
           </div>
         ))}
 
-      {props.showGauges && badges.length > 0 && (
+      {/* En la app, las filas numeradas del panel Técnica hacen de leyenda. */}
+      {props.showGauges && badges.length > 0 && !props.embedded && (
         <div
           style={{
             position: 'absolute',
@@ -322,7 +326,7 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
               top: 24 * unit,
               color: palette.label,
               background: palette.labelBg,
-              border: `${2 * unit}px solid ${palette.status[worst?.status ?? 'ok']}`,
+              border: `${2 * unit}px solid ${errorLater ? neutral : palette.status[worst?.status ?? 'ok']}`,
               padding: `${10 * unit}px ${16 * unit}px`,
               borderRadius: 14 * unit,
               fontSize: 19 * unit,
@@ -330,8 +334,12 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
               maxWidth: '38%',
             }}
           >
-            <span style={{ color: palette.status[worst?.status ?? 'ok'] }}>{STATUS_ICON[worst?.status ?? 'ok']}</span>{' '}
-            {compact
+            <span style={{ color: errorLater ? neutral : palette.status[worst?.status ?? 'ok'] }}>{errorLater ? '◷' : STATUS_ICON[worst?.status ?? 'ok']}</span>{' '}
+            {errorLater
+              ? compact
+                ? `Error: ${errorLater.replace(/^(en la|en el|durante el|en toda la) /, '')}`
+                : `El error se ve ${errorLater}`
+              : compact
               ? worst
                 ? `${worst.status === 'riesgo' ? 'Riesgo' : 'Aviso'}: ${SHORT_LABEL[worst.window.metric] ?? worst.window.label}`
                 : 'En rango'
@@ -361,45 +369,44 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
             </div>
           )}
 
-          <div style={{ position: 'absolute', left: 28 * unit, right: 28 * unit, bottom: 24 * unit, color: palette.label }}>
-            <div
-              style={{
-                background: palette.labelBg,
-                borderRadius: 14 * unit,
-                padding: `${12 * unit}px ${16 * unit}px`,
-              }}
-            >
-              {/* Fase, repetición y progreso: en la app ya los da la línea de tiempo. */}
-              {!props.embedded && (
+          {/* Fase, pauta y progreso de la repetición: en la app los dan la línea de tiempo y el guion del
+              panel Técnica (y abajo va la barra de vista); en el vídeo y a pantalla completa, aquí. */}
+          {!props.embedded && (
+            <div style={{ position: 'absolute', left: 28 * unit, right: 28 * unit, bottom: 24 * unit, color: palette.label }}>
+              <div
+                style={{
+                  background: palette.labelBg,
+                  borderRadius: 14 * unit,
+                  padding: `${12 * unit}px ${16 * unit}px`,
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 20 * unit, fontWeight: 700, marginBottom: 6 * unit }}>
                   <span>{PHASE_LABEL[state.kind]}</span>
                   <span style={{ opacity: 0.8 }}>{state.rep > 0 ? `Repetición ${state.rep}/${props.reps}` : 'Colocación'}</span>
                 </div>
-              )}
-              <div style={{ fontSize: 22 * unit, minHeight: 30 * unit, opacity: cueOpacity }}>{cues[cueIdx] ?? ''}</div>
-              {!props.embedded && (
-              <div style={{ display: 'flex', gap: 4 * unit, marginTop: 10 * unit, height: 8 * unit }}>
-                {repSegments.map((s) => {
-                  const active = s === state.segment;
-                  const w = ((s.end - s.start) / Math.max(0.001, repEnd - repStart)) * 100;
-                  return (
-                    <div
-                      key={`${s.kind}${s.start}`}
-                      style={{
-                        width: `${w}%`,
-                        borderRadius: 4 * unit,
-                        background: active ? palette.accent : palette.floorLine,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {active && <div style={{ width: `${state.u * 100}%`, height: '100%', background: palette.label, opacity: 0.6 }} />}
-                    </div>
-                  );
-                })}
+                <div style={{ fontSize: 22 * unit, minHeight: 30 * unit, opacity: cueOpacity }}>{cues[cueIdx] ?? ''}</div>
+                <div style={{ display: 'flex', gap: 4 * unit, marginTop: 10 * unit, height: 8 * unit }}>
+                  {repSegments.map((s) => {
+                    const active = s === state.segment;
+                    const w = ((s.end - s.start) / Math.max(0.001, repEnd - repStart)) * 100;
+                    return (
+                      <div
+                        key={`${s.kind}${s.start}`}
+                        style={{
+                          width: `${w}%`,
+                          borderRadius: 4 * unit,
+                          background: active ? palette.accent : palette.floorLine,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {active && <div style={{ width: `${state.u * 100}%`, height: '100%', background: palette.label, opacity: 0.6 }} />}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              )}
             </div>
-          </div>
+          )}
         </>
       )}
     </AbsoluteFill>

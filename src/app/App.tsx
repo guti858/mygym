@@ -4,6 +4,7 @@ import { hostTheme, useApp } from '../state/store';
 import { catalogEntry } from '../stations/catalog';
 import { AnthroPanel } from '../ui/AnthroPanel';
 import { Console } from '../ui/Console';
+import { InfoDialog } from '../ui/InfoDialog';
 import { Header } from './Header';
 import { HubView } from './HubView';
 import { StationView } from './StationView';
@@ -49,7 +50,8 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  // Antes del pintado: la vista nueva no aparece un fotograma con el desplazamiento anterior.
+  // Antes del pintado: en ventanas muy bajas (donde la página sí se desplaza), la vista nueva no
+  // aparece un fotograma con el desplazamiento anterior.
   useLayoutEffect(() => {
     window.scrollTo({ top: 0 });
     document.body.style.cursor = '';
@@ -67,11 +69,9 @@ export function App() {
         <HubView active={route.name === 'hub'} />
         {stationId && <StationView id={stationId} active={route.name === 'station'} />}
       </main>
-      <footer className="footer fine">
-        Contenido educativo basado en literatura y consenso técnico (fuentes en cada estación). No sustituye la valoración de un profesional. Animación con Remotion · 3D con three.js.
-      </footer>
       <Console />
       <AnthroPanel />
+      <InfoDialog />
     </div>
   );
 }

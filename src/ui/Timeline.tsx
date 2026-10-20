@@ -1,15 +1,8 @@
 import type { PlayerRef } from '@remotion/player';
-import { PHASE_LABEL, type PhaseKind, type Timeline as TL } from '../engine/timeline';
+import { PHASE_LABEL, type Timeline as TL } from '../engine/timeline';
 import { phaseEntry, type FrameState } from '../remotion/timing';
 import { num } from './format';
-
-const KIND_CLASS: Record<PhaseKind, string> = {
-  preparacion: 'k-prep',
-  excentrica: 'k-exc',
-  pausa_estiramiento: 'k-pe',
-  concentrica: 'k-con',
-  pausa_contraccion: 'k-pc',
-};
+import { KIND_CLASS } from './phases';
 
 export function Timeline({
   timeline,
@@ -106,14 +99,6 @@ export function Timeline({
           />
         ))}
         <div className="timeline__head" style={{ left: `${(t / total) * 100}%` }} />
-      </div>
-      <div className="timeline__legend">
-        <span className="timeline__tip">Arrastra la escena para girarla · doble clic: pantalla completa</span>
-        {(['preparacion', 'excentrica', 'pausa_estiramiento', 'concentrica', 'pausa_contraccion'] as PhaseKind[]).map((k) => (
-          <span key={k}>
-            <span className={`dot ${KIND_CLASS[k]}`} /> {PHASE_LABEL[k]}
-          </span>
-        ))}
       </div>
     </div>
   );
