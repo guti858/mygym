@@ -7,17 +7,22 @@ export function MusclesPanel({ variant }: { variant: VariantContent }) {
   for (const m of variant.muscles) active[m.muscle] = { role: m.role, level: m.level };
   const sorted = [...variant.muscles].sort((a, b) => b.level - a.level);
   return (
-    <div className="panel-stack">
-      <section className="block">
-        <h3 className="block__title">Mapa muscular · {variant.short}</h3>
+    <div className="muscles-panel">
+      <section className="sec sec--map" aria-labelledby="sec-mapa">
+        <h3 className="sec__head" id="sec-mapa">
+          Mapa muscular
+          <span className="legend">
+            <span><i className="sw sw--p" /> Principal</span>
+            <span><i className="sw sw--s" /> Sinergista</span>
+            <span><i className="sw sw--e" /> Estabilizador</span>
+          </span>
+        </h3>
         <BodyMap active={active} />
-        <div className="legend">
-          <span><i className="sw sw--p" /> Motor principal</span>
-          <span><i className="sw sw--s" /> Sinergista</span>
-          <span><i className="sw sw--e" /> Estabilizador</span>
-        </div>
       </section>
-      <section className="block">
+      <section className="sec" aria-labelledby="sec-implicacion">
+        <h3 className="sec__head" id="sec-implicacion">
+          Implicación <span className="sec__hint">cualitativa 0–3, no EMG</span>
+        </h3>
         <ul className="muscles">
           {sorted.map((m) => (
             <li key={m.muscle}>
@@ -32,10 +37,6 @@ export function MusclesPanel({ variant }: { variant: VariantContent }) {
             </li>
           ))}
         </ul>
-        <p className="fine">Implicación cualitativa (0–3) basada en la literatura y el consenso técnico; no son valores de EMG.</p>
-        <p className="fine">
-          Modelo anatómico: Z-Anatomy, z-anatomy.com (CC BY-SA 4.0), basado en BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 JP). Adaptado: mallas simplificadas y deformadas con el rig de MyGym.
-        </p>
       </section>
     </div>
   );

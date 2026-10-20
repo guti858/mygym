@@ -36,8 +36,9 @@ export type StationCompProps = {
   /** Escala de rótulos (1 con el vídeo a tamaño completo, mayor cuanto más pequeño se muestra). */
   uiScale: number;
   /**
-   * Dentro de la app, que ya muestra alrededor el nombre, la fase, la repetición y el progreso:
-   * el reproductor omite la tarjeta de título y deja abajo solo la pauta de técnica.
+   * Dentro de la app, que ya muestra alrededor el nombre, la fase, la pauta, la repetición y los
+   * ángulos: el reproductor omite la tarjeta de título, la caja de pauta y la leyenda de ángulos, y
+   * deja abajo sitio para la barra de vista. A pantalla completa la app vuelve al aspecto del vídeo.
    */
   embedded?: boolean;
 };

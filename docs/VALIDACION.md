@@ -81,6 +81,27 @@ Tres revisiones independientes (maquetación, movimiento y UX módulo por módul
 
 Pendiente para después de la v1 (anotado por el consejo): rótulos del gimnasio en móvil, pestañas y grupos de opciones con flechas, alternativa en lista para los músculos pequeños del mapa en móvil y fuentes alojadas en el propio sitio.
 
+## 6. Interfaz single-view (consejo de decisión, ver [`UX_CONSEJO.md`](UX_CONSEJO.md))
+
+Cada vista cabe en la pantalla. La página no se desplaza y, a 1440×900 y a 1280×720, tampoco ningún módulo: un test e2e lo comprueba en las 12 estaciones, con cada error y en cada pestaña.
+
+- [ ] **Técnica** reúne lo que antes eran Guion, Demostrar un error y Articulaciones:
+  - arriba se elige técnica ideal o error; la tarjeta del error dice qué se ve, por qué importa, cómo se corrige y cuándo aparece, con «Ir al momento»;
+  - en medio, el guion de la fase en curso, con un carril de fases en el que se pulsa para saltar;
+  - abajo, una fila por ventana articular, con el número de la insignia de la escena y el conmutador Ángulos | N·m; al pulsar una fila se abre su pauta.
+- [ ] **Barra de vista dentro de la escena:** vistas, giro, inclinación, zoom, «Capas» (músculos, ángulos, rótulos) y pantalla completa. A pantalla completa vuelven el título y la caja de pauta, como en el vídeo.
+- [ ] **Sin duplicados:**
+  - fuera la caja de pauta bajo la máquina, la leyenda de ángulos de la escena, los chips del título, el bloque rojo del error y la insignia de la pestaña;
+  - el pie de página pasa a «ⓘ Fuentes y avisos».
+- [ ] **Ajustes** compactos: variantes en pastillas con la descripción de la elegida; carga y tempo en una fila, con las mismas abreviaturas y colores de fase que el carril del guion y la pista.
+- [ ] **Gimnasio:**
+  - encima del plano, el índice de estaciones por zona, con vista previa de modalidades y músculos;
+  - a la derecha, la presentación y el filtro por músculo: selector y mapa, que se oculta si falta alto.
+- [ ] **Tableta y paneles estrechos (700–1099 px):** escena a la izquierda y pestañas a la derecha. **Móvil:** escena arriba y pestañas abajo; solo se desplaza el panel.
+- [ ] **Paneles bajos (650–760 px de alto):** modo compacto. El guion muestra solo la pauta activa, que se releva sola. Por debajo de 720 px de alto, en los peores casos (error activo con muchas ventanas) el panel puede desplazarse hasta unos 60 px, como red de seguridad.
+
+Resuelto de lo pendiente: pestañas con flechas, selector de músculos (alternativa al mapa) y rótulos del gimnasio en móvil más pequeños.
+
 ### Cómo anotar cambios
 
 Edita directamente los `.md` (cambia números, añade o quita errores y señales) o responde en el chat. Cada documento acaba con **preguntas para tu validación**: basta con marcar o contestar.

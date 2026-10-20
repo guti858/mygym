@@ -1,29 +1,31 @@
 import { Player, type PlayerRef } from '@remotion/player';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { computeSegments } from '../engine/anthropometry';
 import { evaluateFrame, findVariant, startAtOf } from '../engine/evaluate';
-import { loadShort } from '../engine/load';
 import { COMP_H, COMP_W, FPS, type StationCompProps } from '../remotion/props';
 import { StationComposition, clampElevation } from '../remotion/StationComposition';
-import { durationInFrames, stationTimeline } from '../remotion/timing';
+import { durationInFrames, frameState, stationTimeline } from '../remotion/timing';
 import { useStationFrame } from '../remotion/useStation';
+import { gaugeArcs } from '../scene/gauges';
 import { getModule, type StationModule } from '../stations/modules';
 import { bridge } from '../state/bridge';
 import { settingsFor, useApp, useFrame, type StationSettings } from '../state/store';
-import { JointsPanel } from '../ui/panels/JointsPanel';
 import { MachinePanel } from '../ui/panels/MachinePanel';
 import { MusclesPanel } from '../ui/panels/MusclesPanel';
-import { ScriptPanel } from '../ui/panels/ScriptPanel';
 import { SettingsPanel } from '../ui/panels/SettingsPanel';
+import { TechniquePanel } from '../ui/panels/TechniquePanel';
 import { Timeline } from '../ui/Timeline';
 import { useMedia } from '../ui/useMedia';
 import { angleDelta, useSmoothCamera, type CameraAngles } from '../ui/useSmoothCamera';
+import { ViewBar, type ViewBarSize } from '../ui/ViewBar';
 
-type Tab = 'ajustes' | 'guion' | 'articulaciones' | 'musculos' | 'maquina';
+/** Escritorio: ajustes a la izquierda y el resto en pestañas a la derecha. Móvil: todo en pestañas. */
+const WIDE = '(min-width: 1100px)';
+
+type Tab = 'ajustes' | 'tecnica' | 'musculos' | 'maquina';
 const TAB_LABEL: Record<Tab, string> = {
   ajustes: 'Ajustes',
-  guion: 'Guion',
-  articulaciones: 'Articulaciones',
+  tecnica: 'Técnica',
   musculos: 'Músculos',
   maquina: 'Máquina',
 };
@@ -66,7 +68,17 @@ const Stage = memo(function Stage({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const inputProps = useMemo(() => ({ ...props, uiScale, cam }), [props, uiScale, cam]);
+  // A pantalla completa (proyectar en clase), la escena vuelve al aspecto del vídeo: título, pauta y
+  // leyenda de ángulos dentro de la imagen.
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    const on = (e: { detail: { isFullscreen: boolean } }) => setFullscreen(e.detail.isFullscreen);
+    p.addEventListener('fullscreenchange', on);
+    return () => p.removeEventListener('fullscreenchange', on);
+  }, [playerRef]);
+  const inputProps = useMemo(() => ({ ...props, uiScale: fullscreen ? 1 : uiScale, cam, embedded: !fullscreen }), [props, uiScale, cam, fullscreen]);
   return (
     <div
       ref={stageRef}
@@ -128,7 +140,7 @@ const Stage = memo(function Stage({
         doubleClickToFullscreen
         playbackRate={rate}
         acknowledgeRemotionLicense
-        style={{ width: '100%', aspectRatio: `${COMP_W} / ${COMP_H}` }}
+        style={{ width: '100%', height: '100%' }}
       />
     </div>
   );
@@ -136,10 +148,10 @@ const Stage = memo(function Stage({
 
 function LivePanels({ mod, st, props, playerRef }: { mod: StationModule; st: StationSettings; props: StationCompProps; playerRef: React.RefObject<PlayerRef | null> }) {
   const frame = useFrame((s) => s.frame);
-  const playing = useFrame((s) => s.playing);
-  const rate = useFrame((s) => s.rate);
-  const wide = useMedia('(min-width: 1100px)');
-  const [tab, setTab] = useState<Tab>(wide ? 'guion' : 'ajustes');
+  const showGauges = useApp((s) => s.showGauges);
+  const wide = useMedia(WIDE);
+  const [tab, setTab] = useState<Tab>('tecnica');
+  const tabsId = useId();
   const { variant, timeline, state, result } = useStationFrame(props, frame, FPS);
   bridge.current = { result: result as never, state, timeline };
   bridge.fps = FPS;
@@ -155,63 +167,100 @@ function LivePanels({ mod, st, props, playerRef }: { mod: StationModule; st: Sta
     }
     return max;
   }, [mod, anthro, st.variantId, st.errorId, st.loadKg]);
+  // Número de la insignia de cada métrica en la escena: las filas de Técnica hacen de leyenda.
+  const numbers = showGauges ? new Map(gaugeArcs(result.body, result.metrics, mod.content.keyMetrics).map((a, i) => [a.metric as string, i + 1])) : null;
 
-  const error = st.errorId ? mod.content.errors.find((e) => e.id === st.errorId) : undefined;
   const panels: Record<Tab, React.ReactNode> = {
     ajustes: <SettingsPanel mod={mod} st={st} />,
-    guion: <ScriptPanel mod={mod} variant={variant} state={state} error={error} />,
-    articulaciones: <JointsPanel windows={variant.windows} evaluations={result.evaluations} p={state.p} phase={state.kind} moments={result.moments} momentMax={momentMax} />,
+    tecnica: (
+      <TechniquePanel
+        mod={mod}
+        st={st}
+        variant={variant}
+        timeline={timeline}
+        state={state}
+        fps={FPS}
+        evaluations={result.evaluations}
+        moments={result.moments}
+        momentMax={momentMax}
+        numbers={numbers}
+        player={playerRef.current}
+      />
+    ),
     musculos: <MusclesPanel variant={variant} />,
-    maquina: <MachinePanel setup={result.setup} sources={mod.content.sources} />,
+    maquina: <MachinePanel setup={result.setup} generalCues={mod.content.generalCues} />,
   };
-  const tabs: Tab[] = wide ? ['guion', 'articulaciones', 'musculos', 'maquina'] : ['ajustes', 'guion', 'articulaciones', 'musculos', 'maquina'];
-  const current = tabs.includes(tab) ? tab : tabs[0]!;
-
-  const timelineEl = (
-    <Timeline
-      timeline={timeline}
-      state={state}
-      frame={frame}
-      fps={FPS}
-      player={playerRef.current}
-      playing={playing}
-      rate={rate}
-      onRate={(r) => useFrame.setState({ rate: r })}
-      reps={st.reps}
-    />
-  );
+  const tabs: Tab[] = wide ? ['tecnica', 'musculos', 'maquina'] : ['ajustes', 'tecnica', 'musculos', 'maquina'];
+  const current = tabs.includes(tab) ? tab : 'tecnica';
+  const tabId = (t: Tab) => `${tabsId}-tab-${t}`;
+  const panelId = `${tabsId}-panel`;
 
   return (
     <>
-      <div className="station__timeline">{timelineEl}</div>
       {wide && (
-        <aside className="station__left" aria-label="Ajustes de la estación">
+        <aside className="station__left" aria-label="Ajustes de la estación" data-fit="ajustes">
           {panels.ajustes}
         </aside>
       )}
-      <aside className="station__right">
-        <div className="tabs" role="tablist">
+      <aside className="station__right" aria-label="Técnica, músculos y máquina">
+        <div
+          className="tabs"
+          role="tablist"
+          aria-label="Paneles de la estación"
+          onKeyDown={(e) => {
+            // Patrón de pestañas: las flechas recorren las pestañas y las activan.
+            const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+            if (!d) return;
+            e.preventDefault();
+            const next = tabs[(tabs.indexOf(current) + d + tabs.length) % tabs.length]!;
+            setTab(next);
+            document.getElementById(tabId(next))?.focus();
+          }}
+        >
           {tabs.map((t) => (
-            <button key={t} role="tab" aria-selected={current === t} className={current === t ? 'is-on' : ''} onClick={() => setTab(t)}>
+            <button
+              key={t}
+              id={tabId(t)}
+              role="tab"
+              aria-selected={current === t}
+              aria-controls={panelId}
+              tabIndex={current === t ? 0 : -1}
+              className={current === t ? 'is-on' : ''}
+              onClick={() => setTab(t)}
+            >
               {TAB_LABEL[t]}
-              {/* El aviso ocupa siempre su sitio (solo se oculta) para no empujar las pestañas. */}
-              {t === 'articulaciones' && (
-                <>
-                  <span className={`badge s-${result.status}`} aria-hidden>
-                    !
-                  </span>
-                  {result.status !== 'ok' && <span className="sr-only"> (hay avisos)</span>}
-                </>
-              )}
             </button>
           ))}
         </div>
-        {/* Una instancia por pestaña: el desplazamiento vuelve arriba y se repite el fundido de entrada. */}
-        <div className="tabpanel" role="tabpanel" key={current}>
+        {/* Una instancia por pestaña: se repite el fundido de entrada. */}
+        <div className="tabpanel" role="tabpanel" id={panelId} aria-labelledby={tabId(current)} key={current} data-fit={current}>
           {panels[current]}
         </div>
       </aside>
     </>
+  );
+}
+
+/** Línea de tiempo bajo la escena: solo necesita la fase del fotograma (sin evaluar la postura). */
+function LiveTimeline({ st, startAt, playerRef }: { st: StationSettings; startAt: 'estiramiento' | 'contraccion'; playerRef: React.RefObject<PlayerRef | null> }) {
+  const frame = useFrame((s) => s.frame);
+  const playing = useFrame((s) => s.playing);
+  const rate = useFrame((s) => s.rate);
+  const timeline = useMemo(() => stationTimeline(st.tempo, st.reps, startAt), [st.tempo, st.reps, startAt]);
+  return (
+    <div className="station__timeline">
+      <Timeline
+        timeline={timeline}
+        state={frameState(frame, FPS, timeline)}
+        frame={frame}
+        fps={FPS}
+        player={playerRef.current}
+        playing={playing}
+        rate={rate}
+        onRate={(r) => useFrame.setState({ rate: r })}
+        reps={st.reps}
+      />
+    </div>
   );
 }
 
@@ -312,6 +361,20 @@ export function StationView({ id, active }: { id: string; active: boolean }) {
     }
   }, [active, reduceMotion]);
 
+  // Ancho de la escena: decide qué cabe en la barra de vista.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [barSize, setBarSize] = useState<ViewBarSize>('wide');
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry?.contentRect.width ?? 0;
+      if (w > 0) setBarSize(w >= 640 ? 'wide' : w >= 460 ? 'narrow' : 'tiny');
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const orbit = useMemo(() => {
     const current = () => {
       const s = settingsFor(useApp.getState(), id);
@@ -341,17 +404,20 @@ export function StationView({ id, active }: { id: string; active: boolean }) {
     <div className="station" hidden={!active}>
       <section className="station__center">
         <header className="station__title">
-          <div>
-            <p className="eyebrow">{mod.content.summary}</p>
-            <h1>{mod.content.name}</h1>
-          </div>
-          <div className="station__chips">
-            <span className="tag">{variant.short}</span>
-            <span className="tag mono">{loadShort(mod.logic.load, st.loadKg)}</span>
-            {st.errorId && <span className="tag tag--risk">Error: {mod.content.errors.find((e) => e.id === st.errorId)?.label}</span>}
-          </div>
+          <h1>{mod.content.name}</h1>
+          <p className="station__summary" title={mod.content.summary}>
+            {mod.content.summary}
+          </p>
+          <button className="icon-btn info-btn" onClick={() => app.set({ infoOpen: true })} aria-label="Fuentes y avisos" title="Fuentes y avisos">
+            ⓘ
+          </button>
         </header>
-        <Stage props={props} target={target} jumpKey={entering?.key ?? 0} duration={duration} playerRef={playerRef} onOrbit={orbit.onOrbit} onRelease={orbit.onRelease} />
+        {/* Título, escena 4:3 y línea de tiempo comparten ancho: el que deja el alto disponible. */}
+        <div className="scene__frame" ref={frameRef}>
+          <Stage props={props} target={target} jumpKey={entering?.key ?? 0} duration={duration} playerRef={playerRef} onOrbit={orbit.onOrbit} onRelease={orbit.onRelease} />
+          <ViewBar mod={mod} st={st} size={barSize} onFullscreen={() => playerRef.current?.requestFullscreen()} />
+        </div>
+        <LiveTimeline st={st} startAt={startAt} playerRef={playerRef} />
       </section>
       <LivePanels mod={mod} st={st} props={props} playerRef={playerRef} />
     </div>

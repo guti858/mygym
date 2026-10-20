@@ -46,13 +46,15 @@ export interface AppState {
   muscleFilter: MuscleId | null;
   consoleOpen: boolean;
   anthroOpen: boolean;
+  /** Diálogo «Fuentes y avisos» (fuentes de la estación, confianza, descargo y créditos). */
+  infoOpen: boolean;
   log: LogLine[];
   go(route: Route): void;
   update(stationId: string, patch: Partial<StationSettings>): void;
   setVariant(stationId: string, variantId: string): void;
   setAnthro(patch: Partial<Anthropometry>): void;
   chooseTheme(theme: ThemeId | 'auto'): void;
-  set(patch: Partial<Pick<AppState, 'theme' | 'showMuscles' | 'showGauges' | 'showOverlay' | 'hubRotation' | 'muscleFilter' | 'consoleOpen' | 'anthroOpen'>>): void;
+  set(patch: Partial<Pick<AppState, 'theme' | 'showMuscles' | 'showGauges' | 'showOverlay' | 'hubRotation' | 'muscleFilter' | 'consoleOpen' | 'anthroOpen' | 'infoOpen'>>): void;
   print(...lines: LogLine[]): void;
   clearLog(): void;
 }
@@ -130,6 +132,7 @@ export const useApp = create<AppState>((set, get) => ({
   muscleFilter: null,
   consoleOpen: false,
   anthroOpen: false,
+  infoOpen: false,
   log: [
     { kind: 'out', text: 'MYGYM · guion articular. Escribe «ayuda» para ver los comandos.' },
   ],

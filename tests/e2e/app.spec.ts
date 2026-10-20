@@ -8,12 +8,22 @@ async function open(page: Page, hash: string) {
   await page.goto(`/${hash}`);
 }
 
+/** En escritorio los ajustes están siempre a la vista; en móvil, en su pestaña. */
+async function settings(page: Page, isMobile: boolean) {
+  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+}
+
+/** Errores, guion y articulaciones: pestaña Técnica. */
+async function technique(page: Page) {
+  await page.getByRole('tab', { name: 'Técnica' }).click();
+}
+
 test('el gimnasio lista las 12 estaciones y navega a una disponible', async ({ page }) => {
   await open(page, '#/');
   await expect(page.getByRole('heading', { name: /Cada articulación/i })).toBeVisible();
-  await expect(page.locator('.card')).toHaveCount(12);
-  await expect(page.locator('.card--soon')).toHaveCount(0);
-  await page.locator('.card', { hasText: 'Jalón al pecho' }).click();
+  await expect(page.locator('.st-chip')).toHaveCount(12);
+  await expect(page.locator('.st-chip[aria-disabled="true"]')).toHaveCount(0);
+  await page.locator('.st-chip', { hasText: 'Jalón al pecho' }).click();
   await expect(page).toHaveURL(/#\/e\/jalon/);
   await expect(page.locator('.stage canvas')).toBeVisible();
   expect(errors).toEqual([]);
@@ -23,22 +33,26 @@ test('filtro por músculo resalta estaciones', async ({ page }) => {
   await open(page, '#/');
   // Cada región incluye los dos lados del cuerpo: su centro cae entre las piernas, así que se dispara el clic sobre el propio elemento.
   await page.getByRole('button', { name: 'Cuádriceps' }).first().dispatchEvent('click');
-  await expect(page.locator('.card--principal', { hasText: 'Prensa' })).toBeVisible();
+  await expect(page.locator('.st-chip--principal', { hasText: 'Prensa' })).toBeVisible();
+  // El selector filtra igual que el mapa (y queda cuando no hay alto para el mapa).
+  await page.getByRole('combobox', { name: 'Músculo' }).selectOption({ label: 'Dorsal ancho' });
+  await expect(page.locator('.st-chip--principal', { hasText: 'Jalón al pecho' })).toBeVisible();
+  await expect(page.locator('.st-chip--principal', { hasText: 'Prensa' })).toHaveCount(0);
 });
 
 test('jalón: variante, carga y error se reflejan en la URL y en el guion', async ({ page, isMobile }) => {
   await open(page, '#/e/jalon');
   await expect(page.locator('.stage canvas')).toBeVisible();
-  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await settings(page, isMobile);
   await page.getByRole('radio', { name: /Supino/ }).click();
   await expect(page).toHaveURL(/v=supino-estrecho/);
   await page.getByRole('button', { name: 'Más carga' }).click();
   await expect(page).toHaveURL(/kg=45/);
+  await technique(page);
   await page.getByRole('button', { name: /Hombros encogidos/ }).click();
   await expect(page).toHaveURL(/err=encogimiento/);
-  await page.getByRole('tab', { name: /Guion/ }).click();
-  await expect(page.getByRole('heading', { name: /Demostración de error · Hombros encogidos/ })).toBeVisible();
-  await page.getByRole('tab', { name: /Articulaciones/ }).click();
+  await expect(page.getByRole('heading', { name: /Demostración de error · Hombros encogidos/ })).toBeAttached();
+  await expect(page.locator('.callout--risk')).toContainText('Corrige:');
   await expect(page.locator('.joint').first()).toBeVisible();
   await page.screenshot({ path: `test-results/jalon-${isMobile ? 'movil' : 'escritorio'}.png` });
   expect(errors).toEqual([]);
@@ -47,13 +61,13 @@ test('jalón: variante, carga y error se reflejan en la URL y en el guion', asyn
 test('press de banca: agarre y error en la URL; barra en el ajuste', async ({ page, isMobile }) => {
   await open(page, '#/e/press_banca');
   await expect(page.locator('.stage canvas')).toBeVisible();
-  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await settings(page, isMobile);
   await expect(page.locator('.fine', { hasText: 'Barra 20 kg' })).toBeVisible();
   await page.getByRole('radio', { name: /Agarre cerrado/ }).click();
   await expect(page).toHaveURL(/v=cerrado/);
+  await technique(page);
   await page.getByRole('button', { name: /Escápulas sueltas/ }).click();
   await expect(page).toHaveURL(/err=escapulas_sueltas/);
-  await page.getByRole('tab', { name: /Articulaciones/ }).click();
   await expect(page.locator('.joint').first()).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -61,7 +75,7 @@ test('press de banca: agarre y error en la URL; barra en el ajuste', async ({ pa
 test('fondos: la carga pasa de asistencia a lastre', async ({ page, isMobile }) => {
   await open(page, '#/e/fondos');
   await expect(page.locator('.stage canvas')).toBeVisible();
-  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await settings(page, isMobile);
   const value = page.locator('.stepper__value');
   await expect(value).toContainText('libre');
   await page.getByRole('button', { name: 'Menos carga' }).click();
@@ -78,9 +92,10 @@ test('fondos: la carga pasa de asistencia a lastre', async ({ page, isMobile }) 
 test('dominadas: agarre y error en la URL', async ({ page, isMobile }) => {
   await open(page, '#/e/dominadas');
   await expect(page.locator('.stage canvas')).toBeVisible();
-  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await settings(page, isMobile);
   await page.getByRole('radio', { name: /Supina/ }).click();
   await expect(page).toHaveURL(/v=supina/);
+  await technique(page);
   await page.getByRole('button', { name: /Kipping/ }).click();
   await expect(page).toHaveURL(/err=kipping/);
   expect(errors).toEqual([]);
@@ -89,8 +104,9 @@ test('dominadas: agarre y error en la URL', async ({ page, isMobile }) => {
 test('remo en T: palanca en la carga y error en la URL', async ({ page, isMobile }) => {
   await open(page, '#/e/remo_t?v=libre-neutro');
   await expect(page.locator('.stage canvas')).toBeVisible();
-  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await settings(page, isMobile);
   await expect(page.locator('.fine', { hasText: 'Palanca 10 kg' })).toBeVisible();
+  await technique(page);
   await page.getByRole('button', { name: /Espalda redondeada/ }).click();
   await expect(page).toHaveURL(/err=espalda_redondeada/);
   expect(errors).toEqual([]);
@@ -99,8 +115,9 @@ test('remo en T: palanca en la carga y error en la URL', async ({ page, isMobile
 test('poleas: modalidad sobre la cabeza y polea 2:1', async ({ page, isMobile }) => {
   await open(page, '#/e/poleas?v=triceps-cabeza');
   await expect(page.locator('.stage canvas')).toBeVisible();
-  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await settings(page, isMobile);
   await expect(page.locator('.fine', { hasText: 'polea 2:1' })).toBeVisible();
+  await technique(page);
   await page.getByRole('button', { name: /Arco lumbar/ }).click();
   await expect(page).toHaveURL(/err=arco_lumbar/);
   expect(errors).toEqual([]);
@@ -109,9 +126,10 @@ test('poleas: modalidad sobre la cabeza y polea 2:1', async ({ page, isMobile })
 test('abductores / aductores: modalidad y error en la URL', async ({ page, isMobile }) => {
   await open(page, '#/e/abd_add');
   await expect(page.locator('.stage canvas')).toBeVisible();
-  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await settings(page, isMobile);
   await page.getByRole('radio', { name: /^Aducción/ }).click();
   await expect(page).toHaveURL(/v=aduccion/);
+  await technique(page);
   await page.getByRole('button', { name: /Pelvis que bascula/ }).click();
   await expect(page).toHaveURL(/err=pelvis/);
   expect(errors).toEqual([]);
@@ -120,10 +138,12 @@ test('abductores / aductores: modalidad y error en la URL', async ({ page, isMob
 test('mancuernas: ejercicio, carga por mancuerna y error', async ({ page, isMobile }) => {
   await open(page, '#/e/mancuernas?v=goblet');
   await expect(page.locator('.stage canvas')).toBeVisible();
-  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await settings(page, isMobile);
   await expect(page.locator('.stepper__value')).toContainText('kg / mancuerna');
+  await technique(page);
   await page.getByRole('button', { name: /Rodillas hacia dentro/ }).click();
   await expect(page).toHaveURL(/err=valgo/);
+  await settings(page, isMobile);
   await page.getByRole('radio', { name: /Remo unilateral/ }).click();
   await expect(page).toHaveURL(/v=remo/);
   await expect(page).not.toHaveURL(/err=/);
@@ -220,4 +240,95 @@ test('gimnasio → estación: el plano se acerca a la máquina y la vista del gi
   // Ningún lienzo se ha destruido ni recreado: el del gimnasio y el de la estación siguen ahí.
   await expect(page.locator('canvas')).toHaveCount(2);
   expect(errors).toEqual([]);
+});
+
+test('barra de vista sobre la escena: vistas, capas y giro', async ({ page }) => {
+  await open(page, '#/e/jalon');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  const bar = page.getByRole('toolbar', { name: 'Vista de la escena' });
+  await bar.getByRole('radio', { name: 'Lateral' }).click();
+  await expect(page).toHaveURL(/vista=lateral/);
+  // Giro y zoom: en la barra si la escena es ancha; si no, en el desplegable «Más».
+  const more = bar.getByRole('button', { name: /^Más/ });
+  if (await more.isVisible()) await more.click();
+  await page.getByRole('button', { name: 'Girar 30° a la derecha' }).click();
+  await expect(page).toHaveURL(/giro=30/);
+  if (!(await page.getByRole('checkbox', { name: 'Ángulos' }).isVisible())) await bar.getByRole('button', { name: /^(Capas|Más)/ }).click();
+  await page.getByRole('checkbox', { name: 'Ángulos' }).uncheck();
+  await expect(page.locator('.joint__n:not(:empty)')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('checkbox', { name: 'Ángulos' })).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('técnica: «Ir al momento» lleva a la fase en la que se ve el error', async ({ page }) => {
+  await open(page, '#/e/jalon');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  await technique(page);
+  await page.getByRole('button', { name: /Hombros encogidos/ }).click();
+  await expect(page.locator('.callout--risk')).toContainText('Se ve en la contracción');
+  await page.getByRole('button', { name: 'Ir al momento' }).click();
+  // Pausa en la contracción: la fila de la articulación afectada pasa a evaluarse (y salta la alerta).
+  await expect(page.locator('.phase-pill.is-on')).toHaveAccessibleName(/contracción|Concéntrica/);
+  await expect(page.locator('.joint.is-affected.s-riesgo, .joint.is-affected.s-aviso').first()).toBeVisible();
+  // La pauta de una articulación se abre sobre la lista y Esc la cierra.
+  await page.locator('.joint.is-affected .joint__btn').first().click();
+  await expect(page.getByRole('region', { name: /^Pauta:/ })).toContainText('Corrige:');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('region', { name: /^Pauta:/ })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+/** Lista lo que se desplaza: la página o cualquier módulo marcado con data-fit. */
+// (Se evalúa en el navegador: el texto evita depender de los tipos del DOM en los tests.)
+async function overflowing(page: Page): Promise<string[]> {
+  return page.evaluate(`
+    [document.scrollingElement, ...document.querySelectorAll('[data-fit]')]
+      .filter((e) => e.checkVisibility())
+      .filter((e) => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1)
+      .map((e) => (e.dataset?.fit ?? 'página') + ' ' + e.scrollHeight + '/' + e.clientHeight)
+  `);
+}
+
+const STATIONS = ['dominadas', 'jalon', 'remo_t', 'poleas', 'prensa', 'abd_add', 'press_banca', 'press_inclinado', 'press_militar', 'peck_deck', 'fondos', 'mancuernas'];
+
+for (const [w, h] of [
+  [1440, 900],
+  [1280, 720],
+] as const) {
+  test(`single-view a ${w}×${h}: ni la página ni ningún módulo se desplazan`, async ({ page, isMobile }) => {
+    test.skip(isMobile, 'Escritorio: en móvil solo se desplaza el panel de pestañas');
+    test.setTimeout(600_000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: w, height: h });
+    await open(page, '#/');
+    await expect(page.locator('.hub__player canvas')).toBeVisible();
+    expect(await overflowing(page), 'gimnasio').toEqual([]);
+    for (const id of STATIONS) {
+      await page.goto(`/#/e/${id}`);
+      await expect(page.locator('.stage canvas')).toBeVisible();
+      await technique(page);
+      // Peor caso de la pestaña Técnica: cada error de la variante (y la técnica ideal).
+      const chips = page.locator('.technique .chip');
+      for (let i = 0, n = await chips.count(); i < n; i++) {
+        await chips.nth(i).click();
+        expect(await overflowing(page), `${id} · ${await chips.nth(i).innerText()}`).toEqual([]);
+      }
+      for (const tab of ['Músculos', 'Máquina']) {
+        await page.getByRole('tab', { name: tab }).click();
+        expect(await overflowing(page), `${id} · ${tab}`).toEqual([]);
+      }
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
+test('móvil: la página no se desplaza (solo el panel de pestañas)', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'Disposición de móvil');
+  await open(page, '#/e/press_banca');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  expect(await overflowing(page)).not.toContainEqual(expect.stringMatching(/^página/));
+  await open(page, '#/');
+  await expect(page.locator('.hub__player canvas')).toBeVisible();
+  expect(await overflowing(page)).not.toContainEqual(expect.stringMatching(/^página/));
 });
