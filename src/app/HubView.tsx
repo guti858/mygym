@@ -1,5 +1,5 @@
 import { Player } from '@remotion/player';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MUSCLES, type MuscleId } from '../content/muscles';
 import { FPS, type HubCompProps } from '../remotion/props';
 import { HubComposition } from '../remotion/HubComposition';
@@ -7,6 +7,12 @@ import { CATALOG, ZONE_LABEL, roleInStation, type Zone } from '../stations/catal
 import { useApp } from '../state/store';
 import { BodyMap, type BodyMapEntry } from '../ui/BodyMap';
 import { useMedia } from '../ui/useMedia';
+import { useSmoothCamera } from '../ui/useSmoothCamera';
+
+/** Píxeles de arrastre por cada giro de 90°. */
+const DRAG_PX = 220;
+/** Duración del acercamiento a una máquina antes de abrir su estación (ms). */
+const FOCUS_MS = 520;
 
 const ZONE_ORDER: Zone[] = ['traccion', 'brazos', 'empuje', 'pierna', 'libre'];
 
@@ -18,6 +24,29 @@ export function HubView() {
   const reduceMotion = useMedia('(prefers-reduced-motion: reduce)');
   const [compW, compH] = narrow ? [1000, 1000] : [1600, 900];
   const filter = app.muscleFilter;
+  // Giro de la sala: arrastre libre que al soltar se ajusta al cuarto de vuelta más cercano, y
+  // transición animada entre cuartos (con «reducir movimiento», directa).
+  const [drag, setDrag] = useState(0);
+  const dragged = useRef(false);
+  const goal = useMemo(() => ({ azimuth: -45 + 90 * (app.hubRotation + drag), elevation: 0 }), [app.hubRotation, drag]);
+  const shown = useSmoothCamera(goal, reduceMotion);
+  const rotation = (shown.azimuth + 45) / 90;
+  // Acercamiento a la máquina elegida; al terminar se abre la estación.
+  const [focus, setFocus] = useState<{ id: string; t: number } | null>(null);
+  useEffect(() => {
+    if (!focus) return;
+    if (focus.t >= 1) {
+      useApp.getState().go({ name: 'station', id: focus.id });
+      return;
+    }
+    const start = performance.now() - focus.t * FOCUS_MS;
+    const raf = requestAnimationFrame((now) => setFocus({ id: focus.id, t: Math.min(1, (now - start) / FOCUS_MS) }));
+    return () => cancelAnimationFrame(raf);
+  }, [focus]);
+  const open = useCallback(
+    (id: string) => (reduceMotion ? useApp.getState().go({ name: 'station', id }) : setFocus((f) => f ?? { id, t: 0 })),
+    [reduceMotion],
+  );
 
   const highlight = useMemo(() => {
     const out: Record<string, 'principal' | 'secundario'> = {};
@@ -33,14 +62,17 @@ export function HubView() {
     () => ({
       theme: app.theme,
       uiScale: narrow ? 1.9 : 1,
-      rotation: app.hubRotation,
+      rotation,
+      focus,
       zoom: 1,
       hovered,
       highlight,
       anthro: app.anthro,
       onSelect: (id: string) => {
+        // El clic que cierra un arrastre de giro no abre la máquina que haya debajo.
+        if (dragged.current) return;
         const entry = CATALOG.find((c) => c.id === id);
-        if (entry?.ready) useApp.getState().go({ name: 'station', id });
+        if (entry?.ready) open(id);
         else {
           useApp.getState().print({ kind: 'out', text: `«${entry?.name}» aún no está disponible. Escribe «estaciones» para ver las disponibles.` });
           useApp.getState().set({ consoleOpen: true });
@@ -51,7 +83,7 @@ export function HubView() {
         document.body.style.cursor = id ? 'pointer' : '';
       },
     }),
-    [app.theme, app.hubRotation, app.anthro, hovered, highlight, narrow],
+    [app.theme, rotation, focus, app.anthro, hovered, highlight, narrow, open],
   );
 
   const mapActive: Partial<Record<MuscleId, BodyMapEntry>> = {};
@@ -60,7 +92,37 @@ export function HubView() {
   return (
     <div className={`hub${filter ? ' hub--filtering' : ''}`}>
       <section className="hub__stage">
-        <div className="hub__player" role="img" aria-label="Plano del gimnasio con las 12 estaciones; elige una en la lista de abajo">
+        <div
+          className="hub__player"
+          role="img"
+          aria-label="Plano del gimnasio con las 12 estaciones; elige una en la lista de abajo"
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            const startX = e.clientX;
+            dragged.current = false;
+            const move = (ev: PointerEvent) => {
+              const dx = ev.clientX - startX;
+              if (Math.abs(dx) > 6) dragged.current = true;
+              if (dragged.current) setDrag(dx / DRAG_PX);
+            };
+            const up = (ev: PointerEvent) => {
+              window.removeEventListener('pointermove', move);
+              window.removeEventListener('pointerup', up);
+              window.removeEventListener('pointercancel', up);
+              if (dragged.current) {
+                // Si el navegador se queda el gesto (desplazamiento), la sala vuelve a su cuarto.
+                const quarters = ev.type === 'pointercancel' ? 0 : Math.round((ev.clientX - startX) / DRAG_PX);
+                setDrag(0);
+                useApp.getState().set({ hubRotation: (((useApp.getState().hubRotation + quarters) % 4) + 4) % 4 });
+                // El clic llega después del pointerup: se descarta y luego se rearma.
+                setTimeout(() => (dragged.current = false), 0);
+              }
+            };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', up);
+            window.addEventListener('pointercancel', up);
+          }}
+        >
           <Player
             component={HubComposition}
             inputProps={props}

@@ -172,3 +172,32 @@ test('el perfil antropométrico cambia el ajuste de la máquina', async ({ page,
   await expect(depth).not.toHaveText(before);
   if (!isMobile) await page.screenshot({ path: 'test-results/prensa-perfil.png' });
 });
+
+test('cámara: giro, inclinación y ajuste a la vista se guardan en el enlace', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Teclado y consola se prueban en escritorio');
+  await open(page, '#/e/jalon?vista=iso');
+  const stage = page.locator('.stage');
+  await expect(stage.locator('canvas')).toBeVisible();
+  // Teclado sobre la escena: → gira 15°, ↑ inclina 10°; Inicio vuelve a la vista.
+  await stage.focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowUp');
+  await expect(page).toHaveURL(/giro=15/);
+  await expect(page).toHaveURL(/incl=10/);
+  await page.keyboard.press('Home');
+  await expect(page).not.toHaveURL(/giro=|incl=/);
+  // Consola: la elevación no pasa de 89° (vista cenital).
+  await page.keyboard.press(':');
+  const input = page.locator('#console-input');
+  await input.fill('inclinar 90');
+  await input.press('Enter');
+  await expect(page.locator('.console__log')).toContainText('Elevación: 89°');
+  await input.fill('vista lateral');
+  await input.press('Enter');
+  await expect(page).toHaveURL(/vista=lateral/);
+  await expect(page).not.toHaveURL(/incl=/);
+  // Un enlace con ángulo abre la estación con ese ángulo.
+  await open(page, '#/e/jalon?vista=lateral&giro=-30');
+  await expect(page).toHaveURL(/giro=-30/);
+  expect(errors).toEqual([]);
+});

@@ -197,7 +197,7 @@ export const COMMANDS: Command[] = [
       const { id, mod } = activeStation();
       if (!v) return mod.content.views.map((x) => `  ${x.id.padEnd(12)} ${x.label}`);
       const view = mod.content.views.find((x) => x.id === norm(v)) ?? fail(`Vista «${v}» no existe.`);
-      useApp.getState().update(id, { viewId: view.id, azimuthOffset: 0 });
+      useApp.getState().update(id, { viewId: view.id, azimuthOffset: 0, elevationOffset: 0 });
       return `Vista: ${view.label}`;
     },
   },
@@ -211,6 +211,20 @@ export const COMMANDS: Command[] = [
       if (!Number.isFinite(n)) return fail('Indica grados, p. ej. «girar 45».');
       useApp.getState().update(id, { azimuthOffset: st.azimuthOffset + n });
       return `Giro: ${st.azimuthOffset + n}°`;
+    },
+  },
+  {
+    name: 'inclinar',
+    usage: 'inclinar <grados>',
+    help: 'Sube (positivo) o baja (negativo) la cámara respecto a la vista.',
+    run: ([g]) => {
+      const { id, st, mod } = activeStation();
+      const n = Number(g);
+      if (!Number.isFinite(n)) return fail('Indica grados, p. ej. «inclinar 15».');
+      const view = mod.content.views.find((v) => v.id === st.viewId) ?? mod.content.views[0]!;
+      const next = Math.min(89, Math.max(0, view.elevation + st.elevationOffset + n)) - view.elevation;
+      useApp.getState().update(id, { elevationOffset: next });
+      return `Elevación: ${Math.round(view.elevation + next)}°`;
     },
   },
   {

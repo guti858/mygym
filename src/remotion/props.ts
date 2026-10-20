@@ -19,7 +19,15 @@ export type StationCompProps = {
   tempo: Tempo;
   reps: number;
   viewId: string;
+  /** Giro alrededor del eje vertical respecto a la vista (grados). */
   azimuthOffset: number;
+  /** Inclinación respecto a la vista (grados; la elevación final queda entre 0° y 89°). */
+  elevationOffset?: number;
+  /**
+   * Cámara absoluta (azimut y elevación en grados). La app la interpola entre vistas y al
+   * arrastrar; si falta, se usa la vista con sus giros (vídeo exportado).
+   */
+  cam?: { azimuth: number; elevation: number };
   zoom: number;
   showMuscles: boolean;
   showGauges: boolean;
@@ -37,7 +45,10 @@ export type StationCompProps = {
 export type HubCompProps = {
   theme: ThemeId;
   uiScale: number;
+  /** Giros de 90° (admite fracciones mientras la sala gira). Azimut = −45° + 90° × rotation. */
   rotation: number;
+  /** Acercamiento a una estación antes de abrirla (t de 0 a 1). */
+  focus?: { id: string; t: number } | null;
   zoom: number;
   hovered: string | null;
   highlight: Record<string, 'principal' | 'secundario'>;

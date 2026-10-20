@@ -15,6 +15,7 @@ Gimnasio isométrico en el navegador donde cada máquina es una **estación** co
 | F4a · Empuje: **press de banca**, **press inclinado**, **press militar**, **peck-deck** y **fondos** | ✅ pendiente de tu validación |
 | F4b · Tracción y brazos: **dominadas**, **remo en T** y **poleas** | ✅ pendiente de tu validación |
 | F4c–d · **Abductores / aductores** y **rack de mancuernas** (7 ejercicios) | ✅ pendiente de tu validación |
+| Sala realista generada con **Blender** (luz horneada con Cycles) y cámara en órbita por estación | ✅ ver [`docs/ENTORNO_3D.md`](docs/ENTORNO_3D.md) |
 
 Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
 
@@ -34,6 +35,7 @@ npm run e2e          # pruebas de extremo a extremo (escritorio y móvil); requi
 npm run studio       # Remotion Studio: una composición por estación y variante
 npm run docs         # regenera docs/stations/<estación>.md y la matriz muscular desde el código
 npm run anatomy:bodymap  # regenera los trazados SVG del mapa muscular desde el modelo anatómico
+npm run env:layout   # planta del gimnasio para el script de Blender que genera las salas
 ```
 
 ### Exportar un vídeo de la técnica
@@ -49,7 +51,7 @@ En la app, el comando de consola `exportar` imprime el comando exacto con tus aj
 
 ### Consola
 
-Pulsa `:` (o el botón *Consola*). Ejemplos: `ir jalon`, `variante supino-estrecho`, `carga 45`, `error balanceo`, `tempo 3-1-1-1`, `vista lateral`, `fase siguiente`, `angulos`, `ajuste`, `momentos`, `altura 182`, `movilidad cadera 110`, `tema terminal`, `ayuda`.
+Pulsa `:` (o el botón *Consola*). Ejemplos: `ir jalon`, `variante supino-estrecho`, `carga 45`, `error balanceo`, `tempo 3-1-1-1`, `vista lateral`, `girar 45`, `inclinar 15`, `fase siguiente`, `angulos`, `ajuste`, `momentos`, `altura 182`, `movilidad cadera 110`, `tema terminal`, `ayuda`.
 
 ## Arquitectura
 
@@ -59,7 +61,8 @@ src/
                  goniométricas 3D, ventanas articulares, línea de tiempo por fases, momentos, carga
   stations/      una carpeta por estación: logic.ts (cinemática de la máquina + errores),
                  content.ts (variantes, guion, ventanas, músculos, fuentes), Machine.tsx (3D) y tests
-  scene/         kit de piezas paramétricas, avatar maniquí, transportadores, cámara ortográfica
+  scene/         kit de piezas paramétricas, avatar maniquí, transportadores, cámara ortográfica en órbita,
+                 rayos X de la máquina; env/: salas generadas con Blender (luz horneada)
   remotion/      composiciones (estación y gimnasio): el fotograma determina fase y pose
   app/, ui/      vistas, paneles, consola, mapa muscular SVG (proyección del modelo anatómico)
   state/         estado global (zustand), URL compartible, comandos
@@ -68,6 +71,10 @@ src/
 - **Animación:** Remotion (`@remotion/player` en la app, `@remotion/three` para el 3D). Todo depende de `useCurrentFrame()`: no hay bucles de animación propios.
 - **Coherencia entre estaciones:** cinco mecánicas compartidas (cable, palanca con pivote, carril, peso libre, peso corporal) y el mismo esquema de contenido.
 - **Tests de contrato** (por estación): la técnica ideal no genera alertas para perfiles de 150 a 195 cm, fémur largo, brazos cortos/largos y poca movilidad; cada error demostrable dispara las alertas que declara.
+
+## Sala del gimnasio (Blender)
+
+Las salas (la de cada estación y el gimnasio completo) salen de `scripts/environment/build_rooms.py`, que usa Blender como módulo de Python (`bpy`): geometría procedural, texturas de detalle sin costuras y luz horneada con Cycles (luminarias, sol y cielo por los ventanales, con rebotes). La app tiñe cada material con el tema activo y desvanece las paredes que tapan la máquina. Evaluación del entorno, proceso y regeneración en [`docs/ENTORNO_3D.md`](docs/ENTORNO_3D.md).
 
 ## Modelo anatómico
 

@@ -52,7 +52,43 @@ export interface Margins {
   right?: number;
 }
 
-/** Encuadre automático: ajusta objetivo y zoom para que todos los `points` quepan dentro de los márgenes. */
+/** Extensión en pantalla (metros, ejes de la cámara) de `points` vistos desde azimut/elevación. */
+function screenExtent(azimuth: number, elevation: number, points: readonly Vector3[], c: Vector3) {
+  const base = orthoCamera({ azimuth, elevation, target: [c.x, c.y, c.z], size: 1, width: 1, height: 1 });
+  let minU = Infinity;
+  let maxU = -Infinity;
+  let minV = Infinity;
+  let maxV = -Infinity;
+  const { right: r, camUp: up } = base;
+  for (const p of points) {
+    const dx = p.x - c.x;
+    const dy = p.y - c.y;
+    const dz = p.z - c.z;
+    const u = dx * r.x + dy * r.y + dz * r.z;
+    const v = dx * up.x + dy * up.y + dz * up.z;
+    minU = Math.min(minU, u);
+    maxU = Math.max(maxU, u);
+    minV = Math.min(minV, v);
+    maxV = Math.max(maxV, v);
+  }
+  return { base, minU, maxU, minV, maxV };
+}
+
+/**
+ * Azimuts con los que se busca la escala que vale para toda la vuelta. Cada 5°: la anchura en
+ * pantalla tiene sus máximos en puntos suaves, así que entre muestras apenas crece (el 0,5 % de
+ * holgura lo cubre).
+ */
+const ORBIT_SAMPLES = Array.from({ length: 72 }, (_, i) => i * 5);
+const ORBIT_SLACK = 0.995;
+
+/**
+ * Encuadre automático: ajusta objetivo y zoom para que todos los `points` quepan dentro de los márgenes.
+ *
+ * Con `stable` la escala no depende del azimut: es la que hace caber los puntos desde cualquier
+ * lado (a esa elevación). Así, al girar alrededor de la máquina, el cuerpo no «respira»: solo se
+ * recentra el objetivo, como una cámara en órbita.
+ */
 export function fitCamera(opts: {
   azimuth: number;
   elevation: number;
@@ -61,33 +97,30 @@ export function fitCamera(opts: {
   height: number;
   margins: Margins;
   zoomFactor?: number;
+  stable?: boolean;
 }): CameraSpec {
   const c = new Vector3();
   for (const p of opts.points) c.add(p);
   c.divideScalar(Math.max(1, opts.points.length));
-  const base = orthoCamera({ azimuth: opts.azimuth, elevation: opts.elevation, target: [c.x, c.y, c.z], size: 1, width: opts.width, height: opts.height });
-  let minU = Infinity;
-  let maxU = -Infinity;
-  let minV = Infinity;
-  let maxV = -Infinity;
-  for (const p of opts.points) {
-    const d = p.clone().sub(c);
-    const u = d.dot(base.right);
-    const v = d.dot(base.camUp);
-    minU = Math.min(minU, u);
-    maxU = Math.max(maxU, u);
-    minV = Math.min(minV, v);
-    maxV = Math.max(maxV, v);
-  }
   const { top, bottom, side } = opts.margins;
   const right = opts.margins.right ?? side;
   const availW = opts.width * (1 - side - right);
   const availH = opts.height * (1 - top - bottom);
-  const zoom = Math.min(availW / Math.max(0.01, maxU - minU), availH / Math.max(0.01, maxV - minV)) * (opts.zoomFactor ?? 1);
+  const zoomAt = (e: { minU: number; maxU: number; minV: number; maxV: number }) =>
+    Math.min(availW / Math.max(0.01, e.maxU - e.minU), availH / Math.max(0.01, e.maxV - e.minV));
+  const ext = screenExtent(opts.azimuth, opts.elevation, opts.points, c);
+  let zoom = zoomAt(ext);
+  if (opts.stable) {
+    zoom = Infinity;
+    for (const az of ORBIT_SAMPLES) zoom = Math.min(zoom, zoomAt(screenExtent(az, opts.elevation, opts.points, c)));
+    zoom *= ORBIT_SLACK;
+  }
+  zoom *= opts.zoomFactor ?? 1;
+  const base = orthoCamera({ azimuth: opts.azimuth, elevation: opts.elevation, target: [c.x, c.y, c.z], size: 1, width: opts.width, height: opts.height });
   const boxCenter = c
     .clone()
-    .add(base.right.clone().multiplyScalar((minU + maxU) / 2))
-    .add(base.camUp.clone().multiplyScalar((minV + maxV) / 2));
+    .add(base.right.clone().multiplyScalar((ext.minU + ext.maxU) / 2))
+    .add(base.camUp.clone().multiplyScalar((ext.minV + ext.maxV) / 2));
   const yc = opts.height * top + availH / 2;
   const xc = opts.width * side + availW / 2;
   const target = boxCenter

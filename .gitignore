@@ -5,3 +5,7 @@ test-results
 playwright-report
 *.tsbuildinfo
 .DS_Store
+
+# Salida intermedia de scripts/environment/build_rooms.py (se versiona el .generated.ts)
+src/scene/env/*.glb
+.venv-blender

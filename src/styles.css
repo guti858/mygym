@@ -632,6 +632,8 @@ input[type='range'] {
   border-radius: 14px;
   overflow: hidden;
   box-shadow: var(--shadow);
+  /* Arrastre horizontal: gira la sala; el vertical sigue desplazando la página. */
+  touch-action: pan-y;
 }
 .hub__rotate {
   position: absolute;

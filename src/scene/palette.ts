@@ -31,6 +31,14 @@ export interface ScenePalette {
     mirror: string;
     led: string;
     decal: string;
+    /** Sala horneada con Blender (src/scene/env): materiales que no tenía la sala procedural. */
+    wood: string;
+    plant: string;
+    line: string;
+    concrete: string;
+    window: string;
+    screen: string;
+    iron: string;
   };
   /** Materiales del modelo anatómico. */
   anatomy: {
@@ -77,6 +85,13 @@ export const PALETTES: Record<ThemeId, ScenePalette> = {
       mirror: '#a9b8c9',
       led: '#ffe4bd',
       decal: '#ff7a3d',
+      wood: '#6e5440',
+      plant: '#3d5f3a',
+      line: '#4a515d',
+      concrete: '#3a3f48',
+      window: '#3a5372',
+      screen: '#0b0e12',
+      iron: '#1a1d22',
     },
     anatomy: {
       muscle: '#8a6560',
@@ -117,6 +132,13 @@ export const PALETTES: Record<ThemeId, ScenePalette> = {
       mirror: '#cfdbe8',
       led: '#fff4de',
       decal: '#e8611d',
+      wood: '#c49a6c',
+      plant: '#5b8a55',
+      line: '#f6f6f3',
+      concrete: '#c4c7cc',
+      window: '#e3eef9',
+      screen: '#1d2329',
+      iron: '#2a2e34',
     },
     anatomy: {
       muscle: '#b78a83',
@@ -157,6 +179,13 @@ export const PALETTES: Record<ThemeId, ScenePalette> = {
       mirror: '#1f6b35',
       led: '#b6ff6b',
       decal: '#b6ff6b',
+      wood: '#0f3a1d',
+      plant: '#1f6b35',
+      line: '#1f6b35',
+      concrete: '#0b2213',
+      window: '#123d20',
+      screen: '#030a05',
+      iron: '#07160b',
     },
     anatomy: {
       muscle: '#2c6a43',

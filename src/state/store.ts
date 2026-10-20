@@ -14,7 +14,9 @@ export interface StationSettings {
   tempo: Tempo;
   reps: number;
   viewId: string;
+  /** Giro e inclinación de la cámara respecto a la vista (grados). */
   azimuthOffset: number;
+  elevationOffset: number;
   zoom: number;
 }
 
@@ -61,8 +63,16 @@ export function defaultSettings(stationId: string, variantId?: string): StationS
     reps: 3,
     viewId: mod.content.views[0]!.id,
     azimuthOffset: 0,
+    elevationOffset: 0,
     zoom: 1,
   };
+}
+
+/** Ajustes guardados por una versión anterior: se completan con los valores por defecto. */
+function upgradeSettings(saved: Record<string, StationSettings> | undefined): Record<string, StationSettings> {
+  const out: Record<string, StationSettings> = {};
+  for (const [id, st] of Object.entries(saved ?? {})) if (getModule(id)) out[id] = { ...defaultSettings(id, st.variantId), ...st };
+  return out;
 }
 
 const STORAGE_KEY = 'mygym:v1';
@@ -103,7 +113,7 @@ export function hostTheme(): ThemeId {
 
 export const useApp = create<AppState>((set, get) => ({
   route: { name: 'hub' },
-  settings: persisted.settings ?? {},
+  settings: upgradeSettings(persisted.settings),
   anthro: { ...DEFAULT_ANTHRO, ...persisted.anthro },
   theme: persisted.themeLocked && persisted.theme ? persisted.theme : hostTheme(),
   themeLocked: !!persisted.themeLocked,

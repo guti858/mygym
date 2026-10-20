@@ -1,7 +1,7 @@
 import { ThreeCanvas } from '@remotion/three';
 import { useAnatomy } from '../anatomy/useAnatomy';
-import { useMemo } from 'react';
-import { Vector3 } from 'three';
+import { useMemo, useRef } from 'react';
+import { Vector3, type Group } from 'three';
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { STATUS_RANK, evaluateFrame } from '../engine/evaluate';
 import { loadShort } from '../engine/load';
@@ -13,7 +13,12 @@ import { CameraRig } from '../scene/CameraRig';
 import { fitCamera, keyLightFor, project } from '../scene/camera';
 import { Lights } from '../scene/Environment';
 import { GymRoom, RoomLighting } from '../scene/GymRoom';
+import { BakedRoom } from '../scene/env/BakedRoom';
+import { useEnvironment } from '../scene/env/useEnvironment';
+import { Repaint } from '../scene/Repaint';
+import { STATION_ROOM } from '../scene/layout';
 import { Gauges } from '../scene/Gauges';
+import { XRay } from '../scene/XRay';
 import { gaugeArcs, type GaugeArc } from '../scene/gauges';
 import { PALETTES } from '../scene/palette';
 import type { StationCompProps } from './props';
@@ -74,6 +79,9 @@ function spreadBadges<T extends { x: number; y: number; ax: number; ay: number }
   return out;
 }
 
+/** Elevación de cámara admitida (0° = a ras de suelo, 89° = cenital). */
+export const clampElevation = (e: number) => Math.min(89, Math.max(0, e));
+
 function worstEval(evals: readonly Evaluation[]): Evaluation | undefined {
   let w: Evaluation | undefined;
   for (const e of evals) if (!w || STATUS_RANK[e.status] > STATUS_RANK[w.status]) w = e;
@@ -82,7 +90,8 @@ function worstEval(evals: readonly Evaluation[]): Evaluation | undefined {
 
 export const StationComposition: React.FC<StationCompProps> = (props) => {
   // Fuera del lienzo 3D: aquí sí llega el contexto de Remotion (espera al modelo al renderizar).
-  useAnatomy();
+  const anatomy = useAnatomy();
+  const env = useEnvironment();
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const { mod, seg, variant, timeline, state, result } = useStationFrame(props, frame, fps);
@@ -103,10 +112,15 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
     }
     return pts;
   }, [mod, seg, props.anthro, props.variantId, props.errorId, props.loadKg]);
+  // La app pasa la cámara ya interpolada (`cam`); el vídeo usa la vista y los giros guardados.
+  const azimuth = props.cam?.azimuth ?? view.azimuth + props.azimuthOffset;
+  const elevation = props.cam?.elevation ?? clampElevation(view.elevation + (props.elevationOffset ?? 0));
   const cam = fitCamera({
-    azimuth: view.azimuth + props.azimuthOffset,
-    elevation: view.elevation,
+    azimuth,
+    elevation,
     points: framePts,
+    // Misma escala desde cualquier lado: al orbitar, el cuerpo no cambia de tamaño.
+    stable: true,
     width,
     height,
     margins: {
@@ -119,6 +133,11 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
   });
   const b = mod.logic.bounds;
   const floorCenter: [number, number] = [(b.min[0] + b.max[0]) / 2, (b.min[2] + b.max[2]) / 2];
+  const machineRef = useRef<Group>(null);
+  const toCamera = cam.position.clone().sub(cam.target).normalize();
+  const bd = result.body;
+  const xrayPts = [bd.head, bd.c7, bd.c7.clone().lerp(bd.pelvis.origin, 0.5), bd.pelvis.origin];
+  for (const side of ['L', 'R'] as const) xrayPts.push(bd.arms[side].elbow, bd.arms[side].wrist, bd.legs[side].knee, bd.legs[side].ankle);
   const roomSize: [number, number] = [Math.max(5.2, b.max[0] - b.min[0] + 2.8), Math.max(5.2, b.max[2] - b.min[2] + 2.8)];
   const statuses = jointStatuses(result.evaluations);
   const arcs = props.showGauges ? gaugeArcs(result.body, result.metrics, mod.content.keyMetrics) : [];
@@ -162,17 +181,31 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
       <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: true }}>
         <color attach="background" args={[palette.bg]} />
         <CameraRig spec={cam} />
-        <Lights keyPosition={keyLightFor(cam)} />
+        {/* Con la sala horneada, las sombras caen de las luminarias del techo (no giran con la cámara). */}
+        <Lights keyPosition={keyLightFor(cam)} shadowPosition={env ? [floorCenter[0] + 2.2, 7.5, floorCenter[1] + 1.3] : undefined} />
         <RoomLighting />
-        <GymRoom
-          palette={palette}
-          center={floorCenter}
-          size={roomSize}
-          azimuth={view.azimuth + props.azimuthOffset}
-          elevation={view.elevation}
-          variant="station"
-        />
-        <mod.Machine m={result.machine} palette={palette} H={seg.H} />
+        {env ? (
+          <BakedRoom
+            asset={env.rooms.station}
+            palette={palette}
+            azimuth={azimuth}
+            position={[floorCenter[0], 0, floorCenter[1]]}
+            floorSize={[STATION_ROOM.size, STATION_ROOM.size]}
+          />
+        ) : (
+          <GymRoom
+            palette={palette}
+            center={floorCenter}
+            size={roomSize}
+            azimuth={azimuth}
+            elevation={elevation}
+            variant="station"
+          />
+        )}
+        <group ref={machineRef}>
+          <mod.Machine m={result.machine} palette={palette} H={seg.H} />
+        </group>
+        <XRay target={machineRef} points={xrayPts} toCamera={toCamera} />
         <Avatar
           body={result.body}
           palette={palette}
@@ -183,6 +216,7 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
           pulse={frame * 0.35}
         />
         {props.showGauges && <Gauges arcs={arcs} statusOf={arcStatus} colors={palette.status} neutral={neutral} />}
+        <Repaint ready={[env, anatomy]} />
       </ThreeCanvas>
 
       {props.showGauges &&

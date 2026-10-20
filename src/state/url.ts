@@ -21,6 +21,9 @@ export function hashFor(): string {
   q.set('kg', String(st.loadKg));
   if (st.errorId) q.set('err', st.errorId);
   q.set('vista', st.viewId);
+  // Giro e inclinación respecto a la vista: el enlace reproduce el mismo ángulo de cámara.
+  if (st.azimuthOffset) q.set('giro', String(Math.round(st.azimuthOffset)));
+  if (st.elevationOffset) q.set('incl', String(Math.round(st.elevationOffset)));
   q.set('tempo', tempoToString(st.tempo));
   q.set('reps', String(st.reps));
   return `#/e/${s.route.id}?${q.toString()}`;
@@ -41,6 +44,9 @@ export function applyHash(hash: string) {
   app.update(id, { errorId: err || null });
   const vista = params.get('vista');
   if (vista) app.update(id, { viewId: vista });
+  const giro = Number(params.get('giro') ?? 0);
+  const incl = Number(params.get('incl') ?? 0);
+  app.update(id, { azimuthOffset: Number.isFinite(giro) ? giro : 0, elevationOffset: Number.isFinite(incl) ? incl : 0 });
   const tempo = params.get('tempo');
   const t = tempo ? parseTempo(tempo) : null;
   if (t) app.update(id, { tempo: t });

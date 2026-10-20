@@ -4,7 +4,7 @@ import { computeSegments } from '../engine/anthropometry';
 import { evaluateFrame, findVariant, startAtOf } from '../engine/evaluate';
 import { loadShort } from '../engine/load';
 import { COMP_H, COMP_W, FPS, type StationCompProps } from '../remotion/props';
-import { StationComposition } from '../remotion/StationComposition';
+import { StationComposition, clampElevation } from '../remotion/StationComposition';
 import { durationInFrames, stationTimeline } from '../remotion/timing';
 import { useStationFrame } from '../remotion/useStation';
 import { getModule, type StationModule } from '../stations/modules';
@@ -17,6 +17,7 @@ import { ScriptPanel } from '../ui/panels/ScriptPanel';
 import { SettingsPanel } from '../ui/panels/SettingsPanel';
 import { Timeline } from '../ui/Timeline';
 import { useMedia } from '../ui/useMedia';
+import { angleDelta, useSmoothCamera, type CameraAngles } from '../ui/useSmoothCamera';
 
 type Tab = 'ajustes' | 'guion' | 'articulaciones' | 'musculos' | 'maquina';
 const TAB_LABEL: Record<Tab, string> = {
@@ -30,18 +31,25 @@ const TAB_LABEL: Record<Tab, string> = {
 /** Escenario con el Player de Remotion (memoizado: no se re-renderiza en cada fotograma). */
 const Stage = memo(function Stage({
   props,
+  target,
   duration,
   playerRef,
-  onRotate,
+  onOrbit,
+  onRelease,
 }: {
   props: StationCompProps;
+  target: CameraAngles;
   duration: number;
   playerRef: React.RefObject<PlayerRef | null>;
-  onRotate: (deg: number) => void;
+  /** Giro (azimut) e inclinación (elevación) relativos, en grados. */
+  onOrbit: (dAzimuth: number, dElevation: number) => void;
+  /** Fin del arrastre: la cámara se ajusta a una vista si ha quedado muy cerca. */
+  onRelease: () => void;
 }) {
   const rate = useFrame((s) => s.rate);
-  // Con «reducir movimiento» la serie no arranca sola: se reproduce con el botón.
+  // Con «reducir movimiento» la serie no arranca sola y la cámara no se anima entre vistas.
   const reduceMotion = useMedia('(prefers-reduced-motion: reduce)');
+  const cam = useSmoothCamera(target, reduceMotion);
   // Rótulos a escala del tamaño real del reproductor: legibles aunque el vídeo se muestre pequeño.
   const stageRef = useRef<HTMLDivElement>(null);
   const [uiScale, setUiScale] = useState(props.uiScale);
@@ -55,28 +63,51 @@ const Stage = memo(function Stage({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const inputProps = useMemo(() => ({ ...props, uiScale }), [props, uiScale]);
+  const inputProps = useMemo(() => ({ ...props, uiScale, cam }), [props, uiScale, cam]);
   return (
     <div
       ref={stageRef}
       className="stage"
+      tabIndex={0}
+      aria-label="Escena 3D: arrastra o usa las flechas para girar e inclinar la cámara; Inicio vuelve a la vista"
+      onKeyDown={(e) => {
+        const step: Record<string, [number, number]> = { ArrowLeft: [-15, 0], ArrowRight: [15, 0], ArrowUp: [0, 10], ArrowDown: [0, -10] };
+        const d = step[e.key];
+        if (d) {
+          e.preventDefault();
+          onOrbit(d[0], d[1]);
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          onOrbit(Number.NaN, Number.NaN);
+        }
+      }}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         const startX = e.clientX;
-        let last = 0;
+        const startY = e.clientY;
+        // En pantallas táctiles el gesto vertical desplaza la página: solo se gira.
+        const tilt = e.pointerType === 'mouse' || e.pointerType === 'pen';
+        let lastX = 0;
+        let lastY = 0;
         const move = (ev: PointerEvent) => {
-          const deg = Math.round((ev.clientX - startX) / 4);
-          if (deg !== last) {
-            onRotate(deg - last);
-            last = deg;
+          const dx = Math.round((ev.clientX - startX) / 4);
+          const dy = tilt ? Math.round((ev.clientY - startY) / 4) : 0;
+          if (dx !== lastX || dy !== lastY) {
+            onOrbit(dx - lastX, dy - lastY);
+            lastX = dx;
+            lastY = dy;
           }
         };
         const up = () => {
           window.removeEventListener('pointermove', move);
           window.removeEventListener('pointerup', up);
+          window.removeEventListener('pointercancel', up);
+          if (lastX || lastY) onRelease();
         };
         window.addEventListener('pointermove', move);
         window.addEventListener('pointerup', up);
+        // En móvil, si el gesto acaba siendo un desplazamiento de la página, llega pointercancel.
+        window.addEventListener('pointercancel', up);
       }}
     >
       <Player
@@ -199,6 +230,7 @@ export function StationView({ id }: { id: string }) {
       reps: st.reps,
       viewId: st.viewId,
       azimuthOffset: st.azimuthOffset,
+      elevationOffset: st.elevationOffset,
       zoom: st.zoom,
       showMuscles: app.showMuscles,
       showGauges: app.showGauges,
@@ -234,13 +266,35 @@ export function StationView({ id }: { id: string }) {
     };
   }, [id]);
 
-  const onRotate = useMemo(
-    () => (deg: number) => {
-      const cur = settingsFor(useApp.getState(), id);
-      useApp.getState().update(id, { azimuthOffset: cur.azimuthOffset + deg });
-    },
-    [id],
-  );
+  const view = mod.content.views.find((v) => v.id === st.viewId) ?? mod.content.views[0]!;
+  const targetAz = view.azimuth + st.azimuthOffset;
+  const targetEl = clampElevation(view.elevation + st.elevationOffset);
+  const target = useMemo(() => ({ azimuth: targetAz, elevation: targetEl }), [targetAz, targetEl]);
+
+  const orbit = useMemo(() => {
+    const current = () => {
+      const s = settingsFor(useApp.getState(), id);
+      return { s, view: mod.content.views.find((v) => v.id === s.viewId) ?? mod.content.views[0]! };
+    };
+    return {
+      onOrbit(dAz: number, dEl: number) {
+        const { s, view: v } = current();
+        // NaN: volver a la vista sin giros.
+        if (Number.isNaN(dAz)) return useApp.getState().update(id, { azimuthOffset: 0, elevationOffset: 0 });
+        const el = clampElevation(v.elevation + s.elevationOffset + dEl);
+        useApp.getState().update(id, { azimuthOffset: s.azimuthOffset + dAz, elevationOffset: el - v.elevation });
+      },
+      onRelease() {
+        const { s, view: v } = current();
+        const az = v.azimuth + s.azimuthOffset;
+        const el = clampElevation(v.elevation + s.elevationOffset);
+        // Si el arrastre acaba a menos de 6° de una vista, se ajusta a ella (y su botón se marca).
+        const snap = mod.content.views.find((w) => Math.abs(angleDelta(w.azimuth, az)) <= 6 && Math.abs(w.elevation - el) <= 6);
+        if (snap) useApp.getState().update(id, { viewId: snap.id, azimuthOffset: 0, elevationOffset: 0 });
+        else useApp.getState().update(id, { azimuthOffset: angleDelta(v.azimuth, az) });
+      },
+    };
+  }, [id, mod]);
 
   return (
     <div className="station">
@@ -256,7 +310,7 @@ export function StationView({ id }: { id: string }) {
             {st.errorId && <span className="tag tag--risk">Error: {mod.content.errors.find((e) => e.id === st.errorId)?.label}</span>}
           </div>
         </header>
-        <Stage props={props} duration={duration} playerRef={playerRef} onRotate={onRotate} />
+        <Stage props={props} target={target} duration={duration} playerRef={playerRef} onOrbit={orbit.onOrbit} onRelease={orbit.onRelease} />
       </section>
       <LivePanels mod={mod} st={st} props={props} playerRef={playerRef} />
     </div>

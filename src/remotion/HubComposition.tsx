@@ -10,6 +10,10 @@ import { CameraRig } from '../scene/CameraRig';
 import { boxCorners, fitCamera, keyLightFor, project } from '../scene/camera';
 import { Lights } from '../scene/Environment';
 import { GymRoom, RoomLighting } from '../scene/GymRoom';
+import { BakedRoom } from '../scene/env/BakedRoom';
+import { useEnvironment } from '../scene/env/useEnvironment';
+import { Repaint } from '../scene/Repaint';
+import { HUB_FLOOR, HUB_HEIGHT, HUB_ZONES } from '../scene/layout';
 import { Mat } from '../scene/kit';
 import { PALETTES } from '../scene/palette';
 import { Placeholder } from '../scene/Placeholder';
@@ -18,14 +22,8 @@ import { getModule } from '../stations/modules';
 import type { HubCompProps } from './props';
 import { MONO, SANS } from './StationComposition';
 
-const FLOOR: readonly [number, number] = [19, 13];
-const ZONES: Record<Zone, { x: number; z: number; w: number; d: number }> = {
-  traccion: { x: -4.75, z: -3.9, w: 9.3, d: 5.0 },
-  brazos: { x: 1.4, z: -3.9, w: 2.9, d: 5.0 },
-  pierna: { x: 6.15, z: -2.4, w: 6.5, d: 8.0 },
-  empuje: { x: -3.35, z: 2.6, w: 12.1, d: 7.6 },
-  libre: { x: 6.15, z: 4.7, w: 6.5, d: 3.4 },
-};
+const FLOOR = HUB_FLOOR;
+const ZONES = HUB_ZONES;
 
 type Rect = { x0: number; y0: number; x1: number; y1: number };
 /** Distancia entre dos rectángulos de pantalla; negativa si se solapan (cuanto más, más negativa). */
@@ -60,13 +58,15 @@ function ActiveStation({ entry, t, props }: { entry: CatalogEntry; t: number; pr
 
 export const HubComposition: React.FC<HubCompProps> = (props) => {
   // Fuera del lienzo 3D: aquí sí llega el contexto de Remotion (espera al modelo al renderizar).
-  useAnatomy();
+  const anatomy = useAnatomy();
+  const env = useEnvironment();
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const palette = PALETTES[props.theme];
   const t = frame / fps;
-  const cam = fitCamera({
-    azimuth: -45 + 90 * props.rotation,
+  const azimuth = -45 + 90 * props.rotation;
+  const overview = fitCamera({
+    azimuth,
     elevation: 35.264,
     points: boxCorners([-FLOOR[0] / 2, 0, -FLOOR[1] / 2], [FLOOR[0] / 2, 1.2, FLOOR[1] / 2]),
     width,
@@ -74,6 +74,28 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
     margins: { top: 0.06, bottom: 0.02, side: 0.02 },
     zoomFactor: props.zoom,
   });
+  // Al elegir una máquina la cámara se acerca a ella antes de abrir la estación.
+  const focusEntry = props.focus ? CATALOG.find((c) => c.id === props.focus!.id) : undefined;
+  const ft = focusEntry ? Math.min(1, Math.max(0, props.focus!.t)) : 0;
+  const ease = ft < 0.5 ? 2 * ft * ft : 1 - (-2 * ft + 2) ** 2 / 2;
+  let cam = overview;
+  if (focusEntry && ease > 0) {
+    const bb = getModule(focusEntry.id)?.logic.bounds;
+    const r = bb ? Math.max(bb.max[0] - bb.min[0], bb.max[2] - bb.min[2]) / 2 : 1.2;
+    const { x, z } = focusEntry.hub;
+    const close = fitCamera({
+      azimuth,
+      elevation: 35.264,
+      points: boxCorners([x - r, 0, z - r], [x + r, bb?.max[1] ?? 2.2, z + r]),
+      width,
+      height,
+      margins: { top: 0.12, bottom: 0.08, side: 0.15 },
+    });
+    const target = overview.target.clone().lerp(close.target, ease);
+    const dir = overview.position.clone().sub(overview.target).normalize();
+    cam = { ...overview, target, position: target.clone().add(dir.multiplyScalar(30)), zoom: overview.zoom * (close.zoom / overview.zoom) ** ease };
+  }
+  const labelOpacity = 1 - ease;
   const unit = (Math.min(width, height) / 900) * (props.uiScale ?? 1);
   // Rótulo de cada estación justo encima de su máquina (a altura fija, el de una máquina baja
   // flotaría sobre la de detrás).
@@ -118,10 +140,15 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
       <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand">
         <color attach="background" args={[palette.bg]} />
         <CameraRig spec={cam} />
-        <Lights extent={12} keyPosition={keyLightFor(cam)} />
+        <Lights extent={12} keyPosition={keyLightFor(overview)} shadowPosition={env ? [4, 12, 2.5] : undefined} />
         <RoomLighting />
-        <GymRoom palette={palette} center={[0, 0]} size={FLOOR} azimuth={-45 + 90 * props.rotation} elevation={35.264} height={2.6} variant="hub" />
-        {(Object.keys(ZONES) as Zone[]).map((z) => {
+        {env ? (
+          <BakedRoom asset={env.rooms.hub} palette={palette} azimuth={azimuth} floorSize={FLOOR} shadowOpacity={0.24} />
+        ) : (
+          <GymRoom palette={palette} center={[0, 0]} size={FLOOR} azimuth={azimuth} elevation={35.264} height={HUB_HEIGHT} variant="hub" />
+        )}
+        {/* Con la sala horneada el suelo de cada zona ya viene pintado. */}
+        {!env && (Object.keys(ZONES) as Zone[]).map((z) => {
           const zr = ZONES[z];
           return (
             <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[zr.x, 0.006, zr.z]} receiveShadow>
@@ -168,6 +195,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
             </group>
           );
         })}
+        <Repaint ready={[env, anatomy]} />
       </ThreeCanvas>
 
       {(Object.keys(ZONES) as Zone[]).map((z) => {
@@ -180,7 +208,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
               left: x,
               top: y,
               color: palette.label,
-              opacity: 0.75,
+              opacity: 0.75 * labelOpacity,
               textShadow: `0 0 ${4 * unit}px ${palette.bg}, 0 0 ${2 * unit}px ${palette.bg}`,
               translate: '-50% -50%',
               whiteSpace: 'nowrap',
@@ -217,7 +245,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
               fontWeight: 700,
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
-              opacity: entry.ready || hovered ? 1 : 0.72,
+              opacity: (entry.ready || hovered ? 1 : 0.72) * labelOpacity,
             }}
           >
             {!entry.ready && <span style={{ opacity: 0.6 }}>○ </span>}

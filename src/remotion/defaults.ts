@@ -16,6 +16,7 @@ export function defaultStationProps(stationId: string, variantId?: string): Stat
     reps: 3,
     viewId: mod.content.views[0]!.id,
     azimuthOffset: 0,
+    elevationOffset: 0,
     zoom: 1,
     showMuscles: true,
     showGauges: true,

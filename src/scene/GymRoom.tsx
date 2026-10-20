@@ -64,7 +64,7 @@ function rubberTexture(p: ScenePalette): Texture {
 }
 
 /** Luna de espejo: degradado con dos reflejos diagonales. */
-function mirrorTexture(p: ScenePalette): Texture {
+export function mirrorTexture(p: ScenePalette): Texture {
   const key = `mirror${p.room.mirror}`;
   const hit = textureCache.get(key);
   if (hit) return hit;

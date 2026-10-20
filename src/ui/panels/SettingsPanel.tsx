@@ -23,6 +23,9 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
   const step = loadStep(load);
   const { min, max } = loadRange(load);
   const shown = loadValueLabel(load, st.loadKg);
+  const view = mod.content.views.find((v) => v.id === st.viewId) ?? mod.content.views[0]!;
+  const elevation = view.elevation + st.elevationOffset;
+  const tilt = (deg: number) => app.update(id, { elevationOffset: Math.min(89, Math.max(0, elevation + deg)) - view.elevation });
 
   return (
     <div className="panel-stack">
@@ -133,18 +136,24 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
               aria-label={v.label}
               title={v.label}
               className={st.viewId === v.id ? 'is-on' : ''}
-              onClick={() => app.update(id, { viewId: v.id, azimuthOffset: 0 })}
+              onClick={() => app.update(id, { viewId: v.id, azimuthOffset: 0, elevationOffset: 0 })}
             >
               {VIEW_SHORT[v.label] ?? v.label}
             </button>
           ))}
         </div>
         <div className="row-gap">
-          <button className="ghost-btn" onClick={() => app.update(id, { azimuthOffset: st.azimuthOffset - 30 })}>
+          <button className="ghost-btn" onClick={() => app.update(id, { azimuthOffset: st.azimuthOffset - 30 })} aria-label="Girar 30° a la izquierda">
             ↺ 30°
           </button>
-          <button className="ghost-btn" onClick={() => app.update(id, { azimuthOffset: st.azimuthOffset + 30 })}>
+          <button className="ghost-btn" onClick={() => app.update(id, { azimuthOffset: st.azimuthOffset + 30 })} aria-label="Girar 30° a la derecha">
             ↻ 30°
+          </button>
+          <button className="ghost-btn" onClick={() => tilt(15)} aria-label="Subir la cámara 15°" disabled={elevation >= 89}>
+            ⤒
+          </button>
+          <button className="ghost-btn" onClick={() => tilt(-15)} aria-label="Bajar la cámara 15°" disabled={elevation <= 0}>
+            ⤓
           </button>
           <button className="ghost-btn" onClick={() => app.update(id, { zoom: Math.min(2.2, st.zoom * 1.15) })} aria-label="Acercar">
             +
