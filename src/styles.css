@@ -38,6 +38,11 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* la misma curva que los rótulos del reproductor */
   /* Fondo de la escena 3D mientras pinta el lienzo (= palette.bg de cada tema). */
   --scene-bg: #0e1116;
+  /* Fases de la repetición (línea de tiempo). */
+  --ph-exc: #3d8bfd;
+  --ph-pe: #7aa7d9;
+  --ph-con: var(--accent);
+  --ph-pc: #f5b38f;
   color-scheme: dark;
 }
 
@@ -66,6 +71,9 @@
 
 :root[data-skin='terminal'] {
   --scene-bg: #050a06;
+  --ph-exc: #5dd8ff;
+  --ph-pe: #2c8fa8;
+  --ph-pc: #6f9f3a;
   --bg: #030704;
   --bg-2: #061009;
   --panel: #07120a;
@@ -152,6 +160,7 @@ a {
   color: var(--muted);
   font-size: 12.5px;
   margin: 6px 0 0;
+  text-wrap: pretty;
 }
 .sr-only {
   position: absolute;
@@ -349,6 +358,13 @@ a {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.block__title .link-btn {
+  font-family: var(--font-body);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
 .chip-list,
 .presets {
   display: flex;
@@ -497,6 +513,7 @@ input[type='range'] {
   font-weight: 600;
 }
 .variant__desc {
+  text-wrap: pretty;
   font-size: 12.5px;
   color: var(--muted);
   line-height: 1.35;
@@ -533,6 +550,9 @@ input[type='range'] {
   font-size: 11px;
   color: var(--muted);
   gap: 3px;
+}
+.tempo__field span {
+  text-align: center;
 }
 .tempo__field input {
   width: 100%;
@@ -580,6 +600,10 @@ input[type='range'] {
   line-height: 0.92;
   text-transform: uppercase;
   letter-spacing: 0.01em;
+}
+:root[data-skin='terminal'] .hub__intro h1 {
+  /* La monoespaciada es mucho más ancha que la condensada: sin esto desborda la página. */
+  font-size: clamp(28px, 2.9vw, 40px);
 }
 .hub__intro h1 em {
   font-style: normal;
@@ -655,10 +679,15 @@ input[type='range'] {
   opacity: 0.78;
 }
 .card--principal {
+  border-left-color: var(--m-principal);
   box-shadow: inset 0 0 0 1px var(--m-principal);
 }
 .card--secundario {
+  border-left-color: var(--m-sinergista);
   box-shadow: inset 0 0 0 1px var(--m-sinergista);
+}
+.hub--filtering .card:not(.card--principal, .card--secundario) {
+  opacity: 0.45;
 }
 .card__status {
   font-family: var(--font-mono);
@@ -666,6 +695,12 @@ input[type='range'] {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent);
+}
+.card__status--principal {
+  color: var(--m-principal);
+}
+.card__status--secundario {
+  color: var(--m-sinergista);
 }
 .card--soon .card__status {
   color: var(--muted);
@@ -871,9 +906,16 @@ input[type='range'] {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: clamp(28px, 3.4vw, 44px);
+  font-size: clamp(26px, 2.6vw, 40px);
   line-height: 1;
   text-transform: uppercase;
+}
+/* El resumen es una frase: en minúscula ocupa una línea y la línea de tiempo cabe sin desplazar. */
+.station__title .eyebrow {
+  font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
 }
 .station__chips {
   display: flex;
@@ -979,6 +1021,7 @@ input[type='range'] {
   box-shadow: 0 0 0 2px var(--panel);
 }
 .timeline__tip {
+  order: 1;
   margin-left: auto;
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -1001,16 +1044,16 @@ input[type='range'] {
   background: var(--line-strong);
 }
 .k-exc {
-  background: #3d8bfd;
+  background: var(--ph-exc);
 }
 .k-pe {
-  background: #7aa7d9;
+  background: var(--ph-pe);
 }
 .k-con {
-  background: var(--accent);
+  background: var(--ph-con);
 }
 .k-pc {
-  background: #f5b38f;
+  background: var(--ph-pc);
 }
 
 /* Pestañas */
@@ -1097,7 +1140,6 @@ input[type='range'] {
 }
 .cues-stack > .cues[data-on] {
   visibility: visible;
-  animation: fade-in var(--dur-2) var(--ease-out);
 }
 .cues li::marker {
   font-family: var(--font-mono);
@@ -1189,7 +1231,10 @@ input[type='range'] {
   color: var(--muted);
 }
 .joint__why {
+  margin: 3px 0 0;
+  font-size: 12.5px;
   color: var(--text);
+  text-wrap: pretty;
 }
 .range {
   position: relative;
@@ -1238,6 +1283,10 @@ input[type='range'] {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+}
+.moments li > .mono {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .moments__bar {
   height: 10px;
@@ -1561,6 +1610,10 @@ input[type='range'] {
   html,
   body {
     font-size: 14.5px;
+  }
+  /* Las pestañas que no caben se desvanecen en el borde: se ve que hay más. */
+  .tabs {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
   }
   .topbar {
     padding-block: 10px 8px;

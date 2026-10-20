@@ -2,6 +2,7 @@ import { windowActive } from '../../engine/evaluate';
 import { JOINT_MOMENT_LABEL, type JointMomentId } from '../../engine/moments';
 import type { PhaseKind } from '../../engine/timeline';
 import { CONFIDENCE_LABEL, type Evaluation, type JointWindow, type Status } from '../../engine/types';
+import { deg, num } from '../format';
 
 const ICON: Record<Status, string> = { ok: '✔', aviso: '▲', riesgo: '✖' };
 const AT_LABEL = { contraccion: 'se evalúa en la contracción', estiramiento: 'se evalúa en el estiramiento', movimiento: 'se evalúa en movimiento', siempre: '' };
@@ -56,16 +57,16 @@ export function JointsPanel({
                   </span>
                   <span className="joint__label">{w.label}</span>
                   <span className="joint__value mono">
-                    {live ? ev.map((e) => `${Math.round(e.value)}°`).join(' · ') : '—'}
+                    {live ? ev.map((e) => deg(e.value)).join(' · ') : '—'}
                   </span>
                 </div>
                 <RangeBar w={w} values={live ? ev.map((e) => ({ v: e.value, s: e.status })) : []} />
                 <p className="joint__cue">{w.cue}</p>
                 <p className="joint__meta">
-                  Correcto {w.ok[0]}…{w.ok[1]}° · {CONFIDENCE_LABEL[w.confidence]}
+                  Correcto {num(w.ok[0])}…{num(w.ok[1])}° · {CONFIDENCE_LABEL[w.confidence]}
                   {w.at !== 'siempre' && ` · ${AT_LABEL[w.at]}`}
-                  {live && worst !== 'ok' && <span className="joint__why"> — {w.why}</span>}
                 </p>
+                {live && worst !== 'ok' && <p className="joint__why">{w.why}</p>}
               </li>
             );
           })}

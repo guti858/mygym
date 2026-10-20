@@ -25,8 +25,13 @@ export type StationCompProps = {
   showGauges: boolean;
   showOverlay: boolean;
   theme: ThemeId;
-  /** Escala de rótulos (1 en escritorio, mayor en pantallas pequeñas). */
+  /** Escala de rótulos (1 con el vídeo a tamaño completo, mayor cuanto más pequeño se muestra). */
   uiScale: number;
+  /**
+   * Dentro de la app, que ya muestra alrededor el nombre, la fase, la repetición y el progreso:
+   * el reproductor omite la tarjeta de título y deja abajo solo la pauta de técnica.
+   */
+  embedded?: boolean;
 };
 
 export type HubCompProps = {

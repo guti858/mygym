@@ -57,7 +57,7 @@ export function HubView() {
   if (filter) mapActive[filter] = { role: 'principal', level: 3 };
 
   return (
-    <div className="hub">
+    <div className={`hub${filter ? ' hub--filtering' : ''}`}>
       <section className="hub__stage">
         <div className="hub__player">
           <Player
@@ -125,7 +125,12 @@ export function HubView() {
                     onMouseLeave={() => setHovered(null)}
                     aria-disabled={!c.ready}
                   >
-                    <span className="card__status">{c.ready ? 'Disponible' : 'Próximamente'}</span>
+                    {/* Con las 12 disponibles, el estado solo se muestra si aporta algo: el papel del músculo filtrado. */}
+                    {!c.ready ? (
+                      <span className="card__status">Próximamente</span>
+                    ) : (
+                      role && <span className={`card__status card__status--${role}`}>{role === 'principal' ? 'Motor principal' : 'Secundario'}</span>
+                    )}
                     <span className="card__name">{c.name}</span>
                     <span className="card__mods">{c.modalidades.join(' · ')}</span>
                     <span className="card__muscles">{c.principal.map((m) => MUSCLES[m].name).join(', ')}</span>

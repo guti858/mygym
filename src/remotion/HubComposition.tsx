@@ -27,6 +27,14 @@ const ZONES: Record<Zone, { x: number; z: number; w: number; d: number }> = {
   libre: { x: 6.15, z: 4.7, w: 6.5, d: 3.4 },
 };
 
+type Rect = { x0: number; y0: number; x1: number; y1: number };
+/** Distancia entre dos rectángulos de pantalla; negativa si se solapan (cuanto más, más negativa). */
+function rectGap(a: Rect, b: Rect): number {
+  const dx = Math.max(a.x0 - b.x1, b.x0 - a.x1);
+  const dy = Math.max(a.y0 - b.y1, b.y0 - a.y1);
+  return dx < 0 && dy < 0 ? Math.max(dx, dy) : Math.hypot(Math.max(0, dx), Math.max(0, dy));
+}
+
 function ActiveStation({ entry, t, props }: { entry: CatalogEntry; t: number; props: HubCompProps }) {
   const mod = getModule(entry.id)!;
   const palette = PALETTES[props.theme];
@@ -67,6 +75,43 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
     zoomFactor: props.zoom,
   });
   const unit = (Math.min(width, height) / 900) * (props.uiScale ?? 1);
+  // Rótulo de cada estación justo encima de su máquina (a altura fija, el de una máquina baja
+  // flotaría sobre la de detrás).
+  const labelY = (e: CatalogEntry) => Math.min(2.55, (getModule(e.id)?.logic.bounds.max[1] ?? 2.2) + 0.35);
+  // Rótulos de zona: entre una rejilla de puntos del suelo de cada zona, el que deja el rótulo más
+  // lejos (en pantalla) de las máquinas, de sus rótulos y de los rótulos de zona ya colocados.
+  // Así ninguno se monta sobre otro, con cualquier giro de la sala.
+  const occupied: Rect[] = CATALOG.flatMap((e) => {
+    const [bx, by] = project(cam, new Vector3(e.hub.x, 0, e.hub.z));
+    const [lx, ly] = project(cam, new Vector3(e.hub.x, labelY(e), e.hub.z));
+    const lw = (e.short.length * 0.56 * 17 + 18) * unit;
+    return [
+      { x0: Math.min(bx, lx) - 40 * unit, x1: Math.max(bx, lx) + 40 * unit, y0: Math.min(by, ly), y1: Math.max(by, ly) + 10 * unit },
+      { x0: lx - lw / 2, x1: lx + lw / 2, y0: ly - 30 * unit, y1: ly },
+    ];
+  });
+  const zoneLabelAt = {} as Record<Zone, [number, number]>;
+  for (const z of Object.keys(ZONES) as Zone[]) {
+    const zr = ZONES[z];
+    const w = ZONE_LABEL[z].length * (0.68 * 15 * unit + 2);
+    const h = 18 * unit;
+    let best: [number, number] = [0, 0];
+    let bestScore = -Infinity;
+    for (let i = 0; i <= 4; i++) {
+      for (let j = 0; j <= 4; j++) {
+        const [cx, cy] = project(cam, new Vector3(zr.x + (i / 2 - 1) * (zr.w / 2 - 0.5), 0, zr.z + (j / 2 - 1) * (zr.d / 2 - 0.4)));
+        const r: Rect = { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2 };
+        const inside = r.x0 > 0 && r.x1 < width && r.y0 > 0 && r.y1 < height;
+        const score = (inside ? 0 : -1e6) + Math.min(...occupied.map((o) => rectGap(r, o)));
+        if (score > bestScore) {
+          bestScore = score;
+          best = [cx, cy];
+        }
+      }
+    }
+    zoneLabelAt[z] = best;
+    occupied.push({ x0: best[0] - w / 2, x1: best[0] + w / 2, y0: best[1] - h / 2, y1: best[1] + h / 2 });
+  }
 
   return (
     <AbsoluteFill style={{ backgroundColor: palette.bg, fontFamily: props.theme === 'terminal' ? MONO : SANS }}>
@@ -126,8 +171,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
       </ThreeCanvas>
 
       {(Object.keys(ZONES) as Zone[]).map((z) => {
-        const zr = ZONES[z];
-        const [x, y] = project(cam, new Vector3(zr.x - zr.w / 2 + 0.6, 0, zr.z + zr.d / 2 - 0.4));
+        const [x, y] = zoneLabelAt[z];
         return (
           <div
             key={z}
@@ -136,7 +180,10 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
               left: x,
               top: y,
               color: palette.label,
-              opacity: 0.55,
+              opacity: 0.75,
+              textShadow: `0 0 ${4 * unit}px ${palette.bg}, 0 0 ${2 * unit}px ${palette.bg}`,
+              translate: '-50% -50%',
+              whiteSpace: 'nowrap',
               fontSize: 15 * unit,
               fontWeight: 800,
               letterSpacing: 2,
@@ -150,7 +197,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
       })}
 
       {CATALOG.map((entry) => {
-        const [x, y] = project(cam, new Vector3(entry.hub.x, 2.55, entry.hub.z));
+        const [x, y] = project(cam, new Vector3(entry.hub.x, labelY(entry), entry.hub.z));
         const hovered = props.hovered === entry.id;
         const hl = props.highlight[entry.id];
         return (

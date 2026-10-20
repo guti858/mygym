@@ -4,6 +4,9 @@ import { parseTempo, type Tempo } from '../../engine/timeline';
 import type { StationModule } from '../../stations/modules';
 import { useApp, type StationSettings } from '../../state/store';
 
+/** Rótulos cortos para los botones de vista (el nombre completo va en el título). */
+const VIEW_SHORT: Record<string, string> = { 'Desde los pies': 'Pies', 'Rodillas (desde la cabeza)': 'Rodillas' };
+
 const TEMPO_FIELDS: Array<[keyof Tempo, string, string]> = [
   ['excentrica', 'Exc.', 'Excéntrica (s)'],
   ['pausaEstiramiento', 'P. est.', 'Pausa en estiramiento (s)'],
@@ -122,8 +125,16 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
         <h3 className="block__title">Vista</h3>
         <div className="segmented" role="radiogroup" aria-label="Vista de cámara">
           {mod.content.views.map((v) => (
-            <button key={v.id} role="radio" aria-checked={st.viewId === v.id} className={st.viewId === v.id ? 'is-on' : ''} onClick={() => app.update(id, { viewId: v.id, azimuthOffset: 0 })}>
-              {v.label.split(' ')[0]}
+            <button
+              key={v.id}
+              role="radio"
+              aria-checked={st.viewId === v.id}
+              aria-label={v.label}
+              title={v.label}
+              className={st.viewId === v.id ? 'is-on' : ''}
+              onClick={() => app.update(id, { viewId: v.id, azimuthOffset: 0 })}
+            >
+              {VIEW_SHORT[v.label] ?? v.label}
             </button>
           ))}
         </div>

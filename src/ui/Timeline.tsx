@@ -67,7 +67,7 @@ export function Timeline({
           </select>
         </label>
         <span className="mono muted timeline__clock">
-          {t.toFixed(1)} / {total.toFixed(0)} s
+          {t.toFixed(1)} / {total.toFixed(1)} s
         </span>
       </div>
       <div
@@ -108,7 +108,7 @@ export function Timeline({
       </div>
       <div className="timeline__legend">
         <span className="timeline__tip">Arrastra la escena para girarla · doble clic: pantalla completa</span>
-        {(['excentrica', 'pausa_estiramiento', 'concentrica', 'pausa_contraccion'] as PhaseKind[]).map((k) => (
+        {(['preparacion', 'excentrica', 'pausa_estiramiento', 'concentrica', 'pausa_contraccion'] as PhaseKind[]).map((k) => (
           <span key={k}>
             <span className={`dot ${KIND_CLASS[k]}`} /> {PHASE_LABEL[k]}
           </span>

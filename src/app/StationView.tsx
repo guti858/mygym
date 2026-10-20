@@ -42,8 +42,23 @@ const Stage = memo(function Stage({
   const rate = useFrame((s) => s.rate);
   // Con «reducir movimiento» la serie no arranca sola: se reproduce con el botón.
   const reduceMotion = useMedia('(prefers-reduced-motion: reduce)');
+  // Rótulos a escala del tamaño real del reproductor: legibles aunque el vídeo se muestre pequeño.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [uiScale, setUiScale] = useState(props.uiScale);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry?.contentRect.width ?? 0;
+      if (w > 0) setUiScale(Math.round(Math.min(2.2, Math.max(1, 900 / w)) * 20) / 20);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const inputProps = useMemo(() => ({ ...props, uiScale }), [props, uiScale]);
   return (
     <div
+      ref={stageRef}
       className="stage"
       onPointerDown={(e) => {
         if (e.button !== 0) return;
@@ -67,7 +82,7 @@ const Stage = memo(function Stage({
       <Player
         ref={playerRef}
         component={StationComposition}
-        inputProps={props}
+        inputProps={inputProps}
         durationInFrames={duration}
         compositionWidth={COMP_W}
         compositionHeight={COMP_H}
@@ -166,7 +181,6 @@ function LivePanels({ mod, st, props, playerRef }: { mod: StationModule; st: Sta
 export function StationView({ id }: { id: string }) {
   const mod = getModule(id)!;
   const app = useApp();
-  const narrow = !useMedia('(min-width: 700px)');
   const st = settingsFor(app, id);
   const playerRef = useRef<PlayerRef | null>(null);
   const variant = findVariant(mod.content, st.variantId);
@@ -187,9 +201,10 @@ export function StationView({ id }: { id: string }) {
       showGauges: app.showGauges,
       showOverlay: app.showOverlay,
       theme: app.theme,
-      uiScale: narrow ? 1.5 : 1,
+      uiScale: 1,
+      embedded: true,
     }),
-    [id, variant.id, st, app.anthro, app.showMuscles, app.showGauges, app.showOverlay, app.theme, narrow],
+    [id, variant.id, st, app.anthro, app.showMuscles, app.showGauges, app.showOverlay, app.theme],
   );
   const startAt = startAtOf(mod.logic, variant.id);
   const duration = useMemo(() => durationInFrames(stationTimeline(st.tempo, st.reps, startAt), FPS), [st.tempo, st.reps, startAt]);

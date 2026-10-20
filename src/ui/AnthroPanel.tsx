@@ -2,6 +2,12 @@ import { useEffect, useRef } from 'react';
 import { ANTHRO_TEST_PROFILES, computeSegments, type Anthropometry } from '../engine/anthropometry';
 import { useApp } from '../state/store';
 
+/** «175 cm», «1,00 ×», «110°»: unidad separada salvo los grados, proporciones con dos decimales. */
+const fmtField = (v: number, step: number, unit: string) => {
+  const n = step < 1 ? v.toFixed(2).replace('.', ',') : String(v);
+  return unit === '°' ? `${n}°` : `${n} ${unit}`;
+};
+
 const FIELDS: Array<{ key: keyof Anthropometry; label: string; min: number; max: number; step: number; unit: string; hint?: string }> = [
   { key: 'heightCm', label: 'Talla', min: 140, max: 210, step: 1, unit: 'cm' },
   { key: 'massKg', label: 'Masa corporal', min: 40, max: 160, step: 1, unit: 'kg' },
@@ -57,10 +63,7 @@ export function AnthroPanel() {
                 {f.hint && <small> · {f.hint}</small>}
               </span>
               <input type="range" min={f.min} max={f.max} step={f.step} value={a[f.key]} onChange={(e) => app.setAnthro({ [f.key]: Number(e.target.value) })} />
-              <output className="mono">
-                {a[f.key]}
-                {f.unit}
-              </output>
+              <output className="mono">{fmtField(Number(a[f.key]), f.step, f.unit)}</output>
             </label>
           ))}
         </div>
