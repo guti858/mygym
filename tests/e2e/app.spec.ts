@@ -229,9 +229,12 @@ test('gimnasio → estación: el plano se acerca a la máquina y la vista del gi
   const label = page.locator('.hub__player div', { hasText: /^Jalón al pecho$/ }).first();
   await expect(label).toBeVisible();
   const box = (await label.boundingBox())!;
-  // La máquina queda justo debajo de su rótulo.
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height + 45);
-  await expect(page).toHaveURL(/#\/e\/jalon/);
+  // La máquina queda justo debajo de su rótulo. El rótulo (HTML) puede verse antes de que la escena
+  // 3D acepte clics en un runner lento: se reintenta (la app ignora los clics durante la transición).
+  await expect(async () => {
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height + 45);
+    await expect(page).toHaveURL(/#\/e\/jalon/, { timeout: 4_000 });
+  }).toPass({ timeout: 45_000 });
   // La copia del plano se retira cuando la estación ya ha pintado.
   await expect(page.locator('.zoom-snap')).toHaveCount(0, { timeout: 60_000 });
   await expect(page.locator('.stage canvas')).toBeVisible();
