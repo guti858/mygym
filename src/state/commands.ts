@@ -4,11 +4,13 @@ import { loadValueLabel } from '../engine/load';
 import { JOINT_MOMENT_LABEL } from '../engine/moments';
 import { compositionId } from '../remotion/props';
 import { PHASE_LABEL, parseTempo, tempoToString } from '../engine/timeline';
+import { phaseEntry } from '../remotion/timing';
 import type { ThemeId } from '../scene/palette';
 import { CATALOG } from '../stations/catalog';
 import { getModule } from '../stations/modules';
 import { bridge } from './bridge';
 import { settingsFor, useApp, useFrame } from './store';
+import { num } from '../ui/format';
 
 export interface Command {
   name: string;
@@ -244,20 +246,20 @@ export const COMMANDS: Command[] = [
       const i = d.startsWith('ant') ? Math.max(0, cur.state.index - 1) : d === 'inicio' ? 0 : Math.min(segs.length - 1, cur.state.index + 1);
       const seg = segs[i]!;
       bridge.player?.pause();
-      bridge.player?.seekTo(Math.round(seg.start * bridge.fps) + 1);
+      bridge.player?.seekTo(Math.round(phaseEntry(seg, bridge.fps) * bridge.fps));
       return `${PHASE_LABEL[seg.kind]}${seg.rep ? ` · rep ${seg.rep}` : ''}`;
     },
   },
   {
     name: 'velocidad',
     aliases: ['speed'],
-    usage: 'velocidad <0.25–2>',
+    usage: 'velocidad <0,25–2>',
     help: 'Velocidad de reproducción.',
     run: ([v]) => {
       const n = Number((v ?? '').replace(',', '.'));
-      if (!(n >= 0.25 && n <= 2)) return fail('Entre 0.25 y 2.');
+      if (!(n >= 0.25 && n <= 2)) return fail('Entre 0,25 y 2.');
       useFrame.setState({ rate: n });
-      return `Velocidad ×${n}`;
+      return `Velocidad ×${String(n).replace('.', ',')}`;
     },
   },
   {
@@ -271,7 +273,7 @@ export const COMMANDS: Command[] = [
       const lines = [`${PHASE_LABEL[cur.state.kind]} · progreso ${(cur.state.p * 100).toFixed(0)}%`];
       for (const e of cur.result.evaluations) {
         const icon = e.status === 'ok' ? '✔' : e.status === 'aviso' ? '▲' : '✖';
-        lines.push(`  ${icon} ${e.window.label}${e.side ? ` (${e.side === 'L' ? 'izq' : 'der'})` : ''}: ${e.value.toFixed(1)}° [ok ${e.window.ok[0]}…${e.window.ok[1]}]`);
+        lines.push(`  ${icon} ${e.window.label}${e.side ? ` (${e.side === 'L' ? 'izq' : 'der'})` : ''}: ${num(e.value, 1)}° [ok ${num(e.window.ok[0])}…${num(e.window.ok[1])}]`);
       }
       return lines;
     },
@@ -391,16 +393,16 @@ export const COMMANDS: Command[] = [
   },
   {
     name: 'mostrar',
-    usage: 'mostrar <musculos|transportadores|rotulos> <si|no>',
+    usage: 'mostrar <musculos|angulos|rotulos> <si|no>',
     help: 'Capas de la escena.',
-    complete: (args) => (args.length <= 1 ? ['musculos', 'transportadores', 'rotulos'] : ['si', 'no']),
+    complete: (args) => (args.length <= 1 ? ['musculos', 'angulos', 'rotulos'] : ['si', 'no']),
     run: ([what, v]) => {
       const on = BOOL(v);
       const w = norm(what ?? '');
       if (w.startsWith('mus')) useApp.getState().set({ showMuscles: on });
       else if (w.startsWith('trans') || w.startsWith('ang')) useApp.getState().set({ showGauges: on });
       else if (w.startsWith('rot')) useApp.getState().set({ showOverlay: on });
-      else return fail('Capas: musculos, transportadores, rotulos.');
+      else return fail('Capas: musculos, angulos, rotulos.');
       return `${what}: ${on ? 'sí' : 'no'}`;
     },
   },

@@ -1,6 +1,6 @@
 # Guía de validación (v1: F0, F3 y F4a–d)
 
-Las 12 estaciones están implementadas. Tu validación cierra la v1. Hay cinco cosas que revisar.
+Las 12 estaciones están implementadas. Tu validación cierra la v1. Hay cinco cosas que revisar (la quinta, la interfaz).
 
 ## 1. Rebanada vertical (F3): Jalón al pecho y Prensa 45°
 
@@ -68,6 +68,18 @@ Consola: `ir dominadas`, `carga asistencia 25`, `ir remo`, `variante libre-prono
 - [ ] **Dominadas:** el recorrido arriba se mide por agarre (prona 122–152°, supina 130–160°, neutra 128–160° de codo), según lo que da la simulación con la barbilla justo por encima de la barra.
 - [ ] **Remo en T:** recorrido del codo por agarre (neutro 95–125°, prono 85–115°); el maneral va 24 cm por encima de la palanca para que los discos no choquen con el pecho; errores nuevos «pecho despegado» y «recorrido corto».
 - [ ] **Poleas:** 4 modalidades (sin barra EZ ni curl unilateral); en la extensión sobre la cabeza «hombros abajo» pasa a −5…18° porque con los brazos arriba la escápula se eleva de forma natural; en la polea alta «codo fijo» pasa a −10…22° (codos pegados pero algo por delante, para que la barra baje delante de los muslos); polea supuesta 2:1.
+
+## 5. Interfaz (consejo de diseño de la v1)
+
+Tres revisiones independientes (maquetación, movimiento y UX módulo por módulo) con capturas a 1280–1920 px y en móvil. Lo aplicado:
+
+- [ ] **Mapa muscular («Filtrar por músculo»):** ahora es la proyección frontal y dorsal del **mismo modelo anatómico** del avatar 3D, en SVG; cada músculo se resalta, se selecciona con teclado y se quita con un segundo clic.
+- [ ] **Sin solapes innecesarios:** dentro de la app el reproductor ya no repite el título ni la fase (están en la página); el error demostrado va arriba a la izquierda, lejos de los ángulos; los rótulos de zona del gimnasio se colocan donde no tapan máquinas ni otros rótulos; los rótulos escalan con el tamaño real del vídeo.
+- [ ] **Movimiento de la interfaz:** fundidos cortos al cambiar de vista o pestaña y al abrir la consola o el perfil; nada salta de sitio durante la reproducción (bloque «Ahora», línea de tiempo, pestañas); sin destello de tema al cargar; con «reducir movimiento» no hay animaciones y los vídeos no arrancan solos.
+- [ ] **Alineaciones y texto:** valores numéricos alineados, signo menos tipográfico, coma decimal, unidades separadas («175 cm»), colores de fase según el tema, contraste AA en el tema claro.
+- [ ] **Accesibilidad:** nombres accesibles en cabecera, consola y controles; estado de los botones de error; el foco no se pierde al cerrar la consola o quitar el filtro; título de la pestaña del navegador por estación; en móvil, el nombre de la estación sigue visible.
+
+Pendiente para después de la v1 (anotado por el consejo): rótulos del gimnasio en móvil, pestañas y grupos de opciones con flechas, alternativa en lista para los músculos pequeños del mapa en móvil y fuentes alojadas en el propio sitio.
 
 ### Cómo anotar cambios
 

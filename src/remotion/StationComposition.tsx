@@ -1,67 +1,54 @@
-import { ThreeCanvas } from "@remotion/three";
-import { useAnatomy } from "../anatomy/useAnatomy";
-import { useMemo } from "react";
-import { Vector3 } from "three";
-import {
-  AbsoluteFill,
-  Easing,
-  interpolate,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
-import { STATUS_RANK, evaluateFrame } from "../engine/evaluate";
-import { loadShort } from "../engine/load";
-import { METRIC_INFO } from "../engine/metrics";
-import { PHASE_LABEL, tempoToString } from "../engine/timeline";
-import type { Evaluation, Status } from "../engine/types";
-import { Avatar, jointStatuses, metricJoint } from "../scene/Avatar";
-import { CameraRig } from "../scene/CameraRig";
-import { fitCamera, keyLightFor, project } from "../scene/camera";
-import { Lights } from "../scene/Environment";
-import { GymRoom, RoomLighting } from "../scene/GymRoom";
-import { Gauges } from "../scene/Gauges";
-import { gaugeArcs, type GaugeArc } from "../scene/gauges";
-import { PALETTES } from "../scene/palette";
-import type { StationCompProps } from "./props";
-import { activationFor } from "./timing";
-import { useStationFrame } from "./useStation";
+import { ThreeCanvas } from '@remotion/three';
+import { useAnatomy } from '../anatomy/useAnatomy';
+import { useMemo } from 'react';
+import { Vector3 } from 'three';
+import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
+import { STATUS_RANK, evaluateFrame } from '../engine/evaluate';
+import { loadShort } from '../engine/load';
+import { METRIC_INFO } from '../engine/metrics';
+import { PHASE_LABEL, tempoToString } from '../engine/timeline';
+import type { Evaluation, Status } from '../engine/types';
+import { Avatar, jointStatuses, metricJoint } from '../scene/Avatar';
+import { CameraRig } from '../scene/CameraRig';
+import { fitCamera, keyLightFor, project } from '../scene/camera';
+import { Lights } from '../scene/Environment';
+import { GymRoom, RoomLighting } from '../scene/GymRoom';
+import { Gauges } from '../scene/Gauges';
+import { gaugeArcs, type GaugeArc } from '../scene/gauges';
+import { PALETTES } from '../scene/palette';
+import type { StationCompProps } from './props';
+import { activationFor } from './timing';
+import { useStationFrame } from './useStation';
 import { deg } from '../ui/format';
 
-export const SANS =
-  "'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+export const SANS = "'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 export const MONO = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
 
-const STATUS_ICON: Record<Status, string> = {
-  ok: "✔",
-  aviso: "▲",
-  riesgo: "✖",
-};
+const STATUS_ICON: Record<Status, string> = { ok: '✔', aviso: '▲', riesgo: '✖' };
 const SHORT_LABEL: Partial<Record<string, string>> = {
-  "knee.flex": "Rodilla",
-  "elbow.flex": "Codo",
-  "hip.flex": "Cadera",
-  "shoulder.elev": "Hombro",
-  "trunk.incline": "Tronco",
-  "neck.flex": "Cuello",
-  "pelvis.tilt": "Pelvis",
-  "ankle.dorsi": "Tobillo",
-  "scap.elev": "Escápula",
-  "knee.valgus": "Valgo",
-  "shoulder.abd": "Codos (aper.)",
-  "shoulder.flare": "Codos (aper.)",
-  "shoulder.flex": "Hombro (flex.)",
-  "shoulder.behind": "Codo vs tronco",
-  "scap.prot": "Escápula (prot.)",
-  "wrist.ext": "Muñeca",
-  "lumbar.flex": "Lumbar",
-  "hip.abd": "Cadera (aper.)",
-  "foot.heelLift": "Talón",
+  'knee.flex': 'Rodilla',
+  'elbow.flex': 'Codo',
+  'hip.flex': 'Cadera',
+  'shoulder.elev': 'Hombro',
+  'trunk.incline': 'Tronco',
+  'neck.flex': 'Cuello',
+  'pelvis.tilt': 'Pelvis',
+  'ankle.dorsi': 'Tobillo',
+  'scap.elev': 'Escápula',
+  'knee.valgus': 'Valgo',
+  'shoulder.abd': 'Codos (aper.)',
+  'shoulder.flare': 'Codos (aper.)',
+  'shoulder.flex': 'Hombro (flex.)',
+  'shoulder.behind': 'Codo vs tronco',
+  'scap.prot': 'Escápula (prot.)',
+  'wrist.ext': 'Muñeca',
+  'lumbar.flex': 'Lumbar',
+  'hip.abd': 'Cadera (aper.)',
+  'foot.heelLift': 'Talón',
 };
 
 /** Marcadores numerados: separa los que caen demasiado cerca para que no se tapen. */
-function spreadBadges<
-  T extends { x: number; y: number; ax: number; ay: number },
->(items: T[], minDist: number): T[] {
+function spreadBadges<T extends { x: number; y: number; ax: number; ay: number }>(items: T[], minDist: number): T[] {
   const out = items.map((i) => ({ ...i }));
   for (let iter = 0; iter < 6; iter++) {
     for (let i = 0; i < out.length; i++) {
@@ -89,9 +76,8 @@ function spreadBadges<
 
 function worstEval(evals: readonly Evaluation[]): Evaluation | undefined {
   let w: Evaluation | undefined;
-  for (const e of evals)
-    if (!w || STATUS_RANK[e.status] > STATUS_RANK[w.status]) w = e;
-  return w && w.status !== "ok" ? w : undefined;
+  for (const e of evals) if (!w || STATUS_RANK[e.status] > STATUS_RANK[w.status]) w = e;
+  return w && w.status !== 'ok' ? w : undefined;
 }
 
 export const StationComposition: React.FC<StationCompProps> = (props) => {
@@ -99,11 +85,7 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
   useAnatomy();
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
-  const { mod, seg, variant, timeline, state, result } = useStationFrame(
-    props,
-    frame,
-    fps,
-  );
+  const { mod, seg, variant, timeline, state, result } = useStationFrame(props, frame, fps);
   const palette = PALETTES[props.theme];
   const views = mod.content.views;
   const view = views.find((v) => v.id === props.viewId) ?? views[0]!;
@@ -111,29 +93,11 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
   const framePts = useMemo(() => {
     const pts: Vector3[] = [];
     for (const p of [0, 0.5, 1]) {
-      const r = evaluateFrame(mod.logic, mod.content, {
-        anthro: props.anthro,
-        seg,
-        variantId: props.variantId,
-        errorId: props.errorId,
-        loadKg: props.loadKg,
-        p,
-        phase: "concentrica",
-      });
+      const r = evaluateFrame(mod.logic, mod.content, { anthro: props.anthro, seg, variantId: props.variantId, errorId: props.errorId, loadKg: props.loadKg, p, phase: 'concentrica' });
       const bd = r.body;
-      pts.push(
-        bd.head.clone().add(new Vector3(0, seg.headRadius, 0)),
-        bd.c7,
-        bd.pelvis.origin,
-      );
-      for (const side of ["L", "R"] as const) {
-        pts.push(
-          bd.arms[side].elbow,
-          bd.arms[side].grip,
-          bd.legs[side].knee,
-          bd.legs[side].toe,
-          bd.legs[side].heel,
-        );
+      pts.push(bd.head.clone().add(new Vector3(0, seg.headRadius, 0)), bd.c7, bd.pelvis.origin);
+      for (const side of ['L', 'R'] as const) {
+        pts.push(bd.arms[side].elbow, bd.arms[side].grip, bd.legs[side].knee, bd.legs[side].toe, bd.legs[side].heel);
       }
       pts.push(...mod.logic.framePoints(r.machine));
     }
@@ -149,59 +113,33 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
       top: props.showOverlay ? (props.embedded ? 0.09 : 0.13) : 0.05,
       bottom: props.showOverlay ? (props.embedded ? 0.13 : 0.2) : 0.05,
       side: 0.04,
-      right: props.showGauges
-        ? (props.uiScale ?? 1) > 1.2
-          ? 0.3
-          : 0.22
-        : 0.04,
+      right: props.showGauges ? ((props.uiScale ?? 1) > 1.2 ? 0.3 : 0.22) : 0.04,
     },
     zoomFactor: props.zoom,
   });
   const b = mod.logic.bounds;
-  const floorCenter: [number, number] = [
-    (b.min[0] + b.max[0]) / 2,
-    (b.min[2] + b.max[2]) / 2,
-  ];
-  const roomSize: [number, number] = [
-    Math.max(5.2, b.max[0] - b.min[0] + 2.8),
-    Math.max(5.2, b.max[2] - b.min[2] + 2.8),
-  ];
+  const floorCenter: [number, number] = [(b.min[0] + b.max[0]) / 2, (b.min[2] + b.max[2]) / 2];
+  const roomSize: [number, number] = [Math.max(5.2, b.max[0] - b.min[0] + 2.8), Math.max(5.2, b.max[2] - b.min[2] + 2.8)];
   const statuses = jointStatuses(result.evaluations);
-  const arcs = props.showGauges
-    ? gaugeArcs(result.body, result.metrics, mod.content.keyMetrics)
-    : [];
+  const arcs = props.showGauges ? gaugeArcs(result.body, result.metrics, mod.content.keyMetrics) : [];
   const arcStatus = (a: GaugeArc): Status | undefined => {
     const joint = metricJoint(a.metric);
-    return (
-      statuses.get(a.side ? `${joint}.${a.side}` : joint) ?? statuses.get(joint)
-    );
+    return statuses.get(a.side ? `${joint}.${a.side}` : joint) ?? statuses.get(joint);
   };
   const worst = worstEval(result.evaluations);
   const cues = variant.cues[state.kind] ?? [];
   const segFrames = state.endFrame - state.startFrame;
   // Si a cada pauta le tocaría menos de 1,2 s no da tiempo a leerla: se queda la primera.
   const readable = segFrames / Math.max(1, cues.length) >= 1.2 * fps;
-  const cueIdx =
-    cues.length && readable
-      ? Math.min(cues.length - 1, Math.floor(state.u * cues.length))
-      : 0;
+  const cueIdx = cues.length && readable ? Math.min(cues.length - 1, Math.floor(state.u * cues.length)) : 0;
   // Fundido solo al cambiar de fase; dentro de la fase las pautas se relevan sin dejar la caja vacía.
-  const cueOpacity = interpolate(
-    frame,
-    [state.startFrame, state.startFrame + 8],
-    [0, 1],
-    {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-      easing: Easing.bezier(0.16, 1, 0.3, 1),
-    },
-  );
-  const error = props.errorId
-    ? mod.content.errors.find((e) => e.id === props.errorId)
-    : undefined;
-  const repSegments = timeline.segments.filter(
-    (s) => s.rep === (state.rep || 1),
-  );
+  const cueOpacity = interpolate(frame, [state.startFrame, state.startFrame + 8], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+  });
+  const error = props.errorId ? mod.content.errors.find((e) => e.id === props.errorId) : undefined;
+  const repSegments = timeline.segments.filter((s) => s.rep === (state.rep || 1));
   const repStart = repSegments[0]?.start ?? 0;
   const repEnd = repSegments[repSegments.length - 1]?.end ?? 1;
   const unit = (Math.min(width, height) / 900) * (props.uiScale ?? 1);
@@ -210,37 +148,18 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
     arcs.map((a, i) => {
       const [ax, ay] = project(cam, a.center);
       const [x, y] = project(cam, a.label);
-      return {
-        key: `${a.metric}${a.side ?? ""}`,
-        n: i + 1,
-        a,
-        ax,
-        ay,
-        x,
-        y,
-        status: arcStatus(a) ?? ("ok" as Status),
-      };
+      // Sin estado si su ventana no se evalúa en esta fase (gris, sin ✔).
+      return { key: `${a.metric}${a.side ?? ''}`, n: i + 1, a, ax, ay, x, y, status: arcStatus(a) };
     }),
     30 * unit,
   );
   const badgeSize = 26 * unit;
+  const neutral = props.theme === 'claro' ? '#646b75' : '#8b95a2';
+  const statusColor = (st: Status | undefined) => (st ? palette.status[st] : neutral);
 
   return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: palette.bg,
-        fontFamily: props.theme === "terminal" ? MONO : SANS,
-      }}
-    >
-      <ThreeCanvas
-        width={width}
-        height={height}
-        dpr={1}
-        orthographic
-        shadows
-        frameloop="demand"
-        gl={{ preserveDrawingBuffer: true, antialias: true }}
-      >
+    <AbsoluteFill style={{ backgroundColor: palette.bg, fontFamily: props.theme === 'terminal' ? MONO : SANS }}>
+      <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand" gl={{ preserveDrawingBuffer: true, antialias: true }}>
         <color attach="background" args={[palette.bg]} />
         <CameraRig spec={cam} />
         <Lights keyPosition={keyLightFor(cam)} />
@@ -263,9 +182,7 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
           showMuscles={props.showMuscles}
           pulse={frame * 0.35}
         />
-        {props.showGauges && (
-          <Gauges arcs={arcs} statusOf={arcStatus} colors={palette.status} />
-        )}
+        {props.showGauges && <Gauges arcs={arcs} statusOf={arcStatus} colors={palette.status} neutral={neutral} />}
       </ThreeCanvas>
 
       {props.showGauges &&
@@ -273,21 +190,21 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
           <div
             key={key}
             style={{
-              position: "absolute",
+              position: 'absolute',
               left: x,
               top: y,
-              translate: "-50% -50%",
+              translate: '-50% -50%',
               width: badgeSize,
               height: badgeSize,
-              borderRadius: "50%",
-              display: "grid",
-              placeItems: "center",
+              borderRadius: '50%',
+              display: 'grid',
+              placeItems: 'center',
               background: palette.labelBg,
-              border: `${2.5 * unit}px solid ${palette.status[st]}`,
+              border: `${2.5 * unit}px solid ${statusColor(st)}`,
               color: palette.label,
               fontSize: 14 * unit,
               fontWeight: 800,
-              fontVariantNumeric: "tabular-nums",
+              fontVariantNumeric: 'tabular-nums',
             }}
           >
             {n}
@@ -297,11 +214,11 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
       {props.showGauges && badges.length > 0 && (
         <div
           style={{
-            position: "absolute",
+            position: 'absolute',
             right: 28 * unit,
             top: (props.showOverlay ? 92 : 24) * unit,
-            display: "flex",
-            flexDirection: "column",
+            display: 'flex',
+            flexDirection: 'column',
             gap: 6 * unit,
             background: palette.labelBg,
             borderRadius: 14 * unit,
@@ -314,51 +231,26 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
             .slice()
             .sort((p, q) => p.n - q.n)
             .map(({ key, n, a, status: st }) => (
-              <div
-                key={key}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8 * unit,
-                  fontSize: (compact ? 15 : 17) * unit,
-                }}
-              >
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 * unit, fontSize: (compact ? 15 : 17) * unit }}>
                 <span
                   style={{
                     width: 20 * unit,
                     height: 20 * unit,
-                    borderRadius: "50%",
-                    flex: "none",
-                    display: "grid",
-                    placeItems: "center",
+                    borderRadius: '50%',
+                    flex: 'none',
+                    display: 'grid',
+                    placeItems: 'center',
                     fontSize: 12 * unit,
                     fontWeight: 800,
-                    background: palette.status[st],
+                    background: statusColor(st),
                     color: palette.bg,
                   }}
                 >
                   {n}
                 </span>
-                <span style={{ flex: 1, opacity: 0.9 }}>
-                  {SHORT_LABEL[a.metric] ?? METRIC_INFO[a.metric].label}
-                </span>
-                <span
-                  style={{
-                    fontWeight: 700,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {deg(a.value)}
-                </span>
-                <span
-                  style={{
-                    color: palette.status[st],
-                    width: 14 * unit,
-                    textAlign: "center",
-                  }}
-                >
-                  {STATUS_ICON[st]}
-                </span>
+                <span style={{ flex: 1, opacity: 0.9 }}>{SHORT_LABEL[a.metric] ?? METRIC_INFO[a.metric].label}</span>
+                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{deg(a.value)}</span>
+                <span style={{ color: statusColor(st), width: 14 * unit, textAlign: 'center' }}>{st ? STATUS_ICON[st] : '·'}</span>
               </div>
             ))}
         </div>
@@ -366,38 +258,24 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
 
       {props.showOverlay && (
         <>
+          {/* Dentro de la app la página ya muestra el nombre, la variante y la carga. */}
           {!props.embedded && (
             <div
               style={{
-                position: "absolute",
+                position: 'absolute',
                 left: 28 * unit,
                 top: 24 * unit,
                 color: palette.label,
                 background: palette.labelBg,
                 padding: `${12 * unit}px ${16 * unit}px`,
                 borderRadius: 14 * unit,
-                maxWidth: "55%",
+                maxWidth: '55%',
               }}
             >
-              <div
-                style={{
-                  fontSize: (compact ? 24 : 30) * unit,
-                  fontWeight: 800,
-                  letterSpacing: -0.5,
-                }}
-              >
-                {compact ? variant.short : mod.content.name}
-              </div>
+              <div style={{ fontSize: (compact ? 24 : 30) * unit, fontWeight: 800, letterSpacing: -0.5 }}>{compact ? variant.short : mod.content.name}</div>
               {!compact && (
-                <div
-                  style={{
-                    fontSize: 19 * unit,
-                    opacity: 0.85,
-                    marginTop: 4 * unit,
-                  }}
-                >
-                  {variant.name} · {loadShort(mod.logic.load, props.loadKg)} ·
-                  tempo {tempoToString(props.tempo)}
+                <div style={{ fontSize: 19 * unit, opacity: 0.85, marginTop: 4 * unit }}>
+                  {variant.name} · {loadShort(mod.logic.load, props.loadKg)} · tempo {tempoToString(props.tempo)}
                 </div>
               )}
             </div>
@@ -405,43 +283,39 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
 
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               right: 28 * unit,
               top: 24 * unit,
               color: palette.label,
               background: palette.labelBg,
-              border: `${2 * unit}px solid ${palette.status[worst?.status ?? "ok"]}`,
+              border: `${2 * unit}px solid ${palette.status[worst?.status ?? 'ok']}`,
               padding: `${10 * unit}px ${16 * unit}px`,
               borderRadius: 14 * unit,
               fontSize: 19 * unit,
               fontWeight: 700,
-              maxWidth: "38%",
+              maxWidth: '38%',
             }}
           >
-            <span style={{ color: palette.status[worst?.status ?? "ok"] }}>
-              {STATUS_ICON[worst?.status ?? "ok"]}
-            </span>{" "}
+            <span style={{ color: palette.status[worst?.status ?? 'ok'] }}>{STATUS_ICON[worst?.status ?? 'ok']}</span>{' '}
             {compact
               ? worst
-                ? worst.status === "riesgo"
-                  ? "Riesgo"
-                  : "Aviso"
-                : "En rango"
+                ? `${worst.status === 'riesgo' ? 'Riesgo' : 'Aviso'}: ${SHORT_LABEL[worst.window.metric] ?? worst.window.label}`
+                : 'En rango'
               : worst
-                ? `${worst.window.label}: ${worst.status === "riesgo" ? "fuera de rango" : "al límite"}`
-                : "Técnica dentro de rango"}
+                ? `${worst.window.label}: ${worst.status === 'riesgo' ? 'fuera de rango' : 'al límite'}`
+                : 'Técnica dentro de rango'}
           </div>
 
           {/* Error demostrado: a la izquierda, bajo el título (o en su lugar dentro de la app), lejos del HUD. */}
           {error && (
             <div
               style={{
-                position: "absolute",
+                position: 'absolute',
                 left: 28 * unit,
                 top: (props.embedded ? 24 : compact ? 82 : 132) * unit,
-                maxWidth: "55%",
+                maxWidth: '55%',
                 background: palette.status.riesgo,
-                color: "#fff",
+                color: '#fff',
                 padding: `${6 * unit}px ${16 * unit}px`,
                 borderRadius: 12 * unit,
                 fontSize: 18 * unit,
@@ -449,21 +323,11 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
                 letterSpacing: 0.3,
               }}
             >
-              {compact
-                ? `✖ ${error.label}`
-                : `DEMOSTRACIÓN DE ERROR · ${error.label}`}
+              {compact ? `✖ ${error.label}` : `DEMOSTRACIÓN DE ERROR · ${error.label}`}
             </div>
           )}
 
-          <div
-            style={{
-              position: "absolute",
-              left: 28 * unit,
-              right: 28 * unit,
-              bottom: 24 * unit,
-              color: palette.label,
-            }}
-          >
+          <div style={{ position: 'absolute', left: 28 * unit, right: 28 * unit, bottom: 24 * unit, color: palette.label }}>
             <div
               style={{
                 background: palette.labelBg,
@@ -471,73 +335,34 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
                 padding: `${12 * unit}px ${16 * unit}px`,
               }}
             >
+              {/* Fase, repetición y progreso: en la app ya los da la línea de tiempo. */}
               {!props.embedded && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: 20 * unit,
-                    fontWeight: 700,
-                    marginBottom: 6 * unit,
-                  }}
-                >
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 20 * unit, fontWeight: 700, marginBottom: 6 * unit }}>
                   <span>{PHASE_LABEL[state.kind]}</span>
-                  <span style={{ opacity: 0.8 }}>
-                    {state.rep > 0
-                      ? `Repetición ${state.rep}/${props.reps}`
-                      : "Colocación"}
-                  </span>
+                  <span style={{ opacity: 0.8 }}>{state.rep > 0 ? `Repetición ${state.rep}/${props.reps}` : 'Colocación'}</span>
                 </div>
               )}
-              <div
-                style={{
-                  fontSize: 22 * unit,
-                  minHeight: 30 * unit,
-                  opacity: cueOpacity,
-                }}
-              >
-                {cues[cueIdx] ?? ""}
-              </div>
+              <div style={{ fontSize: 22 * unit, minHeight: 30 * unit, opacity: cueOpacity }}>{cues[cueIdx] ?? ''}</div>
               {!props.embedded && (
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 4 * unit,
-                    marginTop: 10 * unit,
-                    height: 8 * unit,
-                  }}
-                >
-                  {repSegments.map((s) => {
-                    const active = s === state.segment;
-                    const w =
-                      ((s.end - s.start) / Math.max(0.001, repEnd - repStart)) *
-                      100;
-                    return (
-                      <div
-                        key={`${s.kind}${s.start}`}
-                        style={{
-                          width: `${w}%`,
-                          borderRadius: 4 * unit,
-                          background: active
-                            ? palette.accent
-                            : palette.floorLine,
-                          overflow: "hidden",
-                        }}
-                      >
-                        {active && (
-                          <div
-                            style={{
-                              width: `${state.u * 100}%`,
-                              height: "100%",
-                              background: palette.label,
-                              opacity: 0.6,
-                            }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+              <div style={{ display: 'flex', gap: 4 * unit, marginTop: 10 * unit, height: 8 * unit }}>
+                {repSegments.map((s) => {
+                  const active = s === state.segment;
+                  const w = ((s.end - s.start) / Math.max(0.001, repEnd - repStart)) * 100;
+                  return (
+                    <div
+                      key={`${s.kind}${s.start}`}
+                      style={{
+                        width: `${w}%`,
+                        borderRadius: 4 * unit,
+                        background: active ? palette.accent : palette.floorLine,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {active && <div style={{ width: `${state.u * 100}%`, height: '100%', background: palette.label, opacity: 0.6 }} />}
+                    </div>
+                  );
+                })}
+              </div>
               )}
             </div>
           </div>

@@ -26,14 +26,26 @@ function Protractor({ arc, color }: { arc: GaugeArc; color: string }) {
   );
 }
 
-export function Gauges({ arcs, statusOf, colors }: { arcs: readonly GaugeArc[]; statusOf: (a: GaugeArc) => Status | undefined; colors: Record<Status, string> }) {
+export function Gauges({
+  arcs,
+  statusOf,
+  colors,
+  neutral,
+}: {
+  arcs: readonly GaugeArc[];
+  statusOf: (a: GaugeArc) => Status | undefined;
+  colors: Record<Status, string>;
+  /** Color de los arcos cuya ventana no se evalúa en la fase actual. */
+  neutral: string;
+}) {
   return (
     <group>
       {arcs
         .filter((a) => a.radius > 0)
-        .map((a) => (
-          <Protractor key={`${a.metric}${a.side ?? ''}`} arc={a} color={colors[statusOf(a) ?? 'ok']} />
-        ))}
+        .map((a) => {
+          const st = statusOf(a);
+          return <Protractor key={`${a.metric}${a.side ?? ''}`} arc={a} color={st ? colors[st] : neutral} />;
+        })}
     </group>
   );
 }

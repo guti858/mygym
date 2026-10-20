@@ -162,9 +162,12 @@ function LivePanels({ mod, st, props, playerRef }: { mod: StationModule; st: Sta
               {TAB_LABEL[t]}
               {/* El aviso ocupa siempre su sitio (solo se oculta) para no empujar las pestañas. */}
               {t === 'articulaciones' && (
-                <span className={`badge s-${result.status}`} aria-hidden={result.status === 'ok' || undefined}>
-                  !
-                </span>
+                <>
+                  <span className={`badge s-${result.status}`} aria-hidden>
+                    !
+                  </span>
+                  {result.status !== 'ok' && <span className="sr-only"> (hay avisos)</span>}
+                </>
               )}
             </button>
           ))}

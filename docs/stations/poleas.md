@@ -27,7 +27,7 @@
 | 195 cm | Baja · posición 1 (20 cm) | Barra recta | Tobillos a 40 cm de la columna |
 | 175 cm, poca movilidad | Baja · posición 1 (20 cm) | Barra recta | Tobillos a 40 cm de la columna |
 
-Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
+Carga por defecto: Pila 20 kg · polea 2:1 → 10,0 kg en el agarre.
 
 ### Guion por fases
 - **Preparación:** De cara a la columna, pies a la anchura de las caderas y rodillas algo flexionadas. · Codos pegados a los costados, abdomen firme.
@@ -71,7 +71,7 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 | 195 cm | Baja · posición 1 (20 cm) | Cuerda | Tobillos a 40 cm de la columna |
 | 175 cm, poca movilidad | Baja · posición 1 (20 cm) | Cuerda | Tobillos a 40 cm de la columna |
 
-Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
+Carga por defecto: Pila 20 kg · polea 2:1 → 10,0 kg en el agarre.
 
 ### Guion por fases
 - **Preparación:** De cara a la columna, cuerda con las palmas enfrentadas. · Codos pegados a los costados, abdomen firme.
@@ -115,7 +115,7 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 | 195 cm | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 50 cm de la columna |
 | 175 cm, poca movilidad | Alta · posición 19 (200 cm) | Barra recta | Tobillos a 50 cm de la columna |
 
-Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
+Carga por defecto: Pila 20 kg · polea 2:1 → 10,0 kg en el agarre.
 
 ### Guion por fases
 - **Preparación:** De cara a la columna, tronco algo inclinado y estable. · Codos pegados a los costados.
@@ -158,7 +158,7 @@ Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
 | 195 cm | Media-alta · posición 16 (170 cm) | Cuerda | Tobillos a 62 cm de la columna |
 | 175 cm, poca movilidad | Media-alta · posición 16 (170 cm) | Cuerda | Tobillos a 62 cm de la columna |
 
-Carga por defecto: Pila 20 kg · polea 2:1 → 10.0 kg en el agarre.
+Carga por defecto: Pila 20 kg · polea 2:1 → 10,0 kg en el agarre.
 
 ### Guion por fases
 - **Preparación:** De espaldas a la columna, tronco algo inclinado hacia delante y abdomen firme. · Codos arriba, cerca de la cabeza, apuntando al frente.

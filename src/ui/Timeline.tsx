@@ -1,6 +1,7 @@
 import type { PlayerRef } from '@remotion/player';
 import { PHASE_LABEL, type PhaseKind, type Timeline as TL } from '../engine/timeline';
-import type { FrameState } from '../remotion/timing';
+import { phaseEntry, type FrameState } from '../remotion/timing';
+import { num } from './format';
 
 const KIND_CLASS: Record<PhaseKind, string> = {
   preparacion: 'k-prep',
@@ -37,7 +38,7 @@ export function Timeline({
   const go = (delta: number) => {
     const i = Math.min(timeline.segments.length - 1, Math.max(0, state.index + delta));
     player?.pause();
-    seek(timeline.segments[i]!.start + 0.001);
+    seek(phaseEntry(timeline.segments[i]!, fps));
   };
   return (
     <div className="timeline">
@@ -61,13 +62,13 @@ export function Timeline({
           <select value={rate} onChange={(e) => onRate(Number(e.target.value))}>
             {[0.25, 0.5, 1, 1.5, 2].map((r) => (
               <option key={r} value={r}>
-                ×{r}
+                ×{String(r).replace('.', ',')}
               </option>
             ))}
           </select>
         </label>
         <span className="mono muted timeline__clock">
-          {t.toFixed(1)} / {total.toFixed(1)} s
+          {num(t, 1)} / {num(total, 1)} s
         </span>
       </div>
       <div

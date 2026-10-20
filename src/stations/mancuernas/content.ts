@@ -287,7 +287,7 @@ const VARIANTS: readonly VariantContent[] = [
 
 export const mancuernasContent: StationContent = {
   id: 'mancuernas',
-  name: 'Rack de mancuernas (estación variable)',
+  name: 'Rack de mancuernas',
   short: 'Mancuernas',
   zone: 'libre',
   family: 'libre',

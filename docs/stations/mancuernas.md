@@ -1,4 +1,4 @@
-# Rack de mancuernas (estación variable)
+# Rack de mancuernas
 
 > Documento **generado desde el código** (`src/stations/mancuernas/content.ts` y `logic.ts`) con `npm run docs`. Para validarlo, anota tus cambios aquí (o en comentarios) y se trasladan al código; después se regenera.
 

@@ -51,6 +51,8 @@ export function BodyMap({
                 return d ? <path key={b} className={`bm-base bm-base--${b}`} d={d} /> : null;
               })}
               {(Object.keys(view.regions) as MuscleId[]).map((m) => {
+                // Los músculos que salen en las dos vistas se recorren con el teclado solo en la frontal.
+                const dup = view === BODYMAP.back && BODYMAP.front.regions[m] !== undefined;
                 const a = active[m];
                 const isSel = selected === m;
                 const fill = a ? ROLE_VAR[a.role] : 'var(--body-region)';
@@ -63,7 +65,8 @@ export function BodyMap({
                     fillOpacity={opacity}
                     onClick={onSelect ? () => onSelect(m) : undefined}
                     role={onSelect ? 'button' : undefined}
-                    tabIndex={onSelect ? 0 : undefined}
+                    tabIndex={onSelect ? (dup ? -1 : 0) : undefined}
+                    aria-hidden={(onSelect && dup) || undefined}
                     aria-label={onSelect ? MUSCLES[m].name : undefined}
                     aria-pressed={onSelect ? isSel : undefined}
                     onKeyDown={

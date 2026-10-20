@@ -87,7 +87,7 @@ export function describeLoad(spec: LoadSpec, kg: number, bodyMassKg = 75): LoadI
       detail:
         spec.ratio === 1
           ? `Pila ${kg} kg · polea 1:1`
-          : `Pila ${kg} kg · polea ${spec.ratio}:1 → ${effectiveKg.toFixed(1)} kg en el agarre`,
+          : `Pila ${kg} kg · polea ${spec.ratio}:1 → ${effectiveKg.toFixed(1).replace('.', ',')} kg en el agarre`,
     };
   }
   const total = spec.baseKg + kg;

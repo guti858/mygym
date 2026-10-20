@@ -62,7 +62,7 @@ export function AnthroPanel() {
                 {f.label}
                 {f.hint && <small> · {f.hint}</small>}
               </span>
-              <input type="range" min={f.min} max={f.max} step={f.step} value={a[f.key]} onChange={(e) => app.setAnthro({ [f.key]: Number(e.target.value) })} />
+              <input type="range" min={f.min} max={f.max} step={f.step} value={a[f.key]} onChange={(e) => app.setAnthro({ [f.key]: Number(e.target.value) })} aria-valuetext={fmtField(Number(a[f.key]), f.step, f.unit)} />
               <output className="mono">{fmtField(Number(a[f.key]), f.step, f.unit)}</output>
             </label>
           ))}

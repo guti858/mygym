@@ -20,7 +20,14 @@ export function Console() {
   const suggestions = line ? completions(line).slice(0, 8) : [];
 
   useEffect(() => {
-    if (app.consoleOpen) input.current?.focus();
+    if (!app.consoleOpen) return;
+    // Al cerrar, el foco vuelve a donde estaba (o al botón «Consola»), no al <body>.
+    const prev = document.activeElement as HTMLElement | null;
+    input.current?.focus();
+    return () => {
+      const back = prev && prev !== document.body && prev.isConnected ? prev : document.querySelector<HTMLElement>('.console-btn');
+      back?.focus();
+    };
   }, [app.consoleOpen]);
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight });
@@ -60,6 +67,7 @@ export function Console() {
         <input
           id="console-input"
           ref={input}
+          aria-label="Comando"
           value={line}
           autoComplete="off"
           autoCapitalize="off"
@@ -67,7 +75,8 @@ export function Console() {
           onChange={(e) => setLine(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') app.set({ consoleOpen: false });
-            if (e.key === 'Tab') {
+            // Tab completa si hay algo escrito; con la línea vacía (o con Mayús) sale del campo.
+            if (e.key === 'Tab' && !e.shiftKey && line) {
               e.preventDefault();
               const c = completions(line);
               if (c.length === 1) setLine(`${c[0]} `);

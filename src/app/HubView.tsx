@@ -1,5 +1,5 @@
 import { Player } from '@remotion/player';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { MUSCLES, type MuscleId } from '../content/muscles';
 import { FPS, type HubCompProps } from '../remotion/props';
 import { HubComposition } from '../remotion/HubComposition';
@@ -13,6 +13,7 @@ const ZONE_ORDER: Zone[] = ['traccion', 'brazos', 'empuje', 'pierna', 'libre'];
 export function HubView() {
   const app = useApp();
   const [hovered, setHovered] = useState<string | null>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
   const narrow = !useMedia('(min-width: 700px)');
   const reduceMotion = useMedia('(prefers-reduced-motion: reduce)');
   const [compW, compH] = narrow ? [1000, 1000] : [1600, 900];
@@ -59,7 +60,7 @@ export function HubView() {
   return (
     <div className={`hub${filter ? ' hub--filtering' : ''}`}>
       <section className="hub__stage">
-        <div className="hub__player">
+        <div className="hub__player" role="img" aria-label="Plano del gimnasio con las 12 estaciones; elige una en la lista de abajo">
           <Player
             component={HubComposition}
             inputProps={props}
@@ -95,17 +96,24 @@ export function HubView() {
             Elige una máquina para ver la técnica fase a fase: ángulos objetivo, rangos seguros, músculos implicados y los errores que conviene evitar.
           </p>
         </div>
-        <div className="hub__filter block">
+        <div className="hub__filter block" ref={filterRef} tabIndex={-1}>
         <h2 className="block__title">
           Filtrar por músculo
           {filter && (
-            <button className="link-btn" onClick={() => app.set({ muscleFilter: null })}>
+            <button
+              className="link-btn"
+              onClick={() => {
+                app.set({ muscleFilter: null });
+                // El botón desaparece: el foco pasa al bloque del filtro en lugar de perderse.
+                filterRef.current?.focus();
+              }}
+            >
               Quitar filtro
             </button>
           )}
         </h2>
         <BodyMap active={mapActive} selected={filter} onSelect={(m) => app.set({ muscleFilter: filter === m ? null : m })} compact />
-        <p className="fine">{filter ? `${MUSCLES[filter].name}: estaciones resaltadas (rojo = motor principal, naranja = secundario).` : 'Toca un músculo para resaltar las estaciones que lo trabajan.'}</p>
+        <p className="fine">{filter ? `${MUSCLES[filter].name}: estaciones resaltadas (rojo = motor principal, naranja = secundario: sinergista o estabilizador).` : 'Pulsa un músculo para resaltar las estaciones que lo trabajan.'}</p>
         </div>
       </aside>
 

@@ -49,14 +49,14 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
           Carga <span className="block__hint">{load.label}</span>
         </h3>
         <div className="stepper">
-          <button className="icon-btn" onClick={() => app.update(id, { loadKg: st.loadKg - step })} aria-label="Menos carga">
+          <button className="icon-btn" onClick={() => app.update(id, { loadKg: st.loadKg - step })} aria-label="Menos carga" disabled={st.loadKg <= min}>
             −
           </button>
           <output className="stepper__value mono">
             {shown.value}
             <small> {shown.unit}</small>
           </output>
-          <button className="icon-btn" onClick={() => app.update(id, { loadKg: st.loadKg + step })} aria-label="Más carga">
+          <button className="icon-btn" onClick={() => app.update(id, { loadKg: st.loadKg + step })} aria-label="Más carga" disabled={st.loadKg >= max}>
             +
           </button>
         </div>
@@ -67,7 +67,8 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
           step={step}
           value={st.loadKg}
           onChange={(e) => app.update(id, { loadKg: Number(e.target.value) })}
-          aria-label="Carga en kg"
+          aria-label="Carga"
+          aria-valuetext={`${shown.value} ${shown.unit}`}
         />
         <p className="fine">{info.detail}</p>
       </section>
@@ -75,13 +76,13 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
       <section className="block">
         <h3 className="block__title">Demostrar un error</h3>
         <div className="chip-list">
-          <button className={`chip${st.errorId === null ? ' is-on is-ok' : ''}`} onClick={() => app.update(id, { errorId: null })}>
+          <button className={`chip${st.errorId === null ? ' is-on is-ok' : ''}`} aria-pressed={st.errorId === null} onClick={() => app.update(id, { errorId: null })}>
             ✔ Técnica ideal
           </button>
           {variant.errors.map((eid) => {
             const e = mod.content.errors.find((x) => x.id === eid)!;
             return (
-              <button key={eid} className={`chip${st.errorId === eid ? ' is-on is-risk' : ''}`} onClick={() => app.update(id, { errorId: eid })} title={e.description}>
+              <button key={eid} className={`chip${st.errorId === eid ? ' is-on is-risk' : ''}`} aria-pressed={st.errorId === eid} onClick={() => app.update(id, { errorId: eid })} title={e.description}>
                 ✖ {e.label}
               </button>
             );
@@ -157,7 +158,7 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
             <input type="checkbox" checked={app.showMuscles} onChange={(e) => app.set({ showMuscles: e.target.checked })} /> Músculos
           </label>
           <label>
-            <input type="checkbox" checked={app.showGauges} onChange={(e) => app.set({ showGauges: e.target.checked })} /> Transportadores
+            <input type="checkbox" checked={app.showGauges} onChange={(e) => app.set({ showGauges: e.target.checked })} /> Ángulos
           </label>
           <label>
             <input type="checkbox" checked={app.showOverlay} onChange={(e) => app.set({ showOverlay: e.target.checked })} /> Rótulos

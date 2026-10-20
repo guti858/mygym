@@ -56,8 +56,9 @@
   --line-strong: #c3bdb1;
   --text: #16191d;
   --muted: #646b75;
-  --accent: #e2560d;
-  --accent-soft: rgba(226, 86, 13, 0.1);
+  /* Más oscuro que en el tema oscuro: como texto sobre el panel y con texto blanco encima, ≥ 4,5:1. */
+  --accent: #b8430a;
+  --accent-soft: rgba(184, 67, 10, 0.1);
   --accent-ink: #fff;
   --ok: #13965a;
   --warn: #b97f00;
@@ -67,6 +68,13 @@
   --grid: rgba(0, 0, 0, 0.035);
   --shadow: 0 18px 40px -28px rgba(40, 30, 10, 0.35);
   color-scheme: light;
+}
+/* Los colores de rol del mapa son claros para rellenos; como texto, sus variantes oscuras. */
+:root[data-skin='claro'] .card__status--principal {
+  color: #b3261e;
+}
+:root[data-skin='claro'] .card__status--secundario {
+  color: #b04a12;
 }
 
 :root[data-skin='terminal'] {
@@ -342,6 +350,10 @@ a {
   background: var(--panel-2);
   border: 1px solid var(--line);
   font-size: 14px;
+}
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .icon-btn--primary {
   background: var(--accent);
@@ -1567,7 +1579,15 @@ input[type='range'] {
     background: var(--bg);
     padding-bottom: 4px;
   }
+  /* Sin el título no se sabría qué estación es (el reproductor no lo repite dentro de la app). */
   .station__title {
+    margin-bottom: 4px;
+  }
+  .station__title h1 {
+    font-size: 18px;
+  }
+  .station__title .eyebrow,
+  .station__chips {
     display: none;
   }
   .stage {

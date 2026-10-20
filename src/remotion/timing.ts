@@ -6,6 +6,14 @@ export function stationTimeline(tempo: Tempo, reps: number, startAt: Timeline['s
   return buildTimeline({ tempo, reps, startAt, setupSec: SETUP_SEC });
 }
 
+/**
+ * Instante (s) al que saltar para mostrar una fase: pasado el fundido de entrada de la pauta
+ * (8 fotogramas), sin pasar de la mitad de la fase.
+ */
+export function phaseEntry(seg: { start: number; end: number }, fps: number): number {
+  return seg.start + Math.min(8 / fps, (seg.end - seg.start) / 2);
+}
+
 export function durationInFrames(tl: Timeline, fps: number): number {
   return Math.max(1, Math.ceil(tl.total * fps));
 }

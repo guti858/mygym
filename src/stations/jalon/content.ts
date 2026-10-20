@@ -8,7 +8,7 @@ const W = {
     warn: [-40, 8],
     at: 'siempre',
     label: 'Inclinación del tronco',
-    cue: 'Inclínate ligeramente hacia atrás (10–30°) y mantén esa inclinación estable durante toda la serie.',
+    cue: 'Inclínate ligeramente hacia atrás (de 0 a −30°: los valores negativos son hacia atrás) y mantén esa inclinación estable durante toda la serie.',
     why: 'Balancear el tronco cambia el tirón dorsal por inercia y carga la zona lumbar.',
     confidence: 'consenso',
     sources: ['nsca', 'snyder2009'],

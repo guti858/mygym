@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from 'react';
 import { startUrlSync } from '../state/url';
 import { hostTheme, useApp } from '../state/store';
+import { catalogEntry } from '../stations/catalog';
 import { AnthroPanel } from '../ui/AnthroPanel';
 import { Console } from '../ui/Console';
 import { Header } from './Header';
@@ -48,6 +49,11 @@ export function App() {
   useLayoutEffect(() => {
     window.scrollTo({ top: 0 });
     document.body.style.cursor = '';
+  }, [route]);
+  // Título de la pestaña del navegador según la vista.
+  useEffect(() => {
+    const entry = route.name === 'station' ? catalogEntry(route.id) : undefined;
+    document.title = entry ? `${entry.name} · MyGym` : 'MyGym · Guion articular';
   }, [route]);
 
   return (

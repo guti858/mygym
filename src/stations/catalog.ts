@@ -165,7 +165,7 @@ export const CATALOG: readonly CatalogEntry[] = [
   {
     id: 'mancuernas',
     short: 'Mancuernas',
-    name: 'Rack de mancuernas (estación variable)',
+    name: 'Rack de mancuernas',
     zone: 'libre',
     ready: true,
     principal: ['biceps', 'deltoides_lateral', 'isquiotibiales'],

@@ -38,7 +38,7 @@ Carga por defecto: Pila 35 kg · polea 1:1.
 ### Ventanas articulares
 | Ventana | Métrica | Correcto | Aviso (fuera = riesgo) | Cuándo | Confianza | Señal técnica | Por qué |
 |---|---|---|---|---|---|---|---|
-| Apertura final | Cadera · abducción | 30…50° | 20…60° | contraccion | Práctica habitual | Abre hasta que los muslos formen unos 60–90° entre sí, sin forzar. | Por debajo el recorrido se queda corto; por encima, la pelvis tiende a bascular para seguir abriendo. |
+| Apertura final | Cadera · abducción | 30…50° | 20…60° | contraccion | Práctica habitual | Abre hasta que cada muslo se separe unos 30–50° de la línea media (60–100° entre ambos), sin forzar. | Por debajo el recorrido se queda corto; por encima, la pelvis tiende a bascular para seguir abriendo. |
 | Pelvis estable | Pelvis · basculación | -6…10° | -12…16° | siempre | Consenso técnico | Pelvis quieta y apoyada: el movimiento sale solo de la cadera. | Bascular la pelvis para mover más peso carga la zona lumbar y resta trabajo a la cadera. |
 | Zona lumbar neutra | Columna lumbar · flexión | -10…8° | -16…14° | siempre | Consenso técnico | Zona lumbar apoyada y neutra, abdomen firme. | Redondear la zona lumbar acompaña a la pelvis que bascula. |
 | Tronco quieto | Tronco · inclinación | -25…0° | -35…10° | siempre | Práctica habitual | Espalda apoyada en el respaldo. | Mover el tronco añade inercia y quita control al movimiento de la cadera. |
@@ -81,7 +81,7 @@ Carga por defecto: Pila 35 kg · polea 1:1.
 ### Ventanas articulares
 | Ventana | Métrica | Correcto | Aviso (fuera = riesgo) | Cuándo | Confianza | Señal técnica | Por qué |
 |---|---|---|---|---|---|---|---|
-| Apertura final | Cadera · abducción | 30…50° | 20…60° | contraccion | Práctica habitual | Abre hasta que los muslos formen unos 60–90° entre sí, sin forzar. | Por debajo el recorrido se queda corto; por encima, la pelvis tiende a bascular para seguir abriendo. |
+| Apertura final | Cadera · abducción | 30…50° | 20…60° | contraccion | Práctica habitual | Abre hasta que cada muslo se separe unos 30–50° de la línea media (60–100° entre ambos), sin forzar. | Por debajo el recorrido se queda corto; por encima, la pelvis tiende a bascular para seguir abriendo. |
 | Pelvis estable | Pelvis · basculación | -6…10° | -12…16° | siempre | Consenso técnico | Pelvis quieta y apoyada: el movimiento sale solo de la cadera. | Bascular la pelvis para mover más peso carga la zona lumbar y resta trabajo a la cadera. |
 | Zona lumbar neutra | Columna lumbar · flexión | -10…8° | -16…14° | siempre | Consenso técnico | Zona lumbar apoyada y neutra, abdomen firme. | Redondear la zona lumbar acompaña a la pelvis que bascula. |
 | Tronco quieto | Tronco · inclinación | 20…40° | 10…50° | siempre | Práctica habitual | Tronco inclinado unos 30° y quieto. | Mover el tronco añade inercia y quita control al movimiento de la cadera. |

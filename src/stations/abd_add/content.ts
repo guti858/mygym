@@ -9,7 +9,7 @@ const W = {
     warn: [20, 60],
     at: 'contraccion',
     label: 'Apertura final',
-    cue: 'Abre hasta que los muslos formen unos 60–90° entre sí, sin forzar.',
+    cue: 'Abre hasta que cada muslo se separe unos 30–50° de la línea media (60–100° entre ambos), sin forzar.',
     why: 'Por debajo el recorrido se queda corto; por encima, la pelvis tiende a bascular para seguir abriendo.',
     confidence: 'practica',
   },
