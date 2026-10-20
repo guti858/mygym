@@ -25,6 +25,8 @@ Versión publicada en Claude (privada para el propietario; se comparte desde su 
 
 Para republicarla tras cambios: `npm run build:artifact` y publicar `dist/artifact.html` con los ficheros de `dist/assets/`.
 
+GitHub Pages (https://guti858.github.io/mygym/): el workflow `pages.yml` compila la app y la publica cada vez que se actualiza la **rama por defecto** del repositorio. Requiere *Settings → Pages → Build and deployment → Source: GitHub Actions*; con *Deploy from a branch* Pages sirve el `index.html` de las fuentes (pide `/src/main.tsx`) y la página sale en blanco.
+
 ## Uso
 
 ```bash

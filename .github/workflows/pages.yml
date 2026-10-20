@@ -1,9 +1,11 @@
 name: Despliegue en GitHub Pages
 
-# Publica la app estática al hacer push a main (requiere activar Pages con origen «GitHub Actions»).
+# Compila la app (Vite) y publica dist/ en GitHub Pages cada vez que se actualiza la rama por
+# defecto del repositorio (sea cual sea su nombre), o a mano desde la pestaña Actions.
+# Requiere Settings → Pages → Build and deployment → Source: «GitHub Actions». Con «Deploy from a
+# branch», Pages sirve el index.html de las fuentes, que pide /src/main.tsx, y la página sale en blanco.
 on:
   push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -11,12 +13,14 @@ permissions:
   pages: write
   id-token: write
 
+# Un grupo por rama: los push a otras ramas (que no despliegan) no cancelan un despliegue en curso.
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
