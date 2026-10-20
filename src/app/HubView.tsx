@@ -274,7 +274,7 @@ export function HubView({ active }: { active: boolean }) {
           <p className="fine">{filter ? `${MUSCLES[filter].name}: estaciones resaltadas (rojo = motor principal, naranja = secundario).` : 'Pulsa un músculo para resaltar las estaciones que lo trabajan.'}</p>
         </section>
         <p className="disclaimer fine">
-          Contenido educativo: no sustituye la valoración de un profesional.{' '}
+          Educativo: no sustituye a un profesional ·{' '}
           <button className="link-btn" onClick={() => app.set({ infoOpen: true })}>
             Fuentes y avisos
           </button>
