@@ -84,7 +84,13 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
 
       <section className="block">
         <h3 className="block__title">
-          Tempo y serie <span className="block__hint">segundos por fase</span>
+          Tempo y serie
+          <span className="block__hint">
+            s por fase ·{' '}
+            <button className="link-btn" onClick={() => app.update(id, { tempo: variant.tempo })} disabled={!tempoChanged} title="Restablecer el tempo recomendado">
+              recomendado
+            </button>
+          </span>
         </h3>
         <div className="tempo">
           {TEMPO_FIELDS.map(([k, phase, label]) => (
@@ -111,13 +117,10 @@ export function SettingsPanel({ mod, st }: { mod: StationModule; st: StationSett
             <input type="number" min={1} max={10} value={st.reps} aria-label="Repeticiones" onChange={(e) => app.update(id, { reps: Math.min(10, Math.max(1, Math.round(Number(e.target.value)) || 1)) })} />
           </label>
         </div>
-        <button className="link-btn" onClick={() => app.update(id, { tempo: variant.tempo })} disabled={!tempoChanged}>
-          Restablecer tempo recomendado
-        </button>
       </section>
 
       <p className="disclaimer fine">
-        Contenido educativo: no sustituye la valoración de un profesional.{' '}
+        Educativo: no sustituye a un profesional ·{' '}
         <button className="link-btn" onClick={() => app.set({ infoOpen: true })}>
           Fuentes y avisos
         </button>

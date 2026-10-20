@@ -307,6 +307,8 @@ for (const [w, h] of [
     for (const id of STATIONS) {
       await page.goto(`/#/e/${id}`);
       await expect(page.locator('.stage canvas')).toBeVisible();
+      // Se mide con el texto ya en su fuente definitiva (o en la de reserva, si la web no llega).
+      await page.evaluate('document.fonts.ready');
       await technique(page);
       // Peor caso de la pestaña Técnica: cada error de la variante (y la técnica ideal).
       const chips = page.locator('.technique .chip');

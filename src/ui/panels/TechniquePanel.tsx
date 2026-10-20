@@ -284,7 +284,7 @@ export function TechniquePanel({
         )}
         <p className="fine">
           {measure === 'angulos'
-            ? 'Pulsa una articulación para ver cómo se corrige y por qué importa.'
+            ? 'Pulsa una fila para ver cómo se corrige y por qué.'
             : 'Momento estático estimado: fuerza × brazo de palanca, sin inercia ni peso de los segmentos.'}
         </p>
       </section>

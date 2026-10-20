@@ -6,6 +6,33 @@
   font-weight: 100 900;
   size-adjust: 70%;
 }
+/* Reservas con las métricas de IBM Plex Sans: si la fuente web no llega (sin red, bloqueada), el texto
+   ocupa lo mismo y la interfaz sigue cabiendo en la pantalla. Arial/Liberation/Helvetica casi coinciden
+   en regular y son un 4 % más anchas en negrita; DejaVu Sans/Verdana, un 12 % y un 23 %. */
+@font-face {
+  font-family: 'Plex Sans Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans'), local('Helvetica Neue'), local('Helvetica');
+  font-weight: 100 549;
+  size-adjust: 100%;
+}
+@font-face {
+  font-family: 'Plex Sans Fallback';
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold'), local('Helvetica Neue Bold'), local('Helvetica Bold');
+  font-weight: 550 900;
+  size-adjust: 96%;
+}
+@font-face {
+  font-family: 'Plex Sans Fallback Wide';
+  src: local('DejaVu Sans'), local('DejaVuSans'), local('Verdana');
+  font-weight: 100 549;
+  size-adjust: 89%;
+}
+@font-face {
+  font-family: 'Plex Sans Fallback Wide';
+  src: local('DejaVu Sans Bold'), local('DejaVuSans-Bold'), local('Verdana Bold');
+  font-weight: 550 900;
+  size-adjust: 81%;
+}
 :root {
   --bg: #0b0d10;
   --bg-2: #0f1216;
@@ -30,7 +57,7 @@
   --shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.8);
   --radius: 10px;
   --font-display: 'Big Shoulders Display', 'Big Shoulders Fallback', sans-serif;
-  --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'IBM Plex Sans', 'Plex Sans Fallback', 'Plex Sans Fallback Wide', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
   /* Movimiento de la interfaz: entradas cortas, salidas instantáneas (como un terminal). */
   --dur-1: 120ms; /* hover, foco, pulsado, color */
@@ -372,6 +399,10 @@ a {
   color: var(--muted);
   text-decoration: none;
   cursor: default;
+}
+.block__title .block__hint .link-btn {
+  font: inherit;
+  letter-spacing: inherit;
 }
 .block__title .link-btn {
   font-family: var(--font-body);
@@ -1319,7 +1350,7 @@ input[type='range'] {
 .muscles-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 /* Técnica · carril de fases (mismas abreviaturas y colores que el tempo y la pista) */
@@ -1435,7 +1466,7 @@ input[type='range'] {
 }
 .joint__btn {
   width: 100%;
-  height: 25px;
+  height: 24px;
   display: grid;
   grid-template-columns: 16px 12px minmax(0, 1fr) 52px 84px;
   align-items: center;
@@ -1602,7 +1633,7 @@ input[type='range'] {
   grid-template-columns: 64px 1fr 72px;
   align-items: center;
   gap: 8px;
-  height: 25px;
+  height: 24px;
   font-size: 13px;
 }
 .moments li > .mono {
