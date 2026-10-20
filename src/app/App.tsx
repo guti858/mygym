@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { startUrlSync } from '../state/url';
 import { hostTheme, useApp } from '../state/store';
 import { AnthroPanel } from '../ui/AnthroPanel';
@@ -13,7 +13,8 @@ export function App() {
   const themeLocked = useApp((s) => s.themeLocked);
 
   useEffect(() => startUrlSync(), []);
-  useEffect(() => {
+  // Antes del pintado: sin fotograma con el tema anterior.
+  useLayoutEffect(() => {
     document.documentElement.dataset.skin = theme;
   }, [theme]);
   // Sin elección explícita, el tema sigue al sistema o al visor que aloja la página.
@@ -43,7 +44,8 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  useEffect(() => {
+  // Antes del pintado: la vista nueva no aparece un fotograma con el desplazamiento anterior.
+  useLayoutEffect(() => {
     window.scrollTo({ top: 0 });
     document.body.style.cursor = '';
   }, [route]);

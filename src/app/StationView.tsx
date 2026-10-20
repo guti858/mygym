@@ -40,6 +40,8 @@ const Stage = memo(function Stage({
   onRotate: (deg: number) => void;
 }) {
   const rate = useFrame((s) => s.rate);
+  // Con «reducir movimiento» la serie no arranca sola: se reproduce con el botón.
+  const reduceMotion = useMedia('(prefers-reduced-motion: reduce)');
   return (
     <div
       className="stage"
@@ -71,7 +73,7 @@ const Stage = memo(function Stage({
         compositionHeight={COMP_H}
         fps={FPS}
         loop
-        autoPlay
+        autoPlay={!reduceMotion}
         controls={false}
         clickToPlay={false}
         doubleClickToFullscreen
@@ -143,11 +145,17 @@ function LivePanels({ mod, st, props, playerRef }: { mod: StationModule; st: Sta
           {tabs.map((t) => (
             <button key={t} role="tab" aria-selected={current === t} className={current === t ? 'is-on' : ''} onClick={() => setTab(t)}>
               {TAB_LABEL[t]}
-              {t === 'articulaciones' && result.status !== 'ok' && <span className={`badge s-${result.status}`}>!</span>}
+              {/* El aviso ocupa siempre su sitio (solo se oculta) para no empujar las pestañas. */}
+              {t === 'articulaciones' && (
+                <span className={`badge s-${result.status}`} aria-hidden={result.status === 'ok' || undefined}>
+                  !
+                </span>
+              )}
             </button>
           ))}
         </div>
-        <div className="tabpanel" role="tabpanel">
+        {/* Una instancia por pestaña: el desplazamiento vuelve arriba y se repite el fundido de entrada. */}
+        <div className="tabpanel" role="tabpanel" key={current}>
           {panels[current]}
         </div>
       </aside>

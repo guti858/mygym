@@ -14,6 +14,7 @@ export function HubView() {
   const app = useApp();
   const [hovered, setHovered] = useState<string | null>(null);
   const narrow = !useMedia('(min-width: 700px)');
+  const reduceMotion = useMedia('(prefers-reduced-motion: reduce)');
   const [compW, compH] = narrow ? [1000, 1000] : [1600, 900];
   const filter = app.muscleFilter;
 
@@ -67,7 +68,7 @@ export function HubView() {
             compositionHeight={compH}
             fps={FPS}
             loop
-            autoPlay
+            autoPlay={!reduceMotion}
             controls={false}
             clickToPlay={false}
             acknowledgeRemotionLicense

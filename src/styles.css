@@ -1,4 +1,11 @@
 /* ───────────── Tokens ───────────── */
+/* Reserva con las métricas de Big Shoulders: el titular no cambia de tamaño al llegar la fuente. */
+@font-face {
+  font-family: 'Big Shoulders Fallback';
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Helvetica Neue Bold'), local('Roboto Bold'), local('Liberation Sans Bold');
+  font-weight: 100 900;
+  size-adjust: 70%;
+}
 :root {
   --bg: #0b0d10;
   --bg-2: #0f1216;
@@ -22,13 +29,20 @@
   --grid: rgba(255, 255, 255, 0.028);
   --shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.8);
   --radius: 10px;
-  --font-display: 'Big Shoulders Display', 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-display: 'Big Shoulders Display', 'Big Shoulders Fallback', sans-serif;
   --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  /* Movimiento de la interfaz: entradas cortas, salidas instantáneas (como un terminal). */
+  --dur-1: 120ms; /* hover, foco, pulsado, color */
+  --dur-2: 180ms; /* vista, panel, consola, diálogo */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* la misma curva que los rótulos del reproductor */
+  /* Fondo de la escena 3D mientras pinta el lienzo (= palette.bg de cada tema). */
+  --scene-bg: #0e1116;
   color-scheme: dark;
 }
 
 :root[data-skin='claro'] {
+  --scene-bg: #eef0f3;
   --bg: #f1efea;
   --bg-2: #e9e6df;
   --panel: #fbfaf7;
@@ -51,6 +65,7 @@
 }
 
 :root[data-skin='terminal'] {
+  --scene-bg: #050a06;
   --bg: #030704;
   --bg-2: #061009;
   --panel: #07120a;
@@ -623,20 +638,21 @@ input[type='range'] {
   border-left: 4px solid var(--accent);
   border-radius: 8px;
   padding: 10px 12px;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition:
+    translate var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
 }
-.card:hover,
-.card.is-hover {
-  transform: translateX(3px);
+.card:not(.card--soon):is(:hover, .is-hover, :focus-visible) {
+  translate: 3px 0;
   border-color: var(--accent);
+}
+.card:not(.card--soon):active {
+  translate: 3px 1px;
 }
 .card--soon {
   border-left-color: var(--line-strong);
   cursor: default;
   opacity: 0.78;
-}
-.card--soon:hover {
-  transform: none;
 }
 .card--principal {
   box-shadow: inset 0 0 0 1px var(--m-principal);
@@ -722,8 +738,8 @@ input[type='range'] {
 }
 .bm-region {
   transition:
-    fill 0.15s ease,
-    fill-opacity 0.15s ease;
+    fill var(--dur-1) var(--ease-out),
+    fill-opacity var(--dur-1) var(--ease-out);
 }
 .bm-region--clickable {
   cursor: pointer;
@@ -908,6 +924,17 @@ input[type='range'] {
   margin-left: 6px;
   flex: 1;
   min-width: 160px;
+  /* Una sola línea: el cambio de fase no mueve lo que hay debajo. */
+  white-space: nowrap;
+  overflow: hidden;
+}
+.timeline__phase strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timeline__phase > :not(strong) {
+  flex-shrink: 0;
 }
 .timeline__rate select {
   background: var(--panel-2);
@@ -918,6 +945,10 @@ input[type='range'] {
 }
 .timeline__clock {
   font-size: 12px;
+  /* Ancho fijo: «9.9» → «10.0» no desplaza el selector de velocidad. */
+  min-width: 12ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .timeline__track {
   position: relative;
@@ -1001,10 +1032,13 @@ input[type='range'] {
   color: var(--muted);
   white-space: nowrap;
 }
+.tabs button:not(.is-on):hover {
+  color: var(--text);
+}
+/* Sin negrita en la activa: las pestañas siguientes no se desplazan al cambiar. */
 .tabs .is-on {
   color: var(--text);
   border-bottom-color: var(--accent);
-  font-weight: 600;
 }
 .badge {
   display: inline-grid;
@@ -1024,10 +1058,18 @@ input[type='range'] {
 .badge.s-riesgo {
   background: var(--risk);
 }
+/* El aviso ocupa siempre su sitio; si todo está bien, solo se oculta. */
+.badge {
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+.badge.s-ok {
+  opacity: 0;
+}
 .tabpanel {
   padding-top: 10px;
   overflow: auto;
   scrollbar-width: thin;
+  animation: fade-in var(--dur-2) var(--ease-out);
 }
 
 /* Guion */
@@ -1040,11 +1082,22 @@ input[type='range'] {
 }
 .cues li {
   color: var(--muted);
-  transition: color 0.2s ease;
+  transition: color var(--dur-1) var(--ease-out);
 }
 .cues li.is-active {
   color: var(--text);
-  font-weight: 600;
+}
+/* Pistas de todas las fases en la misma celda: altura constante durante la serie. */
+.cues-stack {
+  display: grid;
+}
+.cues-stack > .cues {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+.cues-stack > .cues[data-on] {
+  visibility: visible;
+  animation: fade-in var(--dur-2) var(--ease-out);
 }
 .cues li::marker {
   font-family: var(--font-mono);
@@ -1242,6 +1295,41 @@ input[type='range'] {
   gap: 4px;
 }
 
+/* ───────────── Movimiento de la interfaz ───────────── */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+/* Entrada de cada vista (gimnasio ↔ estación): fundido corto. */
+.main > * {
+  animation: fade-in var(--dur-2) var(--ease-out);
+}
+/* Mientras pinta el lienzo, el hueco ya tiene el color de la escena (sin destello). */
+.hub__player,
+.stage {
+  background: var(--scene-bg);
+}
+:is(.ghost-btn, .icon-btn, .chip, .variant, .segmented button, .tabs button, .swatch, .console-btn, .link-btn, .console__suggest button) {
+  transition:
+    color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+:is(.chip, .variant, .swatch):not(.is-on):hover,
+.console__suggest button:hover {
+  border-color: var(--line-strong);
+}
+:is(.ghost-btn, .icon-btn, .chip, .variant, .segmented button, .console-btn, .console__suggest button):active {
+  translate: 0 1px;
+}
+
 /* ───────────── Consola ───────────── */
 .console {
   position: fixed;
@@ -1258,13 +1346,7 @@ input[type='range'] {
   border: 1px solid var(--accent);
   border-radius: 12px;
   box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9);
-  animation: rise 0.18s ease-out;
-}
-@keyframes rise {
-  from {
-    opacity: 0;
-    translate: -50% 12px;
-  }
+  animation: enter var(--dur-2) var(--ease-out);
 }
 .console__head {
   display: flex;
@@ -1345,6 +1427,12 @@ input[type='range'] {
 .dialog::backdrop {
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(3px);
+}
+.dialog[open] {
+  animation: enter var(--dur-2) var(--ease-out);
+}
+.dialog[open]::backdrop {
+  animation: fade-in var(--dur-2) var(--ease-out);
 }
 .dialog__body {
   padding: 16px;
@@ -1501,8 +1589,19 @@ input[type='range'] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  * {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
     animation: none !important;
     transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .card:not(.card--soon):is(:hover, .is-hover, :focus-visible, :active),
+  :is(.ghost-btn, .icon-btn, .chip, .variant, .segmented button, .console-btn, .console__suggest button):active {
+    translate: none;
   }
 }

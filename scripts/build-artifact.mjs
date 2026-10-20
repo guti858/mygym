@@ -8,10 +8,13 @@ const scripts = pick(/<script type="module"[^>]*src="([^"]+)"/g);
 const preloads = pick(/<link rel="modulepreload"[^>]*href="([^"]+)"/g);
 const styles = pick(/<link rel="stylesheet"[^>]*href="(\.\/assets\/[^"]+)"/g);
 const fonts = pick(/<link href="(https:\/\/fonts\.googleapis\.com[^"]+)"/g);
+// Script en línea que fija el tema antes del primer pintado (sin destello oscuro → claro).
+const themeScript = html.match(/<script>\/\* Tema antes del primer pintado[\s\S]*?<\/script>/)?.[0] ?? '';
 
 const page = `<title>MyGym</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Gimnasio isométrico con guion articular: técnica fase a fase, rangos seguros y errores típicos en cada máquina.">
+${themeScript}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 ${fonts.map((f) => `<link rel="stylesheet" href="${f}">`).join('\n')}

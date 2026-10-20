@@ -29,13 +29,19 @@ export function ScriptPanel({ mod, variant, state, error }: { mod: StationModule
           Ahora · {PHASE_LABEL[state.kind]}
           <span className="block__hint mono">{state.rep > 0 ? `rep ${state.rep}` : 'colocación'}</span>
         </h3>
-        <ol className="cues">
-          {cues.map((c, i) => (
-            <li key={i} className={i === active ? 'is-active' : ''}>
-              {c}
-            </li>
+        {/* Todas las fases apiladas en la misma celda: el bloque mide siempre lo que la más larga
+            y no empuja al resto del panel al cambiar de fase. */}
+        <div className="cues-stack">
+          {order.map((k) => (
+            <ol key={k} className="cues" data-on={k === state.kind || undefined} aria-hidden={k !== state.kind || undefined}>
+              {(variant.cues[k] ?? []).map((c, i) => (
+                <li key={i} className={k === state.kind && i === active ? 'is-active' : ''}>
+                  {c}
+                </li>
+              ))}
+            </ol>
           ))}
-        </ol>
+        </div>
       </section>
       <section className="block">
         <h3 className="block__title">Guion completo de la repetición</h3>
