@@ -1,6 +1,9 @@
 import type { ReactElement } from 'react';
 import type { StationContent, StationLogic } from '../engine/types';
 import type { ScenePalette } from '../scene/palette';
+import { abdAddContent } from './abd_add/content';
+import { abdAddLogic, type AbdAddMachine } from './abd_add/logic';
+import { AbdAddMachine3D } from './abd_add/Machine';
 import { dominadasContent } from './dominadas/content';
 import { dominadasLogic, type DominadasMachine } from './dominadas/logic';
 import { DominadasMachine3D } from './dominadas/Machine';
@@ -22,6 +25,9 @@ import { MilitarMachine3D } from './press_militar/Machine';
 import { peckContent } from './peck_deck/content';
 import { peckLogic, type PeckMachine } from './peck_deck/logic';
 import { PeckMachine3D } from './peck_deck/Machine';
+import { mancuernasContent } from './mancuernas/content';
+import { mancuernasLogic, type MancuernasMachine } from './mancuernas/logic';
+import { MancuernasMachine3D } from './mancuernas/Machine';
 import { poleasContent } from './poleas/content';
 import { poleasLogic, type PoleasMachine } from './poleas/logic';
 import { PoleasMachine3D } from './poleas/Machine';
@@ -54,6 +60,8 @@ export const STATION_MODULES: Record<string, StationModule> = {
   dominadas: mod<DominadasMachine>({ logic: dominadasLogic, content: dominadasContent, Machine: DominadasMachine3D }),
   remo_t: mod<RemoMachine>({ logic: remoLogic, content: remoContent, Machine: RemoMachine3D }),
   poleas: mod<PoleasMachine>({ logic: poleasLogic, content: poleasContent, Machine: PoleasMachine3D }),
+  abd_add: mod<AbdAddMachine>({ logic: abdAddLogic, content: abdAddContent, Machine: AbdAddMachine3D }),
+  mancuernas: mod<MancuernasMachine>({ logic: mancuernasLogic, content: mancuernasContent, Machine: MancuernasMachine3D }),
 };
 
 export const getModule = (id: string): StationModule | undefined => STATION_MODULES[id];

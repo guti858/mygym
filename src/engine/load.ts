@@ -40,6 +40,14 @@ export type LoadSpec =
       label: string;
     }
   | {
+      /** Peso libre: el valor de carga es el peso de cada mancuerna; cada ejercicio usa una o dos. */
+      kind: 'mancuernas';
+      minKg: number;
+      maxKg: number;
+      stepKg: number;
+      label: string;
+    }
+  | {
       /** Peso corporal: el valor de carga es + lastre (kg) o − asistencia (kg); 0 = libre. */
       kind: 'corporal';
       maxAssistKg: number;
@@ -66,6 +74,9 @@ export function describeLoad(spec: LoadSpec, kg: number, bodyMassKg = 75): LoadI
           ? `Peso corporal ${bodyMassKg} kg + lastre ${kg} kg = ${effectiveKg} kg`
           : `Peso corporal ${bodyMassKg} kg, sin asistencia ni lastre`;
     return { nominalKg: effectiveKg, effectiveKg, forceN: effectiveKg * G, detail };
+  }
+  if (spec.kind === 'mancuernas') {
+    return { nominalKg: kg, effectiveKg: kg, forceN: kg * G, detail: `Mancuerna de ${kg} kg` };
   }
   if (spec.kind === 'pila') {
     const effectiveKg = kg / spec.ratio;
@@ -97,7 +108,7 @@ export function describeLoad(spec: LoadSpec, kg: number, bodyMassKg = 75): LoadI
 
 /** Rango del control de carga. */
 export function loadRange(spec: LoadSpec): { min: number; max: number } {
-  if (spec.kind === 'pila') return { min: spec.minKg, max: spec.maxKg };
+  if (spec.kind === 'pila' || spec.kind === 'mancuernas') return { min: spec.minKg, max: spec.maxKg };
   if (spec.kind === 'corporal') return { min: -spec.maxAssistKg, max: spec.maxBallastKg };
   return { min: 0, max: spec.maxPlatesKgPerSide * 2 };
 }
@@ -110,6 +121,7 @@ export function loadValueLabel(spec: LoadSpec, kg: number): { value: string; uni
     return { value: '0', unit: 'kg · libre' };
   }
   if (spec.kind === 'discos') return { value: String(kg), unit: 'kg en discos' };
+  if (spec.kind === 'mancuernas') return { value: String(kg), unit: 'kg / mancuerna' };
   return { value: String(kg), unit: 'kg' };
 }
 

@@ -12,7 +12,7 @@ test('el gimnasio lista las 12 estaciones y navega a una disponible', async ({ p
   await open(page, '#/');
   await expect(page.getByRole('heading', { name: /Cada articulación/i })).toBeVisible();
   await expect(page.locator('.card')).toHaveCount(12);
-  await expect(page.locator('.card:not(.card--soon)')).toHaveCount(10);
+  await expect(page.locator('.card--soon')).toHaveCount(0);
   await page.locator('.card', { hasText: 'Jalón al pecho' }).click();
   await expect(page).toHaveURL(/#\/e\/jalon/);
   await expect(page.locator('.stage canvas')).toBeVisible();
@@ -21,7 +21,7 @@ test('el gimnasio lista las 12 estaciones y navega a una disponible', async ({ p
 
 test('filtro por músculo resalta estaciones', async ({ page }) => {
   await open(page, '#/');
-  // Cada región es un <g> con dos formas (izquierda y derecha): su centro cae en otra región, así que se dispara el clic sobre el propio elemento.
+  // Cada región incluye los dos lados del cuerpo: su centro cae entre las piernas, así que se dispara el clic sobre el propio elemento.
   await page.getByRole('button', { name: 'Cuádriceps' }).first().dispatchEvent('click');
   await expect(page.locator('.card--principal', { hasText: 'Prensa' })).toBeVisible();
 });
@@ -103,6 +103,30 @@ test('poleas: modalidad sobre la cabeza y polea 2:1', async ({ page, isMobile })
   await expect(page.locator('.fine', { hasText: 'polea 2:1' })).toBeVisible();
   await page.getByRole('button', { name: /Arco lumbar/ }).click();
   await expect(page).toHaveURL(/err=arco_lumbar/);
+  expect(errors).toEqual([]);
+});
+
+test('abductores / aductores: modalidad y error en la URL', async ({ page, isMobile }) => {
+  await open(page, '#/e/abd_add');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await page.getByRole('radio', { name: /^Aducción/ }).click();
+  await expect(page).toHaveURL(/v=aduccion/);
+  await page.getByRole('button', { name: /Pelvis que bascula/ }).click();
+  await expect(page).toHaveURL(/err=pelvis/);
+  expect(errors).toEqual([]);
+});
+
+test('mancuernas: ejercicio, carga por mancuerna y error', async ({ page, isMobile }) => {
+  await open(page, '#/e/mancuernas?v=goblet');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  if (isMobile) await page.getByRole('tab', { name: 'Ajustes' }).click();
+  await expect(page.locator('.stepper__value')).toContainText('kg / mancuerna');
+  await page.getByRole('button', { name: /Rodillas hacia dentro/ }).click();
+  await expect(page).toHaveURL(/err=valgo/);
+  await page.getByRole('radio', { name: /Remo unilateral/ }).click();
+  await expect(page).toHaveURL(/v=remo/);
+  await expect(page).not.toHaveURL(/err=/);
   expect(errors).toEqual([]);
 });
 

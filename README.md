@@ -8,13 +8,13 @@ Gimnasio isométrico en el navegador donde cada máquina es una **estación** co
 
 | Fase | Estado |
 |---|---|
-| F0 · Contenido biomecánico de las 12 estaciones | ✅ Borrador para validar en [`docs/stations/`](docs/stations) · guía en [`docs/VALIDACION.md`](docs/VALIDACION.md) |
+| F0 · Contenido biomecánico de las 12 estaciones | ✅ En [`docs/stations/`](docs/stations), generado desde el código · guía en [`docs/VALIDACION.md`](docs/VALIDACION.md) |
 | F1 · Cimientos (Vite + React + TS + Remotion + three.js, CI, Pages) | ✅ |
 | F2 · Motor biomecánico (antropometría, IK, goniometría 3D, ventanas, fases, momentos) | ✅ con tests |
 | F3 · Rebanada vertical: **Jalón al pecho** y **Prensa de piernas 45°** | ✅ pendiente de tu validación |
 | F4a · Empuje: **press de banca**, **press inclinado**, **press militar**, **peck-deck** y **fondos** | ✅ pendiente de tu validación |
 | F4b · Tracción y brazos: **dominadas**, **remo en T** y **poleas** | ✅ pendiente de tu validación |
-| F4c–d · Abductores / aductores y rack de mancuernas | ⏳ siguientes lotes |
+| F4c–d · **Abductores / aductores** y **rack de mancuernas** (7 ejercicios) | ✅ pendiente de tu validación |
 
 Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
 
@@ -32,7 +32,8 @@ npm run dev          # app en http://localhost:5173
 npm test             # tests del motor y contrato de cada estación
 npm run e2e          # pruebas de extremo a extremo (escritorio y móvil); requiere `npm run build`
 npm run studio       # Remotion Studio: una composición por estación y variante
-npm run docs         # regenera docs/stations/<estación>.md (las implementadas) y la matriz muscular desde el código
+npm run docs         # regenera docs/stations/<estación>.md y la matriz muscular desde el código
+npm run anatomy:bodymap  # regenera los trazados SVG del mapa muscular desde el modelo anatómico
 ```
 
 ### Exportar un vídeo de la técnica
@@ -60,7 +61,7 @@ src/
                  content.ts (variantes, guion, ventanas, músculos, fuentes), Machine.tsx (3D) y tests
   scene/         kit de piezas paramétricas, avatar maniquí, transportadores, cámara ortográfica
   remotion/      composiciones (estación y gimnasio): el fotograma determina fase y pose
-  app/, ui/      vistas, paneles, consola, mapa muscular SVG
+  app/, ui/      vistas, paneles, consola, mapa muscular SVG (proyección del modelo anatómico)
   state/         estado global (zustand), URL compartible, comandos
 ```
 
@@ -75,6 +76,7 @@ El avatar usa músculos, huesos y piel (cabeza, manos y pies) del atlas libre [Z
 - `scripts/anatomy/export_zanatomy.py` (Blender como módulo de Python, `bpy`) selecciona las piezas, las simplifica, calcula los pesos de *skinning* respecto al rig del motor y mide los centros articulares. Genera `src/anatomy/data.generated.ts`, que es obra derivada y se distribuye con la misma licencia **CC BY-SA 4.0**.
 - `src/anatomy/rig.ts` traduce cada postura del motor (marcos de pelvis, columna y cuello, IK de brazos y piernas, pronosupinación, dedos cerrados sobre el maneral) a una matriz por hueso; huesos auxiliares de medio giro conservan el volumen en las articulaciones.
 - El modelo se carga en un fragmento aparte (~0,8 MB comprimido) y, mientras llega, se ve el maniquí simplificado.
+- El mapa muscular del gimnasio («Filtrar por músculo») es una proyección frontal y dorsal del **mismo modelo**: `scripts/anatomy/bodymap-svg.ts` rasteriza la postura de referencia con prueba de profundidad, traza las fronteras entre regiones (compartidas, sin huecos ni solapes) y genera `src/ui/bodymap.generated.ts` (SVG, también CC BY-SA 4.0).
 
 ## Dependencias con licencia propia
 

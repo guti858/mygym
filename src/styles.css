@@ -667,8 +667,14 @@ input[type='range'] {
   font-style: italic;
 }
 
-/* Mapa muscular */
+/* Mapa muscular (trazados generados del modelo anatómico: src/ui/bodymap.generated.ts) */
 .bodymap {
+  /* Tonos derivados del tema: los músculos seleccionables (--body-region) destacan sobre el
+     resto; huesos y tendones se hunden hacia el fondo del panel. */
+  --bm-line: var(--panel);
+  --bm-other: color-mix(in srgb, var(--body-region) 45%, var(--body-fill));
+  --bm-bone: color-mix(in srgb, var(--body-fill) 55%, var(--panel));
+  --bm-skin: var(--body-fill);
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -684,6 +690,29 @@ input[type='range'] {
 .bodymap--compact svg {
   max-height: 230px;
 }
+.bodymap svg path {
+  fill-rule: evenodd;
+  stroke: var(--bm-line);
+  stroke-width: 0.7px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.bodymap--compact svg path {
+  stroke-width: 0.55px;
+}
+.bodymap .bm-silhouette {
+  fill: var(--body-fill);
+  stroke: none;
+}
+.bm-base--otros {
+  fill: var(--bm-other);
+}
+.bm-base--hueso {
+  fill: var(--bm-bone);
+}
+.bm-base--piel {
+  fill: var(--bm-skin);
+}
 .bodymap figcaption {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -692,18 +721,29 @@ input[type='range'] {
   letter-spacing: 0.12em;
 }
 .bm-region {
-  transition: fill-opacity 0.15s ease;
+  transition:
+    fill 0.15s ease,
+    fill-opacity 0.15s ease;
 }
 .bm-region--clickable {
   cursor: pointer;
 }
-.bm-region--clickable:hover {
+.bm-region--clickable:hover,
+.bm-region--clickable:focus-visible {
   fill: var(--accent);
-  fill-opacity: 0.8;
+  fill-opacity: 0.75;
+}
+.bm-region:focus {
+  outline: none;
 }
 .bm-region--selected {
+  fill-opacity: 1;
+}
+.bodymap .bm-outline {
+  fill: none;
   stroke: var(--text);
-  stroke-width: 0.8;
+  stroke-width: 1.4px;
+  pointer-events: none;
 }
 .legend {
   display: flex;

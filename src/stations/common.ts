@@ -11,7 +11,8 @@ import type { JointWindow } from '../engine/types';
  */
 
 export type Keys = ReadonlyArray<{ p: number; v: number }>;
-export type AxialKeys = Partial<Record<keyof AxialParams, Keys>>;
+type AxialScalar = Exclude<keyof AxialParams, 'scapProtSide'>;
+export type AxialKeys = Partial<Record<AxialScalar, Keys>>;
 
 const X = new Vector3(1, 0, 0);
 const UP = new Vector3(0, 1, 0);
@@ -19,7 +20,7 @@ const UP = new Vector3(0, 1, 0);
 /** Parámetros axiales interpolados por claves (p = 0 estiramiento → 1 contracción). */
 export function axialAt(keys: AxialKeys, p: number, overrides: Partial<AxialParams> = {}): AxialParams {
   const a: AxialParams = { ...NEUTRAL_AXIAL };
-  for (const k of Object.keys(keys) as (keyof AxialParams)[]) a[k] = sampleKeys(keys[k]!, p);
+  for (const k of Object.keys(keys) as AxialScalar[]) a[k] = sampleKeys(keys[k]!, p);
   return { ...a, ...overrides };
 }
 
@@ -176,6 +177,72 @@ export function hangingFeet(
     };
   }
   return out;
+}
+
+/**
+ * De pie: pelvis a la altura que deja la rodilla con `kneeDeg` de flexión, con los tobillos casi bajo
+ * las caderas (`ahead` por delante) y a `ankleZ`; tronco a `leanDeg` de la vertical (+ adelante).
+ */
+export function standingPose(
+  seg: Segments,
+  ax: AxialParams,
+  leanDeg: number,
+  kneeDeg: number,
+  opts: { ankleZ?: number; ahead?: number; extra?: number; toeOutDeg?: number; floorY?: number } = {},
+) {
+  const ankleZ = opts.ankleZ ?? 0;
+  const q = qAxis(new Vector3(1, 0, 0), leanDeg - ax.lumbarFlex - ax.thoracicFlex);
+  const interior = (180 - kneeDeg) * DEG;
+  const d = Math.sqrt(seg.thigh ** 2 + seg.shank ** 2 - 2 * seg.thigh * seg.shank * Math.cos(interior));
+  const extra = opts.extra ?? 0.03;
+  const ahead = opts.ahead ?? 0.04;
+  const floorY = opts.floorY ?? 0;
+  const vert = Math.sqrt(Math.max(0.04, d * d - extra * extra - ahead * ahead));
+  const pelvis = new Frame(new Vector3(0, floorY + seg.ankleHeight + vert, ankleZ - ahead), q);
+  const feet = {} as Record<Side, FootTarget>;
+  const toeOut = (opts.toeOutDeg ?? 8) * DEG;
+  for (const side of SIDES) {
+    const s = sideSign(side);
+    const toeDir = new Vector3(s * Math.sin(toeOut), 0, Math.cos(toeOut));
+    const ankle = new Vector3(s * (seg.hipHalfWidth + extra), floorY + seg.ankleHeight, ankleZ);
+    feet[side] = {
+      heel: ankle.clone().sub(new Vector3(0, seg.ankleHeight, 0)).sub(toeDir.clone().multiplyScalar(seg.heelToAnkle)),
+      toeDir,
+      up: new Vector3(0, 1, 0),
+      kneePole: new Vector3(s * 0.15, 0, 1),
+      heelLiftAllowed: false,
+    };
+  }
+  return { pelvis, feet };
+}
+
+/**
+ * Mano a partir del húmero fijo (flexión sagital y separación lateral, en el sistema del tórax) y la
+ * flexión del codo: el antebrazo se pliega hacia la cara anterior del brazo. Devuelve el agarre, el polo
+ * que deja el codo donde corresponde y la cara anterior del antebrazo (palma en supinación).
+ */
+export function armFromHumerus(body: SolvedBody, seg: Segments, side: Side, flexDeg: number, abdDeg: number, elbowDeg: number, wristExt: number) {
+  const s = sideSign(side);
+  const th = body.thorax;
+  const phi = flexDeg * DEG;
+  const a = abdDeg * DEG;
+  const u = th.dir(s * Math.sin(a), -Math.cos(phi) * Math.cos(a), Math.sin(phi) * Math.cos(a)).normalize();
+  // Cara anterior del brazo: hacia ella se pliega el antebrazo al flexionar el codo.
+  const ant = th.dir(0, Math.sin(phi), Math.cos(phi));
+  ant.sub(u.clone().multiplyScalar(ant.dot(u))).normalize();
+  const gh = body.arms[side].gh;
+  const elbow = gh.clone().add(u.clone().multiplyScalar(seg.upperArm));
+  const e = elbowDeg * DEG;
+  const f = u.clone().multiplyScalar(Math.cos(e)).add(ant.clone().multiplyScalar(Math.sin(e))).normalize();
+  const w = wristExt * DEG;
+  const link = Math.sqrt(seg.forearm ** 2 + seg.hand ** 2 + 2 * seg.forearm * seg.hand * Math.cos(w));
+  const grip = elbow.clone().add(f.clone().multiplyScalar(link));
+  // Polo: el codo donde lo queremos (perpendicular a la línea hombro → mano).
+  const d = grip.clone().sub(gh).normalize();
+  const pole = elbow.clone().sub(gh.clone().add(d.clone().multiplyScalar(elbow.clone().sub(gh).dot(d))));
+  // Cara anterior del antebrazo (palma en supinación).
+  const foreAnt = ant.clone().multiplyScalar(Math.cos(e)).sub(u.clone().multiplyScalar(Math.sin(e))).normalize();
+  return { grip, pole: pole.lengthSq() > 1e-8 ? pole.normalize() : ant.clone(), foreAnt };
 }
 
 /** Posición de un ajuste discreto (asiento, palanca…): número de posición y valor real. */

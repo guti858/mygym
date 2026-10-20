@@ -25,6 +25,8 @@ export interface AxialParams {
   scapElev: number;
   /** + protracción, − retracción. */
   scapProt: number;
+  /** Protracción de un solo lado (ejercicios unilaterales); si falta, `scapProt`. */
+  scapProtSide?: Partial<Record<Side, number>>;
   /** + extensión de muñeca. */
   wristExt: number;
 }
@@ -130,6 +132,8 @@ export interface SolvedBody {
   legs: Record<Side, LegSolution>;
 }
 
+export const scapProtOf = (axial: AxialParams, side: Side) => axial.scapProtSide?.[side] ?? axial.scapProt;
+
 function solveArm(
   seg: Segments,
   thorax: Frame,
@@ -139,7 +143,7 @@ function solveArm(
 ): ArmSolution {
   const s = sideSign(side);
   const sc = thorax.point(s * seg.scLeft.x, seg.thoracic + seg.scLeft.y, seg.scLeft.z);
-  const qG = qAxis(AX_Y, -s * axial.scapProt).multiply(qAxis(AX_Z, s * axial.scapElev));
+  const qG = qAxis(AX_Y, -s * scapProtOf(axial, side)).multiply(qAxis(AX_Z, s * axial.scapElev));
   const clav = new Vector3(s * seg.clavicleLeft.x, seg.clavicleLeft.y, seg.clavicleLeft.z)
     .applyQuaternion(qG)
     .applyQuaternion(thorax.q);

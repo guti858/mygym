@@ -49,7 +49,7 @@ export function evaluateWindows(
   const out: Evaluation[] = [];
   for (const w of windows) {
     if (!windowActive(w, p, phase)) continue;
-    const sides: (Side | undefined)[] = LIMB_METRICS.has(w.metric) ? [...SIDES] : [undefined];
+    const sides: (Side | undefined)[] = LIMB_METRICS.has(w.metric) ? (w.side ? [w.side] : [...SIDES]) : [undefined];
     for (const side of sides) {
       const key = side ? `${w.metric}.${side}` : w.metric;
       const value = metrics[key];
@@ -58,6 +58,11 @@ export function evaluateWindows(
     }
   }
   return out;
+}
+
+/** Posición de inicio de una modalidad (estiramiento: primero concéntrica; contracción: primero excéntrica). */
+export function startAtOf<M>(logic: StationLogic<M>, variantId: string): 'estiramiento' | 'contraccion' {
+  return logic.startAtFor?.(variantId) ?? logic.startAt;
 }
 
 export function findVariant(content: StationContent, id: string): VariantContent {

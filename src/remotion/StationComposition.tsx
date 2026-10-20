@@ -42,6 +42,8 @@ const SHORT_LABEL: Partial<Record<string, string>> = {
   'scap.prot': 'Escápula (prot.)',
   'wrist.ext': 'Muñeca',
   'lumbar.flex': 'Lumbar',
+  'hip.abd': 'Cadera (aper.)',
+  'foot.heelLift': 'Talón',
 };
 
 /** Marcadores numerados: separa los que caen demasiado cerca para que no se tapen. */

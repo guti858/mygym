@@ -1,3 +1,4 @@
+import { startAtOf } from '../../engine/evaluate';
 import { PHASE_LABEL, type PhaseKind } from '../../engine/timeline';
 import type { ErrorDef, VariantContent } from '../../engine/types';
 import type { FrameState } from '../../remotion/timing';
@@ -9,7 +10,7 @@ const ORDER: Record<'estiramiento' | 'contraccion', PhaseKind[]> = {
 };
 
 export function ScriptPanel({ mod, variant, state, error }: { mod: StationModule; variant: VariantContent; state: FrameState; error?: ErrorDef }) {
-  const order = ORDER[mod.logic.startAt];
+  const order = ORDER[startAtOf(mod.logic, variant.id)];
   const cues = variant.cues[state.kind] ?? [];
   const active = cues.length ? Math.min(cues.length - 1, Math.floor(state.u * cues.length)) : -1;
   return (

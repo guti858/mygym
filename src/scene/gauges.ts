@@ -52,6 +52,16 @@ export function gaugeArcs(body: SolvedBody, metrics: Metrics, keys: readonly Met
       case 'neck.flex':
         push(key, body.c7, body.thorax.y, body.neck.y, r * 0.8, false);
         break;
+      case 'hip.abd': {
+        // Apertura del muslo respecto al plano sagital de la pelvis.
+        const t = leg.knee.clone().sub(leg.hjc);
+        const ax = body.pelvis.x;
+        push(key, leg.hjc, t.clone().sub(ax.clone().multiplyScalar(t.dot(ax))), t, r * 1.1, true);
+        break;
+      }
+      case 'foot.heelLift':
+        out.push({ metric: key, side, center: leg.heel, from: UP, to: UP, radius: 0, value: metrics[`${key}.${side}`] ?? 0, label: leg.heel.clone().add(new Vector3(0, 0.05 * H, 0)) });
+        break;
       case 'pelvis.tilt':
         push(key, body.pelvis.origin, body.pelvisRef.y, body.pelvis.y, r * 1.3, false);
         break;

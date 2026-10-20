@@ -1,11 +1,10 @@
 import { Vector3 } from 'three';
-import { SIDES, sideSign, solveBody, type AxialParams, type FootTarget, type HandTarget, type Side, type SolvedBody } from '../../engine/body';
-import type { Segments } from '../../engine/anthropometry';
+import { SIDES, sideSign, solveBody, type AxialParams, type HandTarget, type Side } from '../../engine/body';
 import { describeLoad, type LoadSpec } from '../../engine/load';
-import { DEG, Frame, lerp, qAxis, sampleKeys } from '../../engine/math';
+import { lerp, sampleKeys } from '../../engine/math';
 import type { ContactForce } from '../../engine/moments';
 import type { StationFrameInput, StationLogic, StationSolution } from '../../engine/types';
-import { axialAt, type AxialKeys, type Keys } from '../common';
+import { armFromHumerus, axialAt, standingPose, type AxialKeys, type Keys } from '../common';
 
 /**
  * Poleas (columna con polea de altura regulable). De pie, el húmero queda fijo (codos pegados o
@@ -138,57 +137,6 @@ function elbowFor(geom: VariantGeom, p: number, errorId: string | null): number 
   return lerp(geom.elbow0, geom.elbow1, p);
 }
 
-/** De pie: pelvis a la altura que deja la rodilla con `kneeDeg` y los tobillos casi bajo las caderas. */
-function standing(seg: Segments, ax: AxialParams, leanDeg: number, kneeDeg: number, ankleZ: number) {
-  const q = qAxis(new Vector3(1, 0, 0), leanDeg - ax.lumbarFlex - ax.thoracicFlex);
-  const interior = (180 - kneeDeg) * DEG;
-  const d = Math.sqrt(seg.thigh ** 2 + seg.shank ** 2 - 2 * seg.thigh * seg.shank * Math.cos(interior));
-  const extra = 0.03;
-  const ahead = 0.04;
-  const vert = Math.sqrt(Math.max(0.04, d * d - extra * extra - ahead * ahead));
-  const pelvis = new Frame(new Vector3(0, seg.ankleHeight + vert, ankleZ - ahead), q);
-  const feet = {} as Record<Side, FootTarget>;
-  const toeOut = 8 * DEG;
-  for (const side of SIDES) {
-    const s = sideSign(side);
-    const toeDir = new Vector3(s * Math.sin(toeOut), 0, Math.cos(toeOut));
-    const ankle = new Vector3(s * (seg.hipHalfWidth + extra), seg.ankleHeight, ankleZ);
-    feet[side] = {
-      heel: ankle.clone().sub(new Vector3(0, seg.ankleHeight, 0)).sub(toeDir.clone().multiplyScalar(seg.heelToAnkle)),
-      toeDir,
-      up: new Vector3(0, 1, 0),
-      kneePole: new Vector3(s * 0.15, 0, 1),
-      heelLiftAllowed: false,
-    };
-  }
-  return { pelvis, feet };
-}
-
-/** Mano a partir del húmero fijo y la flexión del codo (en el plano sagital del brazo). */
-function armTarget(body: SolvedBody, seg: Segments, side: Side, flexDeg: number, abdDeg: number, elbowDeg: number, wristExt: number) {
-  const s = sideSign(side);
-  const th = body.thorax;
-  const phi = flexDeg * DEG;
-  const a = abdDeg * DEG;
-  const u = th.dir(s * Math.sin(a), -Math.cos(phi) * Math.cos(a), Math.sin(phi) * Math.cos(a)).normalize();
-  // Cara anterior del brazo: hacia ella se pliega el antebrazo al flexionar el codo.
-  const ant = th.dir(0, Math.sin(phi), Math.cos(phi));
-  ant.sub(u.clone().multiplyScalar(ant.dot(u))).normalize();
-  const gh = body.arms[side].gh;
-  const elbow = gh.clone().add(u.clone().multiplyScalar(seg.upperArm));
-  const e = elbowDeg * DEG;
-  const f = u.clone().multiplyScalar(Math.cos(e)).add(ant.clone().multiplyScalar(Math.sin(e))).normalize();
-  const w = wristExt * DEG;
-  const link = Math.sqrt(seg.forearm ** 2 + seg.hand ** 2 + 2 * seg.forearm * seg.hand * Math.cos(w));
-  const grip = elbow.clone().add(f.clone().multiplyScalar(link));
-  // Polo: el codo donde lo queremos (perpendicular a la línea hombro → mano).
-  const d = grip.clone().sub(gh).normalize();
-  const pole = elbow.clone().sub(gh.clone().add(d.clone().multiplyScalar(elbow.clone().sub(gh).dot(d))));
-  // Cara anterior del antebrazo (palma en supinación).
-  const foreAnt = ant.clone().multiplyScalar(Math.cos(e)).sub(u.clone().multiplyScalar(Math.sin(e))).normalize();
-  return { grip, pole: pole.lengthSq() > 1e-8 ? pole.normalize() : ant.clone(), foreAnt };
-}
-
 export const poleasLogic: StationLogic<PoleasMachine> = {
   id: 'poleas',
   forward: new Vector3(0, 0, 1),
@@ -213,7 +161,7 @@ export const poleasLogic: StationLogic<PoleasMachine> = {
     /** Postura y manos en un instante `pp` del recorrido. */
     const frameAt = (pp: number) => {
       const axial = axialFor(geom, pp, errorId, variantId);
-      const place = standing(seg, axial, leanFor(geom, pp, errorId, variantId), geom.kneeDeg, geom.ankleZ);
+      const place = standingPose(seg, axial, leanFor(geom, pp, errorId, variantId), geom.kneeDeg, { ankleZ: geom.ankleZ });
       const pre = solveBody({ seg, anthro, pelvisRef: place.pelvis, pelvisPivot: new Vector3(), axial, feet: place.feet });
       const flex = shoulderFlexFor(geom, pp, errorId, variantId);
       const elbowDeg = elbowFor(geom, pp, errorId);
@@ -221,7 +169,7 @@ export const poleasLogic: StationLogic<PoleasMachine> = {
       const handPos = {} as Record<Side, Vector3>;
       for (const side of SIDES) {
         const s = sideSign(side);
-        const t = armTarget(pre, seg, side, flex, geom.abd, elbowDeg, axial.wristExt);
+        const t = armFromHumerus(pre, seg, side, flex, geom.abd, elbowDeg, axial.wristExt);
         const palm = geom.palm === 'supino' ? t.foreAnt.clone() : geom.palm === 'prono' ? t.foreAnt.clone().negate() : pre.thorax.dir(-s, 0, 0);
         hands[side] = { grip: t.grip, pole: t.pole, palm };
         handPos[side] = t.grip;

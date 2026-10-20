@@ -1,6 +1,6 @@
 import { Matrix3, Matrix4, Quaternion, Vector3 } from 'three';
 import type { Segments } from '../engine/anthropometry';
-import { sideSign, SIDES, type Side, type SolvedBody } from '../engine/body';
+import { scapProtOf, sideSign, SIDES, type Side, type SolvedBody } from '../engine/body';
 import { qAxis, signedAngleAround } from '../engine/math';
 
 /**
@@ -176,7 +176,7 @@ export function solveRig(ctx: RigContext, body: SolvedBody): Map<string, BoneXf>
     // Cintura escapular: del esternón (según el tórax) al centro glenohumeral del motor.
     const sc = P('sc');
     const gh = P('gh');
-    const qG = qAxis(Y, -s * body.axial.scapProt).multiply(qAxis(new Vector3(0, 0, 1), s * body.axial.scapElev));
+    const qG = qAxis(Y, -s * scapProtOf(body.axial, side)).multiply(qAxis(new Vector3(0, 0, 1), s * body.axial.scapElev));
     const Rref = body.thorax.q.clone().multiply(qG);
     const scPose = applyXf(thorax, sc);
     const restDir = gh.clone().sub(sc);

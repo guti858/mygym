@@ -32,6 +32,8 @@ export interface JointWindow {
   why: string;
   confidence: Confidence;
   sources?: readonly string[];
+  /** Solo un lado (ejercicios unilaterales); por defecto, ambos. */
+  side?: Side;
 }
 
 export interface MuscleActivation {
@@ -106,6 +108,8 @@ export interface StationLogic<M> {
   /** Dirección hacia la que mira el usuario (horizontal). */
   forward: Vector3;
   startAt: 'estiramiento' | 'contraccion';
+  /** Inicio propio de una modalidad, si difiere del de la estación (p. ej. ejercicios que empiezan de pie). */
+  startAtFor?: (variantId: string) => 'estiramiento' | 'contraccion';
   load: LoadSpec;
   defaultLoadKg: number;
   /** Caja que contiene máquina y usuario (para el encuadre automático de cámara). */

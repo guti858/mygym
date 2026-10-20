@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { computeSegments } from '../engine/anthropometry';
-import { evaluateFrame, findVariant } from '../engine/evaluate';
+import { evaluateFrame, findVariant, startAtOf } from '../engine/evaluate';
 import { getModule } from '../stations/modules';
 import type { StationCompProps } from './props';
 import { durationInFrames, frameState, stationTimeline } from './timing';
@@ -13,8 +13,8 @@ export function useStationFrame(props: StationCompProps, frame: number, fps: num
   const variant = findVariant(mod.content, props.variantId);
   const tempo = props.tempo;
   const timeline = useMemo(
-    () => stationTimeline(tempo, props.reps, mod.logic.startAt),
-    [tempo, props.reps, mod.logic.startAt],
+    () => stationTimeline(tempo, props.reps, startAtOf(mod.logic, variant.id)),
+    [tempo, props.reps, mod.logic, variant.id],
   );
   const state = frameState(frame, fps, timeline);
   const result = evaluateFrame(mod.logic, mod.content, {

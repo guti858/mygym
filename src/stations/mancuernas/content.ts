@@ -1,0 +1,316 @@
+import type { ErrorDef, JointWindow, StationContent, VariantContent } from '../../engine/types';
+import { NSCA_SOURCE, SHARED_WINDOWS } from '../common';
+
+const win = (w: Omit<JointWindow, 'confidence'> & { confidence?: JointWindow['confidence'] }): JointWindow => ({ confidence: 'practica', ...w });
+
+const lumbar = (ok: readonly [number, number], warn: readonly [number, number], confidence: JointWindow['confidence'] = 'consenso', sources?: string[]) =>
+  win({
+    id: 'lumbar',
+    metric: 'lumbar.flex',
+    ok,
+    warn,
+    at: 'siempre',
+    label: 'Columna lumbar neutra',
+    cue: 'Abdomen firme y zona lumbar neutra: ni redondeada ni arqueada.',
+    why: 'Con carga en las manos, flexionar o arquear la columna lumbar aumenta el estrés de los discos y las articulaciones vertebrales.',
+    confidence,
+    sources,
+  });
+
+const tronco = (ok: readonly [number, number], warn: readonly [number, number], cue: string, label = 'Sin balanceo del tronco') =>
+  win({
+    id: 'tronco',
+    metric: 'trunk.incline',
+    ok,
+    warn,
+    at: 'siempre',
+    label,
+    cue,
+    why: 'Mover el tronco para ayudar resta trabajo al músculo objetivo y añade inercia y carga lumbar.',
+    confidence: 'consenso',
+  });
+
+const muneca = () =>
+  win({
+    id: 'muneca',
+    metric: 'wrist.ext',
+    ok: [-15, 15],
+    warn: [-30, 30],
+    at: 'siempre',
+    label: 'Muñeca neutra',
+    cue: 'Muñeca recta, alineada con el antebrazo.',
+    why: 'Doblar la muñeca bajo carga sobrecarga el antebrazo y transmite peor la fuerza.',
+  });
+
+const hombrosAbajo = (ok: readonly [number, number] = [-10, 8], warn: readonly [number, number] = [-10, 15]) =>
+  win({
+    id: 'hombros_abajo',
+    metric: 'scap.elev',
+    ok,
+    warn,
+    at: 'siempre',
+    label: 'Sin encoger los hombros',
+    cue: 'Hombros lejos de las orejas.',
+    why: 'Encoger los hombros mete al trapecio superior y empeora la posición del hombro.',
+    confidence: 'consenso',
+  });
+
+const ERRORS: readonly ErrorDef[] = [
+  { id: 'balanceo', label: 'Balanceo', description: 'El tronco se balancea para subir las mancuernas.', consequence: 'Menos trabajo del músculo objetivo y carga lumbar.', expect: ['trunk.incline'] },
+  { id: 'codos', label: 'Codos que avanzan', description: 'Los codos se adelantan al subir.', consequence: 'El deltoides anterior ayuda; el bíceps pierde tensión arriba.', expect: ['shoulder.flex'] },
+  { id: 'munecas', label: 'Muñecas dobladas', description: 'La muñeca se dobla bajo la carga.', consequence: 'Sobrecarga del antebrazo y de la muñeca.', expect: ['wrist.ext'] },
+  { id: 'arco_lumbar', label: 'Arco lumbar', description: 'La zona lumbar se despega del respaldo y se arquea para empujar.', consequence: 'Carga lumbar en extensión.', expect: ['lumbar.flex'] },
+  { id: 'codos_atras', label: 'Codos por detrás', description: 'Los codos bajan por detrás del plano del cuerpo.', consequence: 'Más estrés en la parte anterior del hombro.', expect: ['shoulder.behind'] },
+  { id: 'recorrido_parcial', label: 'Recorrido parcial', description: 'Las mancuernas no bajan hasta la altura de los hombros.', consequence: 'Menos estímulo en la parte baja del recorrido.', expect: ['elbow.flex'] },
+  { id: 'encogimiento', label: 'Hombros encogidos', description: 'Los hombros suben hacia las orejas (en las elevaciones, subiendo más allá del hombro).', consequence: 'Trapecio superior dominante y hombro en peor posición.', expect: ['scap.elev', 'shoulder.abd'] },
+  { id: 'codos_bloqueados', label: 'Codos bloqueados', description: 'Se suben las mancuernas con los codos totalmente extendidos.', consequence: 'Más palanca y estrés en el codo.', expect: ['elbow.flex'] },
+  { id: 'espalda_redondeada', label: 'Espalda redondeada', description: 'La columna se flexiona con carga.', consequence: 'Mayor estrés de los discos lumbares.', expect: ['lumbar.flex'] },
+  { id: 'tronco_sube', label: 'Tronco que gira y sube', description: 'El tronco se levanta y gira para mover la mancuerna.', consequence: 'Inercia y menos trabajo de la espalda.', expect: ['trunk.incline'] },
+  { id: 'codos_90', label: 'Codos a 90°', description: 'Brazos en «T» respecto al tronco al bajar.', consequence: 'Más estrés subacromial y anterior del hombro.', expect: ['shoulder.abd'] },
+  { id: 'hombros_adelantados', label: 'Hombros adelantados', description: 'Las escápulas se despegan del banco al empujar.', consequence: 'Peor estabilidad del hombro.', expect: ['scap.prot'] },
+  { id: 'sentadilla', label: 'Convertirlo en sentadilla', description: 'Las rodillas se flexionan mucho en lugar de llevar la cadera atrás.', consequence: 'Menos trabajo de los isquiotibiales.', expect: ['knee.flex'] },
+  { id: 'cuello', label: 'Cuello en hiperextensión', description: 'Se mira al frente forzando el cuello hacia atrás.', consequence: 'Carga cervical.', expect: ['neck.flex'] },
+  { id: 'valgo', label: 'Rodillas hacia dentro', description: 'Las rodillas se van hacia dentro de la línea del pie al bajar o al subir.', consequence: 'Estrés en la rodilla (valgo dinámico).', expect: ['knee.valgus'] },
+  { id: 'talones', label: 'Talones despegados', description: 'Los talones se levantan en la parte baja.', consequence: 'Peor equilibrio y más carga en la parte anterior de la rodilla.', expect: ['foot.heelLift'] },
+  { id: 'retroversion', label: 'Retroversión al fondo', description: 'Abajo, la pelvis se enrolla y la zona lumbar se flexiona.', consequence: 'Flexión lumbar con carga.', expect: ['pelvis.tilt', 'lumbar.flex'] },
+];
+
+const tempo = (excentrica: number, pausaEstiramiento: number, concentrica: number, pausaContraccion: number) => ({ excentrica, pausaEstiramiento, concentrica, pausaContraccion });
+
+const VARIANTS: readonly VariantContent[] = [
+  {
+    id: 'curl',
+    name: 'Curl de bíceps de pie',
+    short: 'Curl',
+    description: 'De pie con dos mancuernas y agarre supino: el codo es la única articulación que se mueve.',
+    tempo: tempo(2, 0, 1, 1),
+    muscles: [
+      { muscle: 'biceps', role: 'principal', level: 3 },
+      { muscle: 'braquial', role: 'sinergista', level: 2 },
+      { muscle: 'antebrazo', role: 'estabilizador', level: 2 },
+      { muscle: 'abdominales', role: 'estabilizador', level: 1 },
+    ],
+    cues: {
+      preparacion: ['De pie, brazos extendidos a los lados y palmas hacia delante.', 'Codos pegados a los costados, abdomen firme.'],
+      concentrica: ['Sube las mancuernas flexionando solo los codos.', 'Sin balancear el tronco. Espira.'],
+      pausa_contraccion: ['1 s arriba.'],
+      excentrica: ['Baja en 2 s hasta casi extender los codos. Inspira.'],
+    },
+    windows: [
+      win({ id: 'codo_fijo', metric: 'shoulder.flex', ok: [-10, 20], warn: [-20, 35], at: 'siempre', label: 'Codo fijo', cue: 'Codos pegados a los costados: no avanzan al subir.', why: 'Si el codo avanza, el deltoides ayuda y el bíceps pierde tensión arriba.', confidence: 'consenso' }),
+      tronco([-5, 8], [-12, 15], 'Tronco quieto y erguido.'),
+      win({ id: 'recorrido', metric: 'elbow.flex', ok: [120, 150], warn: [105, 155], at: 'contraccion', label: 'Recorrido completo arriba', cue: 'Sube hasta que el antebrazo casi toque el bíceps.', why: 'La contracción completa del bíceps está arriba.' }),
+      win({ id: 'extension', metric: 'elbow.flex', ok: [0, 20], warn: [0, 35], at: 'estiramiento', label: 'Extensión abajo', cue: 'Baja hasta casi extender los codos.', why: 'Recorrido completo: el bíceps trabaja también en estiramiento.' }),
+      muneca(),
+      lumbar([-12, 8], [-20, 14]),
+      hombrosAbajo(),
+    ],
+    errors: ['balanceo', 'codos', 'munecas'],
+  },
+  {
+    id: 'press-hombro',
+    name: 'Press de hombro sentado',
+    short: 'Press hombro',
+    description: 'Sentado con el respaldo vertical: empuje vertical con los codos en el plano de la escápula.',
+    tempo: tempo(2, 1, 1, 1),
+    muscles: [
+      { muscle: 'deltoides_anterior', role: 'principal', level: 3 },
+      { muscle: 'deltoides_lateral', role: 'sinergista', level: 2 },
+      { muscle: 'triceps', role: 'sinergista', level: 2 },
+      { muscle: 'trapecio_superior', role: 'sinergista', level: 1 },
+      { muscle: 'serrato', role: 'sinergista', level: 1 },
+      { muscle: 'abdominales', role: 'estabilizador', level: 1 },
+    ],
+    cues: {
+      preparacion: ['Espalda y zona lumbar apoyadas, pies firmes.', 'Mancuernas a la altura de los hombros, codos algo por delante del cuerpo.'],
+      concentrica: ['Empuja hacia arriba sin arquear la zona lumbar.', 'Las mancuernas se acercan arriba sin chocar. Espira.'],
+      pausa_contraccion: ['Brazos casi extendidos, sin bloquear.'],
+      excentrica: ['Baja en 2 s hasta la altura de los hombros. Inspira.'],
+      pausa_estiramiento: ['Sin rebote.'],
+    },
+    windows: [
+      lumbar([-15, 5], [-25, 10]),
+      win({ id: 'codos_plano', metric: 'shoulder.behind', ok: [-45, 5], warn: [-60, 12], at: 'estiramiento', label: 'Codos no por detrás', cue: 'Codos algo por delante del cuerpo (plano de la escápula).', why: 'Bajar con los codos por detrás del cuerpo aumenta el estrés en la parte anterior del hombro.', confidence: 'consenso' }),
+      win({ id: 'profundidad', metric: 'elbow.flex', ok: [80, 110], warn: [65, 120], at: 'estiramiento', label: 'Profundidad', cue: 'Baja hasta que las mancuernas queden a la altura de los hombros.', why: 'Recorrido completo sin forzar el hombro.' }),
+      SHARED_WINDOWS.codoArriba(),
+      muneca(),
+      SHARED_WINDOWS.cuello([-10, 10], [-20, 20]),
+    ],
+    errors: ['arco_lumbar', 'codos_atras', 'recorrido_parcial'],
+  },
+  {
+    id: 'elevaciones',
+    name: 'Elevaciones laterales',
+    short: 'Elevaciones',
+    description: 'De pie, los brazos se separan hasta la altura de los hombros con los codos semiflexionados.',
+    tempo: tempo(2, 0, 1, 1),
+    muscles: [
+      { muscle: 'deltoides_lateral', role: 'principal', level: 3 },
+      { muscle: 'trapecio_superior', role: 'sinergista', level: 2 },
+      { muscle: 'deltoides_anterior', role: 'sinergista', level: 1 },
+      { muscle: 'abdominales', role: 'estabilizador', level: 1 },
+    ],
+    cues: {
+      preparacion: ['De pie, mancuernas junto a los muslos y codos algo flexionados.', 'Hombros abajo, abdomen firme.'],
+      concentrica: ['Separa los brazos hasta la altura de los hombros, guiando con los codos.', 'Sin encoger los hombros ni balancearte. Espira.'],
+      pausa_contraccion: ['1 s arriba.'],
+      excentrica: ['Baja en 2 s, controlado. Inspira.'],
+    },
+    windows: [
+      win({ id: 'altura', metric: 'shoulder.abd', ok: [75, 95], warn: [60, 110], at: 'contraccion', label: 'Hasta la altura del hombro', cue: 'Sube hasta que los brazos queden paralelos al suelo, no más.', why: 'Por encima de la horizontal el trapecio superior toma el relevo y aumenta el estrés en el hombro.', confidence: 'consenso' }),
+      win({ id: 'codo', metric: 'elbow.flex', ok: [10, 30], warn: [5, 45], at: 'siempre', label: 'Codo semiflexionado', cue: 'Codos algo flexionados y fijos.', why: 'Con el codo bloqueado la palanca crece y se estresa el codo.' }),
+      hombrosAbajo(),
+      tronco([-5, 10], [-12, 18], 'Tronco quieto; si necesitas impulso, baja el peso.'),
+      lumbar([-12, 8], [-20, 14]),
+      SHARED_WINDOWS.cuello(),
+    ],
+    errors: ['encogimiento', 'balanceo', 'codos_bloqueados'],
+  },
+  {
+    id: 'remo',
+    name: 'Remo unilateral',
+    short: 'Remo unilateral',
+    description: 'Rodilla y mano en el banco, tronco casi horizontal: el brazo libre rema llevando el codo hacia la cadera.',
+    tempo: tempo(2, 1, 1, 1),
+    muscles: [
+      { muscle: 'dorsal_ancho', role: 'principal', level: 3 },
+      { muscle: 'trapecio_medio', role: 'sinergista', level: 2 },
+      { muscle: 'deltoides_posterior', role: 'sinergista', level: 2 },
+      { muscle: 'biceps', role: 'sinergista', level: 2 },
+      { muscle: 'erectores', role: 'estabilizador', level: 2 },
+      { muscle: 'abdominales', role: 'estabilizador', level: 1 },
+    ],
+    cues: {
+      preparacion: ['Rodilla y mano izquierdas en el banco, pie derecho en el suelo.', 'Espalda recta y casi horizontal; mancuerna colgando bajo el hombro.'],
+      concentrica: ['Junta la escápula y lleva el codo hacia la cadera.', 'Sin girar ni levantar el tronco. Espira.'],
+      pausa_contraccion: ['1 s con la escápula atrás.'],
+      excentrica: ['Baja en 2 s hasta extender el brazo. Inspira.'],
+      pausa_estiramiento: ['Brazo extendido, sin redondear la espalda.'],
+    },
+    windows: [
+      lumbar([-12, 6], [-18, 12], 'evidencia', ['mcgill2016']),
+      tronco([60, 90], [50, 95], 'Tronco casi horizontal y quieto.', 'Tronco casi horizontal'),
+      win({ id: 'escapula', metric: 'scap.prot', side: 'R', ok: [-30, -8], warn: [-30, 0], at: 'contraccion', label: 'Escápula atrás al final', cue: 'Al final, escápula del brazo que rema junto a la columna.', why: 'La retracción es lo que trabaja el trapecio medio y los romboides.', confidence: 'consenso' }),
+      win({ id: 'recorrido', metric: 'elbow.flex', side: 'R', ok: [80, 120], warn: [65, 130], at: 'contraccion', label: 'Recorrido del codo', cue: 'Lleva la mancuerna hasta la cintura, con el codo pasando el tronco.', why: 'El recorrido completo trabaja el dorsal y los retractores.' }),
+      hombrosAbajo([-12, 5], [-12, 12]),
+      SHARED_WINDOWS.cuello([-15, 15], [-30, 25]),
+    ],
+    errors: ['espalda_redondeada', 'tronco_sube', 'encogimiento'],
+  },
+  {
+    id: 'press-inclinado',
+    name: 'Press inclinado',
+    short: 'Press inclinado',
+    description: 'Banco a 30° con dos mancuernas: porción clavicular del pectoral, con las escápulas fijas.',
+    tempo: tempo(2, 1, 1, 0),
+    muscles: [
+      { muscle: 'pectoral_clavicular', role: 'principal', level: 3 },
+      { muscle: 'deltoides_anterior', role: 'sinergista', level: 2 },
+      { muscle: 'triceps', role: 'sinergista', level: 2 },
+      { muscle: 'pectoral_esternal', role: 'sinergista', level: 1 },
+      { muscle: 'serrato', role: 'estabilizador', level: 1 },
+    ],
+    cues: {
+      preparacion: ['Espalda en el banco a 30°, escápulas juntas y abajo, pies firmes.', 'Mancuernas a los lados del pecho alto, antebrazos verticales.'],
+      concentrica: ['Empuja hacia arriba hasta la vertical de los hombros.', 'Escápulas pegadas al banco. Espira.'],
+      pausa_contraccion: ['Codos casi extendidos.'],
+      excentrica: ['Baja en 2 s con los codos a 40–70° del tronco. Inspira.'],
+      pausa_estiramiento: ['Estiramiento controlado, sin rebote.'],
+    },
+    windows: [
+      win({ id: 'codos', metric: 'shoulder.abd', ok: [40, 70], warn: [30, 80], at: 'estiramiento', label: 'Apertura de codos', cue: 'Codos a 40–70° del tronco: ni pegados ni en «T».', why: 'Con los codos a 90° aumenta el estrés subacromial y anterior del hombro.', confidence: 'consenso' }),
+      win({ id: 'escapulas', metric: 'scap.prot', ok: [-30, -5], warn: [-30, 5], at: 'siempre', label: 'Escápulas retraídas', cue: 'Escápulas juntas y apoyadas en el banco.', why: 'Las escápulas fijas dan una base estable al hombro.', confidence: 'consenso' }),
+      win({ id: 'profundidad', metric: 'elbow.flex', ok: [80, 115], warn: [65, 125], at: 'estiramiento', label: 'Profundidad', cue: 'Baja hasta que las mancuernas queden a los lados del pecho.', why: 'Recorrido completo sin forzar el hombro.' }),
+      muneca(),
+      SHARED_WINDOWS.codoArriba(),
+      lumbar([-18, 5], [-28, 10]),
+    ],
+    errors: ['codos_90', 'hombros_adelantados', 'munecas'],
+  },
+  {
+    id: 'peso-muerto',
+    name: 'Peso muerto rumano',
+    short: 'Peso muerto rumano',
+    description: 'Bisagra de cadera con las rodillas algo flexionadas y fijas: isquiotibiales y glúteo.',
+    tempo: tempo(3, 0, 1, 1),
+    muscles: [
+      { muscle: 'isquiotibiales', role: 'principal', level: 3 },
+      { muscle: 'gluteo_mayor', role: 'sinergista', level: 2 },
+      { muscle: 'aductores', role: 'sinergista', level: 1 },
+      { muscle: 'erectores', role: 'estabilizador', level: 3 },
+      { muscle: 'antebrazo', role: 'estabilizador', level: 2 },
+    ],
+    cues: {
+      preparacion: ['De pie, mancuernas delante de los muslos y rodillas algo flexionadas.', 'Pecho alto, abdomen firme.'],
+      excentrica: ['Lleva la cadera atrás y baja las mancuernas pegadas a las piernas en 3 s.', 'Espalda recta; para cuando notes la tensión en los isquiotibiales. Inspira.'],
+      concentrica: ['Empuja la cadera hacia delante hasta quedar de pie.', 'Sin arquear la zona lumbar arriba. Espira.'],
+      pausa_contraccion: ['De pie, glúteos firmes.'],
+    },
+    windows: [
+      lumbar([-12, 6], [-18, 14], 'evidencia', ['mcgill2016']),
+      win({ id: 'rodillas', metric: 'knee.flex', ok: [10, 30], warn: [5, 40], at: 'siempre', label: 'Rodillas semiflexionadas y fijas', cue: 'Rodillas algo flexionadas y quietas: es la cadera la que se mueve.', why: 'Si las rodillas se flexionan mucho el ejercicio se convierte en una sentadilla y los isquiotibiales trabajan menos.' }),
+      win({ id: 'bisagra', metric: 'hip.flex', ok: [60, 100], warn: [45, 110], at: 'estiramiento', label: 'Bisagra de cadera', cue: 'Baja hasta notar la tensión en los isquiotibiales, con la espalda recta.', why: 'El estiramiento de los isquiotibiales en la bisagra es el estímulo del ejercicio.' }),
+      SHARED_WINDOWS.cuello([-15, 15], [-25, 25]),
+    ],
+    errors: ['espalda_redondeada', 'sentadilla', 'cuello'],
+  },
+  {
+    id: 'goblet',
+    name: 'Sentadilla goblet',
+    short: 'Sentadilla goblet',
+    description: 'Una mancuerna vertical sujeta contra el pecho: sentadilla profunda con el tronco erguido.',
+    tempo: tempo(3, 1, 1, 0),
+    muscles: [
+      { muscle: 'cuadriceps', role: 'principal', level: 3 },
+      { muscle: 'gluteo_mayor', role: 'sinergista', level: 2 },
+      { muscle: 'aductores', role: 'sinergista', level: 2 },
+      { muscle: 'erectores', role: 'estabilizador', level: 2 },
+      { muscle: 'abdominales', role: 'estabilizador', level: 2 },
+      { muscle: 'soleo', role: 'estabilizador', level: 1 },
+    ],
+    cues: {
+      preparacion: ['Pies algo más anchos que las caderas, puntas un poco hacia fuera.', 'Mancuerna vertical pegada al pecho, codos abajo.'],
+      excentrica: ['Baja en 3 s llevando las rodillas en la línea de los pies.', 'Talones apoyados y tronco erguido. Inspira.'],
+      pausa_estiramiento: ['Abajo, 1 s sin perder la posición de la espalda.'],
+      concentrica: ['Sube empujando el suelo, rodillas hacia fuera. Espira.'],
+    },
+    windows: [
+      win({ id: 'rodillas', metric: 'knee.valgus', ok: [-10, 8], warn: [-15, 15], at: 'siempre', label: 'Rodillas alineadas', cue: 'Rodillas en la dirección de las puntas de los pies.', why: 'El valgo dinámico (rodilla hacia dentro) aumenta la carga en los ligamentos de la rodilla.', confidence: 'consenso', sources: ['hewett2005'] }),
+      lumbar([-10, 8], [-15, 14]),
+      win({ id: 'talones', metric: 'foot.heelLift', ok: [0, 1], warn: [0, 6], at: 'siempre', label: 'Talones apoyados', cue: 'Todo el pie apoyado, peso en el centro del pie.', why: 'Despegar los talones desplaza la carga a la parte anterior de la rodilla y empeora el equilibrio.' }),
+      win({ id: 'pelvis', metric: 'pelvis.tilt', ok: [-6, 12], warn: [-12, 16], at: 'siempre', label: 'Pelvis sin enrollarse', cue: 'Abajo, que la pelvis no se enrolle: baja solo hasta donde mantengas la espalda.', why: 'La retroversión al fondo flexiona la zona lumbar con carga.', confidence: 'consenso' }),
+      win({ id: 'profundidad', metric: 'knee.flex', ok: [95, 125], warn: [80, 135], at: 'estiramiento', label: 'Profundidad', cue: 'Baja hasta que los muslos queden al menos paralelos al suelo.', why: 'La profundidad completa trabaja más el glúteo y el cuádriceps en estiramiento.' }),
+    ],
+    errors: ['valgo', 'talones', 'retroversion'],
+  },
+];
+
+export const mancuernasContent: StationContent = {
+  id: 'mancuernas',
+  name: 'Rack de mancuernas (estación variable)',
+  short: 'Mancuernas',
+  zone: 'libre',
+  family: 'libre',
+  summary: 'Siete ejercicios de peso libre con mancuernas y banco regulable: brazo, hombro, espalda, pecho y pierna.',
+  variants: VARIANTS,
+  errors: ERRORS,
+  keyMetrics: ['elbow.flex', 'shoulder.abd', 'lumbar.flex', 'trunk.incline', 'knee.flex', 'hip.flex'],
+  views: [
+    { id: 'iso', label: 'Isométrica', azimuth: -50, elevation: 28 },
+    { id: 'lateral', label: 'Lateral', azimuth: -90, elevation: 4 },
+    { id: 'frontal', label: 'Frontal', azimuth: 0, elevation: 10 },
+    { id: 'posterior', label: 'Posterior', azimuth: 180, elevation: 15 },
+  ],
+  sources: [
+    NSCA_SOURCE,
+    { id: 'mcallister2014', cite: 'McAllister MJ et al. (2014). Muscle activation during various hamstring exercises. J Strength Cond Res 28(6):1573–1580.' },
+    { id: 'oliveira2009', cite: 'Oliveira LF et al. (2009). Effect of the shoulder position on the biceps brachii EMG in different dumbbell curls. J Sports Sci Med 8(1):24–29.' },
+    { id: 'saeterbakken2013', cite: 'Saeterbakken AH, Fimland MS (2013). Effects of body position and loading modality on muscle activity and strength in shoulder presses. J Strength Cond Res 27(7):1824–1831.' },
+    { id: 'hewett2005', cite: 'Hewett TE et al. (2005). Biomechanical measures of neuromuscular control and valgus loading of the knee predict anterior cruciate ligament injury risk in female athletes. Am J Sports Med 33(4):492–501.' },
+    { id: 'mcgill2016', cite: 'McGill S. (2016). Low Back Disorders: Evidence-Based Prevention and Rehabilitation, 3.ª ed. Human Kinetics.' },
+  ],
+  generalCues: [
+    'El peso se elige por ejercicio: el que te permita 8–12 repeticiones con buena técnica.',
+    'El peso muerto rumano cubre los isquiotibiales, el grupo menos trabajado por el resto del gimnasio.',
+  ],
+};

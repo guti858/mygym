@@ -1,6 +1,6 @@
-# Guía de validación (puertas F0, F3, F4a y F4b)
+# Guía de validación (v1: F0, F3 y F4a–d)
 
-Tu validación desbloquea los siguientes lotes de F4. Hay cuatro cosas que revisar.
+Las 12 estaciones están implementadas. Tu validación cierra la v1. Hay cinco cosas que revisar.
 
 ## 1. Rebanada vertical (F3): Jalón al pecho y Prensa 45°
 
@@ -17,16 +17,19 @@ Documentos generados desde el código, con los ángulos simulados y preguntas co
 
 Cuando valides, **el esquema queda congelado** y se replica en el resto de estaciones.
 
-## 2. Contenido de las estaciones pendientes (F0)
+## 2. Lotes F4c y F4d (pierna y zona libre): 2 estaciones implementadas
 
-Borradores con modalidades, ajuste, guion, ventanas numéricas (con nivel de confianza), errores, músculos y fuentes:
+| Estación | Modalidades | Mecánica | Documento |
+|---|---|---|---|
+| Abductores / aductores | Abducción · abducción con tronco inclinado · aducción | Brazos con eje vertical junto a la rodilla, almohadillas por fuera o por dentro; rango inicial con pasador | [`abd_add.md`](stations/abd_add.md) |
+| Rack de mancuernas (estación variable) | Curl · press de hombro · elevaciones laterales · remo unilateral · press inclinado · peso muerto rumano · sentadilla goblet | Peso libre: la fuerza es el peso de cada mancuerna en la mano; banco regulable (vertical, 30° o plano) | [`mancuernas.md`](stations/mancuernas.md) |
 
-| Zona | Estaciones |
-|---|---|
-| Empuje | Ya implementadas (ver la sección 3) |
-| Tracción y brazos | Ya implementadas (ver la sección 4) |
-| Pierna | [Abductores / aductores](stations/abd_add.md) |
-| Zona libre | [Rack de mancuernas](stations/mancuernas.md) |
+Consola: `ir abd_add`, `variante aduccion`, `ir mancuernas`, `variante goblet`, `carga 16` (kg por mancuerna). El peso muerto rumano y la goblet empiezan de pie (primero la bajada).
+
+**Cambios respecto a los borradores F0** (cada documento los recoge en sus preguntas):
+
+- [ ] **Abductores / aductores:** nueva ventana **rodillas a unos 90°** (70–110°); en aducción, apertura de partida de 36° por pierna.
+- [ ] **Mancuernas:** carga de 2 en 2 kg en todo el rango; ventanas nuevas de **profundidad** (press inclinado 80–115° de codo, goblet 95–125° de rodilla), **recorrido del codo** en el remo (80–120°) y **extensión abajo** en el curl; en el remo rema el brazo derecho y la escápula y el codo se miden solo en ese lado; «rotar el tronco» se muestra como el tronco que se levanta.
 
 Cobertura muscular de todo el gimnasio: [`muscles-matrix.md`](muscles-matrix.md).
 

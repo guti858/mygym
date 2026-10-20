@@ -1,4 +1,5 @@
 import { Composition, Folder } from 'remotion';
+import { startAtOf } from '../engine/evaluate';
 import { STATION_MODULES } from '../stations/modules';
 import { DEFAULT_HUB_PROPS, defaultStationProps } from './defaults';
 import { HubComposition } from './HubComposition';
@@ -24,7 +25,7 @@ export const RemotionRoot: React.FC = () => {
               height={COMP_H}
               defaultProps={defaultStationProps(mod.content.id, v.id)}
               calculateMetadata={({ props }: { props: StationCompProps }) => ({
-                durationInFrames: durationInFrames(stationTimeline(props.tempo, props.reps, mod.logic.startAt), FPS),
+                durationInFrames: durationInFrames(stationTimeline(props.tempo, props.reps, startAtOf(mod.logic, props.variantId)), FPS),
               })}
             />
           )),

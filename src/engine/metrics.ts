@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { SIDES, type Side, type SolvedBody, dorsiflexion, hipFlexion, sideSign } from './body';
+import { SIDES, type Side, type SolvedBody, dorsiflexion, hipFlexion, scapProtOf, sideSign } from './body';
 import { RAD, angleDeg, clamp, signedAngleAround } from './math';
 
 /**
@@ -82,7 +82,7 @@ export function measure(body: SolvedBody, ref: MeasureRef): Metrics {
     const k = (base: MetricBase) => `${base}.${side}`;
 
     m[k('scap.elev')] = ax.scapElev;
-    m[k('scap.prot')] = ax.scapProt;
+    m[k('scap.prot')] = scapProtOf(ax, side);
     m[k('wrist.ext')] = ax.wristExt;
 
     const u = body.thorax.toLocalDir(arm.elbow.clone().sub(arm.gh).normalize());

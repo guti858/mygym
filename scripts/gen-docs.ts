@@ -6,12 +6,14 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { MUSCLES, MUSCLE_IDS, ROLE_LABEL } from '../src/content/muscles';
 import { ANTHRO_TEST_PROFILES, computeSegments } from '../src/engine/anthropometry';
-import { evaluateFrame } from '../src/engine/evaluate';
+import { evaluateFrame, startAtOf } from '../src/engine/evaluate';
 import { describeLoad } from '../src/engine/load';
 import { METRIC_INFO } from '../src/engine/metrics';
 import { JOINT_MOMENT_LABEL } from '../src/engine/moments';
 import { PHASE_LABEL, tempoToString, type PhaseKind } from '../src/engine/timeline';
 import { CONFIDENCE_LABEL, type StationContent, type StationLogic } from '../src/engine/types';
+import { abdAddContent } from '../src/stations/abd_add/content';
+import { abdAddLogic } from '../src/stations/abd_add/logic';
 import { CATALOG, ZONE_LABEL } from '../src/stations/catalog';
 import { dominadasContent } from '../src/stations/dominadas/content';
 import { dominadasLogic } from '../src/stations/dominadas/logic';
@@ -19,6 +21,8 @@ import { fondosContent } from '../src/stations/fondos/content';
 import { fondosLogic } from '../src/stations/fondos/logic';
 import { jalonContent } from '../src/stations/jalon/content';
 import { jalonLogic } from '../src/stations/jalon/logic';
+import { mancuernasContent } from '../src/stations/mancuernas/content';
+import { mancuernasLogic } from '../src/stations/mancuernas/logic';
 import { peckContent } from '../src/stations/peck_deck/content';
 import { peckLogic } from '../src/stations/peck_deck/logic';
 import { poleasContent } from '../src/stations/poleas/content';
@@ -46,6 +50,8 @@ const STATIONS: Array<{ logic: StationLogic<unknown>; content: StationContent }>
   { logic: dominadasLogic as StationLogic<unknown>, content: dominadasContent },
   { logic: remoLogic as StationLogic<unknown>, content: remoContent },
   { logic: poleasLogic as StationLogic<unknown>, content: poleasContent },
+  { logic: abdAddLogic as StationLogic<unknown>, content: abdAddContent },
+  { logic: mancuernasLogic as StationLogic<unknown>, content: mancuernasContent },
 ];
 
 /** Preguntas concretas para la validación del usuario, por estación. */
@@ -111,6 +117,20 @@ const QUESTIONS: Record<string, string[]> = {
     'Curl: el error «codos que avanzan» se marca a partir de 20° de flexión de hombro (aviso hasta 35°). ¿Te parece bien el umbral?',
     'Cambio respecto al borrador F0: en la polea alta, «codo fijo» pasa a −10…22° (en F0, −15…15°). Con los codos pegados pero algo por delante del tronco (13° en la técnica ideal), la barra baja por delante de los muslos y el cable sube por delante del pecho; con el codo alineado con el tronco, la barra chocaría con los muslos. ¿Lo aceptas?',
   ],
+  abd_add: [
+    '¿Incluimos la abducción con tronco inclinado aunque su respaldo sea sobre todo práctico? (Está implementada: tronco a ~30° hacia delante y sin apoyo.)',
+    '¿Rango final de abducción 30–50° te parece adecuado? La técnica ideal abre hasta 40° por pierna.',
+    'Nueva ventana respecto al borrador F0: **rodillas a unos 90°** (70–110°), porque las almohadillas y los reposapiés fijan la rodilla. ¿La mantenemos?',
+    'En aducción, el rango inicial se ajusta con el pasador (36° por pierna en la técnica ideal; el error lo lleva a 58°). ¿Es la apertura de partida que recomendarías?',
+  ],
+  mancuernas: [
+    '¿Estos 7 ejercicios son los que quieres en la v1? (El peso muerto rumano cubre isquiotibiales, que es el grupo más débil del resto del gimnasio.)',
+    'Cambio respecto al borrador F0: la carga avanza de **2 en 2 kg** en todo el rango (2–50 kg); en F0 eran 2 kg hasta 10 kg y 2,5 kg después. ¿Prefieres el salto de 2,5 kg (12,5 · 15 · 17,5…)?',
+    '¿Elevaciones laterales hasta 90° o permitimos algo más con buena rotación escapular?',
+    'Ventanas nuevas respecto al borrador F0: **profundidad** en el press inclinado (codo 80–115° abajo; la simulación da ~100° con las mancuernas a los lados del pecho alto y los codos a 60° del tronco) y en la goblet (rodilla 95–125°), **recorrido del codo** en el remo (80–120° arriba) y **extensión abajo** en el curl (0–20°). ¿Las mantenemos?',
+    'Remo unilateral: rema el brazo derecho con la rodilla y la mano izquierdas en el banco; la escápula y el codo se miden solo en ese lado. El error «rotar el tronco» se muestra como el tronco que se levanta (el motor no simula aún la rotación axial del tronco). ¿Te sirve así?',
+    'Press de hombro: el húmero sube en el plano de la escápula (30° por delante del plano frontal), con el respaldo a 85°. ¿Prefieres los codos en el plano frontal?',
+  ],
 };
 
 const fmt = (n: number) => (Math.abs(n) < 0.05 ? '0' : n.toFixed(0));
@@ -124,7 +144,7 @@ function stationDoc({ logic, content }: { logic: StationLogic<unknown>; content:
   out.push(`> Documento **generado desde el código** (\`src/stations/${content.id}/content.ts\` y \`logic.ts\`) con \`npm run docs\`. Para validarlo, anota tus cambios aquí (o en comentarios) y se trasladan al código; después se regenera.`);
   out.push('');
   out.push(`**Resumen:** ${content.summary}  `);
-  out.push(`**Zona:** ${ZONE_LABEL[content.zone]} · **Mecánica:** ${content.family} · **Carga:** ${logic.load.label} · **Empieza en:** ${logic.startAt === 'estiramiento' ? 'estiramiento (primero concéntrica)' : 'contracción (primero excéntrica)'}`);
+  out.push(`**Zona:** ${ZONE_LABEL[content.zone]} · **Mecánica:** ${content.family} · **Carga:** ${logic.load.label} · **Empieza en:** ${logic.startAtFor ? 'según la modalidad' : logic.startAt === 'estiramiento' ? 'estiramiento (primero concéntrica)' : 'contracción (primero excéntrica)'}`);
   out.push('');
   out.push('## Claves generales');
   for (const c of content.generalCues) out.push(`- ${c}`);
@@ -162,7 +182,7 @@ function stationDoc({ logic, content }: { logic: StationLogic<unknown>; content:
 
     out.push('### Guion por fases');
     const order: PhaseKind[] =
-      logic.startAt === 'estiramiento'
+      startAtOf(logic, v.id) === 'estiramiento'
         ? ['preparacion', 'concentrica', 'pausa_contraccion', 'excentrica', 'pausa_estiramiento']
         : ['preparacion', 'excentrica', 'pausa_estiramiento', 'concentrica', 'pausa_contraccion'];
     for (const k of order) {

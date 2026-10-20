@@ -75,7 +75,7 @@ export const COMMANDS: Command[] = [
         return 'Gimnasio.';
       }
       const entry = CATALOG.find((c) => c.id === d || norm(c.name).includes(d)) ?? fail(`No hay ninguna estación «${dest}».`);
-      if (!entry.ready) return fail(`«${entry.name}» llegará en un próximo lote de F4 (aún no disponible).`);
+      if (!entry.ready) return fail(`«${entry.name}» aún no está disponible.`);
       useApp.getState().go({ name: 'station', id: entry.id });
       return `→ ${entry.name}`;
     },

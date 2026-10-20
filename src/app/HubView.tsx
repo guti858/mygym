@@ -40,7 +40,7 @@ export function HubView() {
         const entry = CATALOG.find((c) => c.id === id);
         if (entry?.ready) useApp.getState().go({ name: 'station', id });
         else {
-          useApp.getState().print({ kind: 'out', text: `«${entry?.name}» llegará en un próximo lote de F4. Escribe «estaciones» para ver las disponibles.` });
+          useApp.getState().print({ kind: 'out', text: `«${entry?.name}» aún no está disponible. Escribe «estaciones» para ver las disponibles.` });
           useApp.getState().set({ consoleOpen: true });
         }
       },
