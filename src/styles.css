@@ -562,7 +562,7 @@ input[type='range'] {
 /* Tempo */
 .tempo {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 8px;
 }
@@ -579,6 +579,16 @@ input[type='range'] {
   justify-content: center;
   gap: 4px;
   white-space: nowrap;
+}
+/* La monoespaciada del tema terminal es más ancha: abreviaturas de fase algo más pequeñas. */
+:root[data-skin='terminal'] :is(.tempo__field span, .phase-pill) {
+  gap: 3px;
+  font-size: 10.5px;
+  letter-spacing: -0.03em;
+}
+/* Y en el tempo no cabe el punto de color (sigue en el carril del guion y en la pista). */
+:root[data-skin='terminal'] .tempo__field .dot {
+  display: none;
 }
 .tempo__field input {
   width: 100%;
@@ -1733,6 +1743,22 @@ input[type='range'] {
   }
 }
 
+
+/* Tema terminal: la monoespaciada ocupa ~20 % más; en los paneles se aprieta el interletrado y el cuerpo
+   para que quepa lo mismo que con la proporcional. */
+:root[data-skin='terminal'] :is(.station__left, .tabpanel) {
+  letter-spacing: -0.035em;
+}
+:root[data-skin='terminal'] :is(.callout, .cues, .variant-desc > p, .settings .fine, .chip, .setup, .bullets) {
+  font-size: 11.5px;
+}
+:root[data-skin='terminal'] :is(.joint__btn, .moments li, .muscles li) {
+  font-size: 12px;
+}
+:root[data-skin='terminal'] .block__title {
+  font-size: 15px;
+  letter-spacing: 0;
+}
 
 /* ───────────── Movimiento de la interfaz ───────────── */
 @keyframes fade-in {
