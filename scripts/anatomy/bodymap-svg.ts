@@ -1,7 +1,7 @@
 /**
  * Genera src/ui/bodymap.generated.ts: el mapa muscular 2D (SVG) del gimnasio a partir del
- * mismo modelo anatómico que usan las animaciones 3D (Z-Anatomy / BodyParts3D, postura de
- * referencia).
+ * mismo modelo anatómico que usan las animaciones 3D (el modelo propio masculino, en su postura de
+ * referencia; ver scripts/anatomy/gen).
  *
  * Qué hace, para una proyección ortográfica frontal y otra dorsal:
  *   1. Construye el modelo (buildModel) y rasteriza todos los triángulos de todos los grupos en
@@ -24,7 +24,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { ANATOMY_BIN, ANATOMY_MANIFEST } from '../../src/anatomy/data.generated';
+import { ANATOMY_M_BIN, ANATOMY_M_MANIFEST } from '../../src/anatomy/data-m.generated';
 import { buildModel, type AnatomyManifest } from '../../src/anatomy/model';
 import { MUSCLE_IDS, MUSCLES, type MuscleId } from '../../src/content/muscles';
 
@@ -68,6 +68,7 @@ const LABELS: readonly string[] = ['', ...MUSCLE_IDS, ...BASE];
 const LABEL_OF = new Map(LABELS.map((l, i) => [l, i]));
 const GROUP_TO_BASE: Record<string, Base> = {
   otros: 'otros',
+  profundo: 'otros',
   tendon: 'hueso',
   hueso: 'hueso',
   piel: 'piel',
@@ -94,13 +95,77 @@ function labelOfGroup(group: string): number {
 // Modelo y encuadre
 // ---------------------------------------------------------------------------------------------
 
-const model = buildModel(ANATOMY_MANIFEST as unknown as AnatomyManifest, ANATOMY_BIN);
+const model = buildModel(ANATOMY_M_MANIFEST as unknown as AnatomyManifest, ANATOMY_M_BIN);
+
+/**
+ * El modelo está en postura «A» (brazos a ~35°): para el mapa se bajan los brazos junto al tronco
+ * con el propio skinning (giro en el plano frontal alrededor del hombro; los huesos auxiliares del
+ * hombro giran la mitad), así la figura conserva las proporciones del mapa.
+ */
+const ARM_DOWN_DEG = 26;
+function lowerArms(geo: typeof model.body): Float32Array {
+  const P = geo.getAttribute('position').array as Float32Array;
+  const SI = geo.getAttribute('skinIndex').array as Uint16Array;
+  const SW = geo.getAttribute('skinWeight').array as Uint8Array;
+  const bones = model.manifest.bones;
+  const gh = model.manifest.landmarks.gh!;
+  const share = bones.map((b) => {
+    const base = b.replace(/\.[LR]$/, '');
+    if (['h_gh', 'h_th'].includes(base)) return 0.5;
+    return ['humerus', 'fa0', 'fa1', 'fa2', 'fa3', 'hand', 'h_el', 'h_wr', 't1', 't2'].includes(base) || /^[imrp][123]$/.test(base) ? 1 : 0;
+  });
+  const out = Float32Array.from(P);
+  for (let v = 0; v < P.length / 3; v++) {
+    let k = 0;
+    let side = 0;
+    for (let j = 0; j < 4; j++) {
+      const b = SI[v * 4 + j]!;
+      const w = SW[v * 4 + j]! / 255;
+      k += w * share[b]!;
+      if (share[b]! > 0) side = bones[b]!.endsWith('.L') ? 1 : -1;
+    }
+    if (k <= 0 || side === 0) continue;
+    const a = (-side * ARM_DOWN_DEG * k * Math.PI) / 180;
+    const cx = side * gh[0]!;
+    const cy = gh[1]!;
+    const x = P[v * 3]! - cx;
+    const y = P[v * 3 + 1]! - cy;
+    out[v * 3] = cx + x * Math.cos(a) - y * Math.sin(a);
+    out[v * 3 + 1] = cy + x * Math.sin(a) + y * Math.cos(a);
+  }
+  return out;
+}
+
+/**
+ * Triángulos por grupo: los del cuerpo según su región; de la piel (translúcida en la app) solo la
+ * cabeza y el cuello alto, que son opacos (canal auxiliar).
+ */
+function groupGeometries(): Map<string, { P: Float32Array; I: Uint32Array }> {
+  const out = new Map<string, { P: Float32Array; I: number[] }>();
+  const P = lowerArms(model.body);
+  const R = model.body.getAttribute('region').array as Uint8Array;
+  const I = model.body.getIndex()!.array;
+  for (let t = 0; t < I.length; t += 3) {
+    const g = model.regions[R[I[t]!]!]!;
+    const e = out.get(g) ?? { P, I: [] };
+    e.I.push(I[t]!, I[t + 1]!, I[t + 2]!);
+    out.set(g, e);
+  }
+  const SP = lowerArms(model.skin);
+  const SA = model.skin.getAttribute('aux').array as Uint8Array;
+  const SI = model.skin.getIndex()!.array;
+  const head: number[] = [];
+  for (let t = 0; t < SI.length; t += 3) if (SA[SI[t]!]! > 127 && SA[SI[t + 1]!]! > 127 && SA[SI[t + 2]!]! > 127) head.push(SI[t]!, SI[t + 1]!, SI[t + 2]!);
+  out.set('piel', { P: SP, I: head });
+  return new Map([...out].map(([g, e]) => [g, { P: e.P, I: Uint32Array.from(e.I) }]));
+}
+const GEOMETRIES = groupGeometries();
 
 let xAbs = 0;
 let yMin = Infinity;
 let yMax = -Infinity;
-for (const geo of model.geometries.values()) {
-  const P = geo.getAttribute('position').array as Float32Array;
+for (const geo of GEOMETRIES.values()) {
+  const P = geo.P;
   for (let i = 0; i < P.length; i += 3) {
     xAbs = Math.max(xAbs, Math.abs(P[i]!));
     yMin = Math.min(yMin, P[i + 1]!);
@@ -123,11 +188,11 @@ function rasterize(view: View): Uint8Array {
   const lab = new Uint8Array(W * H);
   const depth = new Float32Array(W * H).fill(-Infinity);
   // Orden estable de grupos (el de la geometría) para que el resultado sea determinista.
-  for (const [group, geo] of model.geometries) {
+  for (const [group, geo] of GEOMETRIES) {
     if (SKIP_GROUPS.has(group)) continue;
     const L = labelOfGroup(group);
-    const P = geo.getAttribute('position').array as Float32Array;
-    const I = geo.getIndex()!.array;
+    const P = geo.P;
+    const I = geo.I;
     const n = P.length / 3;
     const X = new Float64Array(n);
     const Y = new Float64Array(n);
@@ -624,9 +689,8 @@ const views = { front: buildView('front'), back: buildView('back') };
 
 const strip = (v: ViewOut) => ({ silhouette: v.silhouette, base: v.base, regions: v.regions });
 const body = `// Generado por scripts/anatomy/bodymap-svg.ts (npm run anatomy:bodymap) — no editar a mano.
-// Proyecciones frontal y dorsal del modelo anatómico de src/anatomy (derivado de Z-Anatomy,
-// CC BY-SA 4.0, https://www.z-anatomy.com, basado en BodyParts3D, © The Database Center for
-// Life Science, CC BY-SA 2.1 Japan). Este fichero se distribuye bajo CC BY-SA 4.0.
+// Proyecciones frontal y dorsal del modelo anatómico propio de src/anatomy (hombre, postura de
+// referencia; generado por scripts/anatomy/gen).
 // Unidades: centímetros. Vista frontal: la izquierda del sujeto queda a la derecha del dibujo.
 import type { MuscleId } from '../content/muscles';
 

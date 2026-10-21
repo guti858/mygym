@@ -6,7 +6,7 @@ import { qAxis, signedAngleAround } from '../engine/math';
 /**
  * Rig del modelo anatómico: traduce la postura que resuelve el motor (marcos de pelvis,
  * columna y cuello, centros articulares e IK de brazos y piernas) a una matriz por hueso
- * para el skinning de la malla de Z-Anatomy.
+ * para el skinning del modelo anatómico generado (scripts/anatomy/gen).
  *
  * Cada hueso aplica M(x) = p + R·S·(x − a): `a` es su origen en el modelo en reposo
  * (posición anatómica), `p` el origen en la postura actual, `R` la rotación reposo → postura

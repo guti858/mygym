@@ -1,6 +1,6 @@
 import type { Object3D } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { loadAnatomy } from '../../anatomy/model';
+import { anatomySettled } from '../../anatomy/model';
 import { decodeBase64, whenIdle } from '../base64';
 
 /**
@@ -47,8 +47,7 @@ const listeners = new Set<() => void>();
 export function loadEnvironment(): Promise<GymEnvironment> {
   if (cache) return Promise.resolve(cache);
   // Después del modelo anatómico y con el navegador libre: no se apilan las dos cargas pesadas.
-  pending ??= loadAnatomy()
-    .catch(() => undefined)
+  pending ??= anatomySettled()
     .then(() => whenIdle())
     .then(() => import('./gym-env.generated'))
     .then((m) => parse(m.GYM_ENV_GLB))
