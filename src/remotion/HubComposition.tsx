@@ -55,14 +55,14 @@ const ActiveStation = memo(function ActiveStation({ entry, t, theme, anthro }: {
   return (
     <group>
       <mod.Machine m={r.machine} palette={palette} H={seg.H} />
-      <Avatar body={r.body} palette={palette} statuses={jointStatuses([])} muscles={variant.muscles} activation={0.8} showMuscles pulse={0} castShadow={false} />
+      <Avatar sex={anthro.sex} body={r.body} palette={palette} statuses={jointStatuses([])} muscles={variant.muscles} activation={0.8} showMuscles pulse={0} castShadow={false} />
     </group>
   );
 });
 
 export const HubComposition: React.FC<HubCompProps> = (props) => {
   // Fuera del lienzo 3D: aquí sí llega el contexto de Remotion (espera al modelo al renderizar).
-  const anatomy = useAnatomy();
+  const anatomy = useAnatomy(props.anthro.sex);
   const env = useEnvironment();
   // Si la sala llega con el plano ya a la vista, se prepara antes de sustituir a la procedural.
   const [envAtMount] = useState(() => env !== null);

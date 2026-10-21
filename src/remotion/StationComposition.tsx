@@ -90,7 +90,7 @@ function worstEval(evals: readonly Evaluation[]): Evaluation | undefined {
 
 export const StationComposition: React.FC<StationCompProps> = (props) => {
   // Fuera del lienzo 3D: aquí sí llega el contexto de Remotion (espera al modelo al renderizar).
-  const anatomy = useAnatomy();
+  const anatomy = useAnatomy(props.anthro.sex);
   const env = useEnvironment();
   // Si la sala llega con la estación ya a la vista, se prepara antes de sustituir a la procedural.
   const [envAtMount] = useState(() => env !== null);
@@ -210,6 +210,7 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
         </group>
         <XRay target={machineRef} points={xrayPts} toCamera={toCamera} />
         <Avatar
+          sex={props.anthro.sex}
           body={result.body}
           palette={palette}
           statuses={statuses}

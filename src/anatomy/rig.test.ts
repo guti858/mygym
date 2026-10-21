@@ -4,21 +4,23 @@ import { ANTHRO_TEST_PROFILES, computeSegments } from '../engine/anthropometry';
 import { SIDES, sideSign } from '../engine/body';
 import { evaluateFrame } from '../engine/evaluate';
 import { STATION_MODULES } from '../stations/modules';
-import { ANATOMY_MANIFEST } from './data.generated';
+import { ANATOMY_F_MANIFEST } from './data-f.generated';
+import { ANATOMY_M_MANIFEST } from './data-m.generated';
 import type { AnatomyManifest } from './model';
 import { applyXf, boneMatrix, solveRig } from './rig';
 
-const manifest = ANATOMY_MANIFEST as unknown as AnatomyManifest;
-const ctx = { landmarks: manifest.landmarks, bones: manifest.bones };
-const lm = (k: string, s: 1 | -1) => {
-  const v = manifest.landmarks[k]!;
-  return new Vector3(s * v[0]!, v[1]!, v[2]!);
-};
+const MANIFESTS = { M: ANATOMY_M_MANIFEST, F: ANATOMY_F_MANIFEST } as unknown as Record<'M' | 'F', AnatomyManifest>;
 
 describe('Rig anatómico', () => {
   for (const mod of Object.values(STATION_MODULES)) {
     for (const [name, anthro] of Object.entries(ANTHRO_TEST_PROFILES)) {
-      test(`${mod.content.id} · ${name}: las articulaciones del modelo caen sobre las del motor`, () => {
+      const manifest = MANIFESTS[anthro.sex];
+      const ctx = { landmarks: manifest.landmarks, bones: manifest.bones };
+      const lm = (k: string, s: 1 | -1) => {
+        const v = manifest.landmarks[k]!;
+        return new Vector3(s * v[0]!, v[1]!, v[2]!);
+      };
+      test(`${mod.content.id} · ${name} (${anthro.sex}): las articulaciones del modelo caen sobre las del motor`, () => {
         const seg = computeSegments(anthro);
         for (const p of [0, 0.5, 1]) {
           const r = evaluateFrame(mod.logic, mod.content, {

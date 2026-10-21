@@ -56,8 +56,8 @@ export function InfoDialog() {
         <section>
           <h3 className="sec__head">Créditos</h3>
           <p className="fine">
-            Modelo anatómico: Z-Anatomy, z-anatomy.com (CC BY-SA 4.0), basado en BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 JP). Adaptado: mallas simplificadas y deformadas con
-            el rig de MyGym. Animación con Remotion · 3D con three.js.
+            Modelo anatómico propio de MyGym (hombre y mujer), generado por código: esqueleto paramétrico, músculos por fibras y piel por campos de distancia, deformado con el rig de
+            MyGym. Animación con Remotion · 3D con three.js.
           </p>
         </section>
       </form>

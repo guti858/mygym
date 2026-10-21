@@ -348,6 +348,19 @@ export const COMMANDS: Command[] = [
     },
   },
   {
+    name: 'cuerpo',
+    aliases: ['sexo'],
+    usage: 'cuerpo <hombre|mujer>',
+    help: 'Modelo corporal del avatar (proporciones de hombre o de mujer).',
+    complete: () => ['hombre', 'mujer'],
+    run: ([v]) => {
+      const n = norm(v ?? '');
+      if (n !== 'hombre' && n !== 'mujer') return fail('Usa «cuerpo hombre» o «cuerpo mujer».');
+      useApp.getState().setAnthro({ sex: n === 'mujer' ? 'F' : 'M' });
+      return `Cuerpo: ${n}`;
+    },
+  },
+  {
     name: 'masa',
     aliases: ['peso'],
     usage: 'masa <kg>',
@@ -386,7 +399,7 @@ export const COMMANDS: Command[] = [
     run: () => {
       useApp.getState().set({ anthroOpen: true });
       const a = useApp.getState().anthro;
-      return `Talla ${a.heightCm} cm · masa ${a.massKg} kg · cadera ${a.hipFlexionMax}° · tobillo ${a.ankleDorsiMax}°`;
+      return `${a.sex === 'F' ? 'Mujer' : 'Hombre'} · talla ${a.heightCm} cm · masa ${a.massKg} kg · cadera ${a.hipFlexionMax}° · tobillo ${a.ankleDorsiMax}°`;
     },
   },
   {

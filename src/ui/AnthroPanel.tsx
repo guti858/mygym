@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ANTHRO_TEST_PROFILES, computeSegments, type Anthropometry } from '../engine/anthropometry';
+import { ANTHRO_TEST_PROFILES, computeSegments, type Anthropometry, type Sex } from '../engine/anthropometry';
 import { useApp } from '../state/store';
 
 /** «175 cm», «1,00 ×», «110°»: unidad separada salvo los grados, proporciones con dos decimales. */
@@ -8,7 +8,14 @@ const fmtField = (v: number, step: number, unit: string) => {
   return unit === '°' ? `${n}°` : `${n} ${unit}`;
 };
 
-const FIELDS: Array<{ key: keyof Anthropometry; label: string; min: number; max: number; step: number; unit: string; hint?: string }> = [
+type NumericKey = Exclude<keyof Anthropometry, 'sex'>;
+
+const SEXES: Array<[Sex, string]> = [
+  ['M', 'Hombre'],
+  ['F', 'Mujer'],
+];
+
+const FIELDS: Array<{ key: NumericKey; label: string; min: number; max: number; step: number; unit: string; hint?: string }> = [
   { key: 'heightCm', label: 'Talla', min: 140, max: 210, step: 1, unit: 'cm' },
   { key: 'massKg', label: 'Masa corporal', min: 40, max: 160, step: 1, unit: 'kg' },
   { key: 'armRatio', label: 'Longitud de brazos', min: 0.94, max: 1.06, step: 0.01, unit: '×', hint: 'relativa a tu talla' },
@@ -48,9 +55,16 @@ export function AnthroPanel() {
           </button>
         </header>
         <p className="fine">Las palancas y la movilidad cambian el ajuste de cada máquina y la profundidad segura. Se guardan solo en este navegador.</p>
+        <div className="presets" role="group" aria-label="Modelo corporal">
+          {SEXES.map(([id, label]) => (
+            <button type="button" key={id} className={`chip${a.sex === id ? ' is-on is-ok' : ''}`} aria-pressed={a.sex === id} onClick={() => app.setAnthro({ sex: id })}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="presets">
           {PRESETS.map(([id, label]) => (
-            <button type="button" key={id} className="chip" onClick={() => app.setAnthro(ANTHRO_TEST_PROFILES[id]!)}>
+            <button type="button" key={id} className="chip" onClick={() => app.setAnthro({ ...ANTHRO_TEST_PROFILES[id]!, sex: a.sex })}>
               {label}
             </button>
           ))}
