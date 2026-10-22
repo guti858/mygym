@@ -222,7 +222,7 @@ test('cámara: giro, inclinación y ajuste a la vista se guardan en el enlace', 
   expect(errors).toEqual([]);
 });
 
-test('gimnasio → estación: el plano se acerca a la máquina y la vista del gimnasio se conserva al volver', async ({ page, isMobile }) => {
+test('gimnasio → estación: clic elige la máquina, «Abrir estación» se acerca a ella y la vista del gimnasio se conserva al volver', async ({ page, isMobile }) => {
   test.skip(isMobile, 'Se pulsa la máquina en el plano 3D con ratón');
   await open(page, '#/');
   await expect(page.locator('.hub__player canvas')).toBeVisible();
@@ -230,11 +230,16 @@ test('gimnasio → estación: el plano se acerca a la máquina y la vista del gi
   await expect(label).toBeVisible();
   const box = (await label.boundingBox())!;
   // La máquina queda justo debajo de su rótulo. El rótulo (HTML) puede verse antes de que la escena
-  // 3D acepte clics en un runner lento: se reintenta (la app ignora los clics durante la transición).
+  // 3D acepte clics en un runner lento: se reintenta hasta que aparece la tarjeta de la máquina.
+  const card = page.getByRole('group', { name: /Jalón al pecho: estación elegida/ });
   await expect(async () => {
     await page.mouse.click(box.x + box.width / 2, box.y + box.height + 45);
-    await expect(page).toHaveURL(/#\/e\/jalon/, { timeout: 4_000 });
+    await expect(card).toBeVisible({ timeout: 4_000 });
   }).toPass({ timeout: 45_000 });
+  // Un clic solo elige: la estación no se abre hasta pedirlo.
+  await expect(page).not.toHaveURL(/#\/e\//);
+  await card.getByRole('button', { name: 'Abrir estación' }).click();
+  await expect(page).toHaveURL(/#\/e\/jalon/, { timeout: 30_000 });
   // La copia del plano se retira cuando la estación ya ha pintado.
   await expect(page.locator('.zoom-snap')).toHaveCount(0, { timeout: 60_000 });
   await expect(page.locator('.stage canvas')).toBeVisible();
@@ -242,6 +247,60 @@ test('gimnasio → estación: el plano se acerca a la máquina y la vista del gi
   await expect(page.locator('.hub__player canvas')).toBeVisible();
   // Ningún lienzo se ha destruido ni recreado: el del gimnasio y el de la estación siguen ahí.
   await expect(page.locator('canvas')).toHaveCount(2);
+  expect(errors).toEqual([]);
+});
+
+test('plano del gimnasio: barra de vista (zoom, planta, vista de arranque), teclado y consola', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Teclado y consola se prueban en escritorio');
+  // Sin animaciones: la cámara salta y la estación se abre sin acercamiento.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page, '#/');
+  const plan = page.locator('.hub__player');
+  await expect(plan.locator('canvas')).toBeVisible();
+  const bar = page.getByRole('toolbar', { name: 'Vista del plano' });
+  await bar.getByRole('button', { name: 'Acercar' }).click();
+  await expect(plan).toHaveClass(/is-zoomed/);
+  await bar.getByRole('radio', { name: 'Planta' }).click();
+  await expect(bar.getByRole('radio', { name: 'Planta' })).toHaveAttribute('aria-checked', 'true');
+  await expect(plan).not.toHaveClass(/is-zoomed/);
+  await bar.getByRole('button', { name: 'Acercar' }).click();
+  await bar.getByRole('button', { name: 'Vista de arranque' }).click();
+  await expect(bar.getByRole('radio', { name: /Isométrica 1/ })).toHaveAttribute('aria-checked', 'true');
+  await expect(plan).not.toHaveClass(/is-zoomed/);
+  // Capas: los rótulos de las máquinas se pueden ocultar.
+  await bar.getByRole('button', { name: /^Capas/ }).click();
+  await page.getByRole('checkbox', { name: 'Rótulos de las máquinas' }).uncheck();
+  await expect(plan.locator('div', { hasText: /^Jalón al pecho$/ })).toHaveCount(0);
+  await page.getByRole('checkbox', { name: 'Rótulos de las máquinas' }).check();
+  await page.keyboard.press('Escape');
+  // Teclado: flechas eligen una máquina (tarjeta), Esc la suelta, Intro abre la elegida.
+  await plan.focus();
+  await page.keyboard.press('ArrowRight');
+  const card = page.getByRole('group', { name: /estación elegida/ });
+  await expect(card).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(card).toHaveCount(0);
+  await page.keyboard.press('ArrowLeft');
+  const name = (await card.getByRole('heading').innerText()).toLowerCase();
+  expect(name.length).toBeGreaterThan(3);
+  await page.keyboard.press('+');
+  await expect(plan).toHaveClass(/is-zoomed/);
+  await page.keyboard.press('0');
+  await expect(plan).not.toHaveClass(/is-zoomed/);
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/e\//);
+  // Consola en el gimnasio: vistas del plano y zoom.
+  await page.goto('/#/');
+  await expect(plan.locator('canvas')).toBeVisible();
+  await page.keyboard.press(':');
+  const input = page.locator('#console-input');
+  await input.fill('vista iso3');
+  await input.press('Enter');
+  await expect(bar.getByRole('radio', { name: /Isométrica 3/ })).toHaveAttribute('aria-checked', 'true');
+  await input.fill('zoom 2');
+  await input.press('Enter');
+  await expect(plan).toHaveClass(/is-zoomed/);
+  await expect(page.locator('.console__log')).toContainText('Zoom del plano: 2');
   expect(errors).toEqual([]);
 });
 

@@ -708,16 +708,100 @@ input[type='range'] {
   border-radius: 14px;
   overflow: hidden;
   box-shadow: var(--shadow);
-  /* Arrastre horizontal: gira la sala. */
+  /* Arrastre horizontal: gira la sala (el vertical desplaza la página en pantallas táctiles). */
   touch-action: pan-y;
 }
-.hub__rotate {
+.hub__player:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* Con zoom, el arrastre desplaza el plano (también con un dedo). */
+.hub__player.is-zoomed {
+  touch-action: none;
+  cursor: grab;
+}
+.hub__player.is-zoomed:active {
+  cursor: grabbing;
+}
+.hub__player.is-hovering {
+  cursor: pointer;
+}
+/* Capa con la proporción de la composición: la tarjeta se ancla en sus coordenadas. */
+.hub__overlay {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
+  inset: 0;
+  margin: auto;
+  aspect-ratio: var(--ar);
+  max-width: 100%;
+  max-height: 100%;
+  pointer-events: none;
+}
+/* Tarjeta de la máquina elegida en el plano. */
+.hub-card {
+  --card-half: 130px;
+  position: absolute;
+  width: calc(2 * var(--card-half));
+  max-width: calc(100% - 16px);
+  translate: -50% calc(-100% - 10px);
+  padding: 10px 12px;
+  pointer-events: auto;
+  animation: card-in var(--dur-2) var(--ease-out);
+}
+.hub-card--below {
+  translate: -50% 10px;
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+  }
+}
+.hub-card__zone {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hub-card__title {
+  margin: 2px 0 4px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.hub-card__meta {
+  margin: 0 0 2px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.hub-card__actions {
   display: flex;
-  gap: 2px;
-  padding: 4px;
+  gap: 6px;
+  margin-top: 8px;
+}
+.hub-card__open {
+  flex: 1;
+  min-height: 34px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.hud__field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.select--small {
+  width: auto;
+  height: 28px;
+  font-size: 13px;
 }
 .hub__index {
   flex: none;
@@ -2109,7 +2193,7 @@ input[type='range'] {
   }
 }
 
-/* Copia del plano del gimnasio que se acerca a la máquina al abrir una estación (src/ui/zoomTransition.ts). */
+/* Copia del plano del gimnasio que se funde con la estación al abrirla (src/ui/zoomTransition.ts). */
 .zoom-snap {
   position: fixed;
   /* Por debajo de la barra superior (30): la cabecera sigue visible durante el acercamiento. */

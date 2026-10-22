@@ -4,6 +4,7 @@ import { DEFAULT_ANTHRO, type Anthropometry } from '../engine/anthropometry';
 import { findVariant } from '../engine/evaluate';
 import { clampLoad } from '../engine/load';
 import type { Tempo } from '../engine/timeline';
+import { HUB_ISO_ELEVATION } from '../scene/hubCamera';
 import type { ThemeId } from '../scene/palette';
 import { getModule } from '../stations/modules';
 
@@ -38,6 +39,16 @@ export interface AppState {
   showGauges: boolean;
   showOverlay: boolean;
   hubRotation: number;
+  /** Plano del gimnasio: inclinación (fuera de la planta), vista en planta, zoom y desplazamiento (m). */
+  hubTilt: number;
+  hubPlan: boolean;
+  hubZoom: number;
+  hubPan: readonly [number, number];
+  /** Máquina elegida en el plano (su tarjeta, a un paso de abrirla). */
+  hubSelected: string | null;
+  /** Capas del plano: rótulos de las máquinas y nombres de zona. */
+  hubLabels: boolean;
+  hubZones: boolean;
   /**
    * Cámara con la que se abre una estación desde el plano del gimnasio (el mismo lado desde el que
    * se veía la máquina); la estación la consume al montarse y orbita hasta su vista.
@@ -54,7 +65,31 @@ export interface AppState {
   setVariant(stationId: string, variantId: string): void;
   setAnthro(patch: Partial<Anthropometry>): void;
   chooseTheme(theme: ThemeId | 'auto'): void;
-  set(patch: Partial<Pick<AppState, 'theme' | 'showMuscles' | 'showGauges' | 'showOverlay' | 'hubRotation' | 'muscleFilter' | 'consoleOpen' | 'anthroOpen' | 'infoOpen'>>): void;
+  set(
+    patch: Partial<
+      Pick<
+        AppState,
+        | 'theme'
+        | 'showMuscles'
+        | 'showGauges'
+        | 'showOverlay'
+        | 'hubRotation'
+        | 'hubTilt'
+        | 'hubPlan'
+        | 'hubZoom'
+        | 'hubPan'
+        | 'hubSelected'
+        | 'hubLabels'
+        | 'hubZones'
+        | 'muscleFilter'
+        | 'consoleOpen'
+        | 'anthroOpen'
+        | 'infoOpen'
+      >
+    >,
+  ): void;
+  /** Plano del gimnasio a su vista de arranque (isométrica, sin zoom ni desplazamiento). */
+  resetHubView(): void;
   print(...lines: LogLine[]): void;
   clearLog(): void;
 }
@@ -128,6 +163,13 @@ export const useApp = create<AppState>((set, get) => ({
   showGauges: persisted.showGauges ?? true,
   showOverlay: persisted.showOverlay ?? true,
   hubRotation: 0,
+  hubTilt: HUB_ISO_ELEVATION,
+  hubPlan: false,
+  hubZoom: 1,
+  hubPan: [0, 0],
+  hubSelected: null,
+  hubLabels: true,
+  hubZones: true,
   entryCamera: null,
   muscleFilter: null,
   consoleOpen: false,
@@ -165,6 +207,9 @@ export const useApp = create<AppState>((set, get) => ({
   },
   set(patch) {
     set(patch);
+  },
+  resetHubView() {
+    set({ hubRotation: 0, hubTilt: HUB_ISO_ELEVATION, hubPlan: false, hubZoom: 1, hubPan: [0, 0] });
   },
   print(...lines) {
     set({ log: [...get().log, ...lines].slice(-300) });

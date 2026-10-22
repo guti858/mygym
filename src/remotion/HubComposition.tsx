@@ -7,7 +7,8 @@ import { computeSegments, type Anthropometry } from '../engine/anthropometry';
 import { evaluateFrame } from '../engine/evaluate';
 import { Avatar, jointStatuses } from '../scene/Avatar';
 import { CameraRig } from '../scene/CameraRig';
-import { boxCorners, fitCamera, keyLightFor, project } from '../scene/camera';
+import { keyLightFor, project } from '../scene/camera';
+import { HUB_HOME, hubCamera, hubMargins, labelLevel, type HubView } from '../scene/hubCamera';
 import { Lights } from '../scene/Environment';
 import { GymRoom, RoomLighting } from '../scene/GymRoom';
 import { BakedRoom } from '../scene/env/BakedRoom';
@@ -17,7 +18,9 @@ import { HUB_FLOOR, HUB_HEIGHT, HUB_ZONES } from '../scene/layout';
 import { Mat } from '../scene/kit';
 import { PALETTES, type ThemeId } from '../scene/palette';
 import { Placeholder } from '../scene/Placeholder';
+import { MUSCLES } from '../content/muscles';
 import { CATALOG, ZONE_LABEL, type CatalogEntry, type Zone } from '../stations/catalog';
+import { hubCorners, hubFootprint, hubLabelY, hubPoint } from '../stations/hubPlacement';
 import { getModule } from '../stations/modules';
 import type { HubCompProps } from './props';
 import { MONO, SANS } from './StationComposition';
@@ -71,34 +74,31 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
   const palette = PALETTES[props.theme];
   // Las máquinas del plano se animan a 15 fps (ver ActiveStation).
   const tStations = (Math.floor(frame / 2) * 2) / fps;
-  const azimuth = -45 + 90 * props.rotation;
-  const cam = fitCamera({
-    azimuth,
-    elevation: 35.264,
-    points: boxCorners([-FLOOR[0] / 2, 0, -FLOOR[1] / 2], [FLOOR[0] / 2, 1.2, FLOOR[1] / 2]),
-    width,
-    height,
-    margins: { top: 0.06, bottom: 0.02, side: 0.02 },
-    zoomFactor: props.zoom,
-  });
+  const view: HubView = props.view ?? { ...HUB_HOME, azimuth: -45 + 90 * props.rotation, zoom: props.zoom };
+  const { azimuth } = view;
+  const cam = hubCamera(view, { width, height }, hubMargins(props.embedded));
   const unit = (Math.min(width, height) / 900) * (props.uiScale ?? 1);
-  // Rótulo de cada estación justo encima de su máquina (a altura fija, el de una máquina baja
-  // flotaría sobre la de detrás).
-  const labelY = (e: CatalogEntry) => Math.min(2.55, (getModule(e.id)?.logic.bounds.max[1] ?? 2.2) + 0.35);
+  // Rótulos según el zoom: de lejos, zonas y nombres; más cerca, también el músculo principal; muy
+  // cerca, sin zonas (ya no caben y la máquina se reconoce).
+  const level = labelLevel(view.zoom);
+  const showLabels = props.showLabels ?? true;
+  const showZones = (props.showZones ?? true) && level < 2;
+  // Selección o acercamiento: esa máquina se destaca y el resto se atenúa.
+  const dim = props.focus ?? props.selected ?? null;
   // Rótulos de zona: entre una rejilla de puntos del suelo de cada zona, el que deja el rótulo más
   // lejos (en pantalla) de las máquinas, de sus rótulos y de los rótulos de zona ya colocados.
   // Así ninguno se monta sobre otro, con cualquier giro de la sala.
   const occupied: Rect[] = CATALOG.flatMap((e) => {
-    const [bx, by] = project(cam, new Vector3(e.hub.x, 0, e.hub.z));
-    const [lx, ly] = project(cam, new Vector3(e.hub.x, labelY(e), e.hub.z));
+    const [bx, by] = project(cam, hubPoint(e, 0));
+    const [lx, ly] = project(cam, hubPoint(e, hubLabelY(e)));
     const lw = (e.short.length * 0.56 * 17 + 18) * unit;
     return [
       { x0: Math.min(bx, lx) - 40 * unit, x1: Math.max(bx, lx) + 40 * unit, y0: Math.min(by, ly), y1: Math.max(by, ly) + 10 * unit },
-      { x0: lx - lw / 2, x1: lx + lw / 2, y0: ly - 30 * unit, y1: ly },
+      { x0: lx - lw / 2, x1: lx + lw / 2, y0: ly - (level ? 48 : 30) * unit, y1: ly },
     ];
   });
   const zoneLabelAt = {} as Record<Zone, [number, number]>;
-  for (const z of Object.keys(ZONES) as Zone[]) {
+  for (const z of showZones ? (Object.keys(ZONES) as Zone[]) : []) {
     const zr = ZONES[z];
     const w = ZONE_LABEL[z].length * (0.68 * 15 * unit + 2);
     const h = 18 * unit;
@@ -120,10 +120,33 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
     occupied.push({ x0: best[0] - w / 2, x1: best[0] + w / 2, y0: best[1] - h / 2, y1: best[1] + h / 2 });
   }
 
+  // Viñeta sobre la máquina elegida: lo de alrededor se atenúa (más al acercarse para abrirla).
+  const veil = (() => {
+    const entry = dim ? CATALOG.find((c) => c.id === dim) : undefined;
+    if (!entry) return null;
+    const pts = hubCorners(entry).map((p) => project(cam, p));
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const r = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * 0.55 + 24 * unit;
+    return { cx, cy, r, alpha: props.focus ? 'b3' : '73' };
+  })();
+
   return (
     <AbsoluteFill style={{ backgroundColor: palette.bg, fontFamily: props.theme === 'terminal' ? MONO : SANS }}>
       {/* preserveDrawingBuffer: la transición a una estación copia el plano (src/ui/zoomTransition.ts). */}
-      <ThreeCanvas width={width} height={height} dpr={1} orthographic shadows frameloop="demand" gl={{ preserveDrawingBuffer: true }} onCreated={tuneRenderer}>
+      <ThreeCanvas
+        width={width}
+        height={height}
+        dpr={props.dpr ?? 1}
+        orthographic
+        shadows
+        frameloop="demand"
+        gl={{ preserveDrawingBuffer: true }}
+        onCreated={tuneRenderer}
+        onPointerMissed={() => props.onMiss?.()}
+      >
         <color attach="background" args={[palette.bg]} />
         <CameraRig spec={cam} />
         <Lights extent={12} keyPosition={keyLightFor(cam)} shadowPosition={env ? [4, 12, 2.5] : undefined} />
@@ -132,7 +155,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
           // Sala procedural con el suelo de cada zona pintado encima (la horneada ya lo trae).
           const procedural = (
             <>
-              <GymRoom palette={palette} center={[0, 0]} size={FLOOR} azimuth={azimuth} elevation={35.264} height={HUB_HEIGHT} variant="hub" />
+              <GymRoom palette={palette} center={[0, 0]} size={FLOOR} azimuth={azimuth} elevation={view.elevation} height={HUB_HEIGHT} variant="hub" />
               {(Object.keys(ZONES) as Zone[]).map((z) => {
                 const zr = ZONES[z];
                 return (
@@ -154,28 +177,25 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
           const mod = getModule(entry.id);
           const hl = props.highlight[entry.id];
           const hovered = props.hovered === entry.id;
-          const ring = hovered ? palette.accent : hl === 'principal' ? palette.muscle.principal : hl === 'secundario' ? palette.muscle.sinergista : null;
-          const bb = mod?.logic.bounds;
-          const center: [number, number, number] = bb ? [(bb.min[0] + bb.max[0]) / 2, 0, (bb.min[2] + bb.max[2]) / 2] : [0, 0, 0];
+          const chosen = dim === entry.id || props.recent === entry.id;
+          const ring = hovered || chosen ? palette.accent : hl === 'principal' ? palette.muscle.principal : hl === 'secundario' ? palette.muscle.sinergista : null;
+          const fp = hubFootprint(entry);
           return (
-            <group
-              key={entry.id}
-              position={[entry.hub.x, 0, entry.hub.z]}
-              rotation={[0, entry.hub.yaw, 0]}
-            >
+            <group key={entry.id} position={[entry.hub.x, 0, entry.hub.z]} rotation={[0, entry.hub.yaw, 0]}>
               {ring && (
                 <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
-                  <ringGeometry args={[1.25, 1.42, 48]} />
+                  <ringGeometry args={chosen ? [1.22, 1.46, 48] : [1.25, 1.42, 48]} />
                   <Mat color={ring} emissive={ring} emissiveIntensity={0.6} />
                 </mesh>
               )}
-              {/* Caja invisible de selección: los eventos solo prueban esta caja, no las mallas de
-                  la máquina ni las del avatar (que, con piel animada, cuestan mucho de intersecar). */}
+              {/* Caja invisible de selección, del tamaño de la máquina: los eventos solo prueban esta
+                  caja, no las mallas de la máquina ni las del avatar (que, con piel animada, cuestan
+                  mucho de intersecar). */}
               <mesh
-                position={[0, 1.2, 0]}
+                position={[0, (fp.height + 0.1) / 2, 0]}
                 onClick={(e) => {
                   e.stopPropagation();
-                  const [sx, sy] = project(cam, new Vector3(entry.hub.x, 0.9, entry.hub.z));
+                  const [sx, sy] = project(cam, hubPoint(entry, 0.9));
                   props.onSelect?.(entry.id, { x: sx / width, y: sy / height });
                 }}
                 onPointerOver={(e) => {
@@ -184,10 +204,10 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
                 }}
                 onPointerOut={() => props.onHover?.(null)}
               >
-                <boxGeometry args={[2.4, 2.4, 2.4]} />
+                <boxGeometry args={[Math.max(0.9, 2 * fp.half[0] + 0.2), fp.height + 0.1, Math.max(0.9, 2 * fp.half[1] + 0.2)]} />
                 <meshBasicMaterial visible={false} />
               </mesh>
-              <group position={[-center[0], 0, -center[2]]}>
+              <group position={[-fp.center[0], 0, -fp.center[1]]}>
                 {mod ? <ActiveStation entry={entry} t={tStations} theme={props.theme} anthro={props.anthro} /> : <Placeholder kind={entry.placeholder} palette={palette} />}
               </group>
             </group>
@@ -196,7 +216,18 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
         <Repaint ready={[env, anatomy]} />
       </ThreeCanvas>
 
-      {(Object.keys(ZONES) as Zone[]).map((z) => {
+      {veil && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            background: `radial-gradient(circle at ${veil.cx}px ${veil.cy}px, transparent ${veil.r}px, ${palette.bg}${veil.alpha} ${veil.r * 1.7}px)`,
+          }}
+        />
+      )}
+
+      {(Object.keys(zoneLabelAt) as Zone[]).map((z) => {
         const [x, y] = zoneLabelAt[z];
         return (
           <div
@@ -206,7 +237,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
               left: x,
               top: y,
               color: palette.label,
-              opacity: 0.75,
+              opacity: dim ? 0.4 : 0.75,
               textShadow: `0 0 ${4 * unit}px ${palette.bg}, 0 0 ${2 * unit}px ${palette.bg}`,
               translate: '-50% -50%',
               whiteSpace: 'nowrap',
@@ -223,9 +254,12 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
       })}
 
       {CATALOG.map((entry) => {
-        const [x, y] = project(cam, new Vector3(entry.hub.x, labelY(entry), entry.hub.z));
         const hovered = props.hovered === entry.id;
+        const chosen = dim === entry.id || props.recent === entry.id;
+        if (!showLabels && !hovered && !chosen) return null;
+        const [x, y] = project(cam, hubPoint(entry, hubLabelY(entry)));
         const hl = props.highlight[entry.id];
+        const principal = entry.principal.map((m) => MUSCLES[m].name).join(', ');
         return (
           <div
             key={entry.id}
@@ -236,18 +270,20 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
               translate: '-50% -100%',
               background: palette.labelBg,
               color: palette.label,
-              border: `${1.5 * unit}px solid ${hovered ? palette.accent : hl === 'principal' ? palette.muscle.principal : hl === 'secundario' ? palette.muscle.sinergista : 'transparent'}`,
+              border: `${1.5 * unit}px solid ${hovered || chosen ? palette.accent : hl === 'principal' ? palette.muscle.principal : hl === 'secundario' ? palette.muscle.sinergista : 'transparent'}`,
               borderRadius: 10 * unit,
               padding: `${4 * unit}px ${9 * unit}px`,
               fontSize: 17 * unit,
               fontWeight: 700,
               whiteSpace: 'nowrap',
+              textAlign: 'center',
               pointerEvents: 'none',
-              opacity: entry.ready || hovered ? 1 : 0.72,
+              opacity: dim && !chosen ? 0.45 : entry.ready || hovered ? 1 : 0.72,
             }}
           >
             {!entry.ready && <span style={{ opacity: 0.6 }}>○ </span>}
             {entry.short}
+            {level > 0 && <div style={{ fontSize: 12.5 * unit, fontWeight: 500, opacity: 0.75 }}>{principal}</div>}
           </div>
         );
       })}

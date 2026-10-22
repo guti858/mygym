@@ -33,7 +33,9 @@ proyecto (sin datos de terceros).
 Uso (Blender 5.2 como módulo de Python: `pip install bpy==5.2.2` en un entorno virtual):
   npx tsx scripts/environment/layout.ts
   python -I scripts/environment/build_rooms.py scripts/environment/layout.json src/scene/env/gym-env
-Opciones: --samples N (64), --station-res N (1024), --hub-res N (2048), --quick (prueba rápida).
+Opciones: --samples N (64), --station-res N (1024), --hub-res N (2048), --mirror-res N (reflejos:
+512 / 1024), --quick (prueba rápida), --gpu (Cycles en la GPU: Metal en un Mac con Apple Silicon,
+OptiX/CUDA/HIP/oneAPI en otros equipos; si no hay ninguna, sigue en la CPU).
 Al final, compact_glb.py quita lo que la app no usa (normales, UV de detalle de materiales lisos).
 """
 
@@ -57,6 +59,7 @@ def opt(name, default):
 
 
 QUICK = '--quick' in ARGS
+GPU = '--gpu' in ARGS
 SAMPLES = opt('--samples', 8 if QUICK else 64)
 RES = {'station': opt('--station-res', 512 if QUICK else 1024), 'hub': opt('--hub-res', 1024 if QUICK else 2048)}
 L = json.load(open(LAYOUT))
@@ -115,7 +118,23 @@ SLOTS = {
     'mirror': (None, 1, '#cfdbe8'),
     'window': (None, 1, '#dbe8f5'),
     'led': (None, 1, '#fff4de'),
+    # Rótulos con la marca (color del texto de la interfaz) y exterior visto por los ventanales.
+    'sign': (None, 1, '#14181d'),
+    'exterior': ('exterior', 4.0, '#e3eef9'),
 }
+
+# Tipografías de la marca (SIL Open Font License, en fonts/): las mismas que la cabecera de la app.
+FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fonts')
+FONT_FILES = {'display': 'BigShouldersDisplay-Black.ttf', 'mono': 'IBMPlexMono-SemiBold.ttf'}
+_FONTS = {}
+
+
+def font(kind):
+    """Fuente cargada en Blender (o None: se usa la de serie si falta el fichero)."""
+    if kind not in _FONTS:
+        path = os.path.join(FONT_DIR, FONT_FILES[kind])
+        _FONTS[kind] = bpy.data.fonts.load(path) if os.path.exists(path) else None
+    return _FONTS[kind]
 
 
 def srgb_to_linear(c):
@@ -199,7 +218,43 @@ def tex_concrete(n, rng):
     return np.clip(img, 0, 1)
 
 
-DETAIL_GEN = {'rubber': (1024, tex_rubber), 'plaster': (1024, tex_plaster), 'panel': (1024, tex_panel), 'wood': (512, tex_wood), 'concrete': (512, tex_concrete)}
+def tex_exterior(n, rng):
+    """Lo que se ve por los ventanales: cielo, una línea de edificios y arbolado. Cubre 4 × 4 m
+    (fila 0 = a ras de suelo) y se repite en horizontal sin costura."""
+    h = (np.arange(n)[:, None] + 0.5) / n * 4.0  # altura (m) de cada fila
+    x = np.arange(n)[None, :]
+    img = np.broadcast_to(0.98 - 0.1 * np.clip((h - 1.6) / 2.4, 0, 1), (n, n)).copy()
+    # Edificios: bloques de anchura y altura variadas, con ventanas en rejilla algo más oscuras.
+    sky = np.ones((n, n), bool)
+    pos = 0
+    while pos < n:
+        wd = int(rng.integers(n // 14, n // 6))
+        top = rng.uniform(1.55, 2.55)
+        tone = rng.uniform(0.7, 0.8)
+        cols = np.arange(pos, pos + wd) % n
+        block = h[:, 0] < top
+        img[np.ix_(block, cols)] = tone
+        sky[np.ix_(block, cols)] = False
+        rows = np.nonzero(block & (h[:, 0] > 0.9) & ((h[:, 0] * 3.2) % 1 < 0.45))[0]
+        img[np.ix_(rows, cols[np.arange(wd) % 6 >= 3])] = tone - 0.07
+        pos += wd + int(rng.integers(0, n // 40))
+    # Arbolado: copas redondeadas (ruido periódico umbralizado) hasta 1,3-1,9 m.
+    crown = 1.6 + 0.3 * periodic_noise(n, 30, rng)[:1, :]
+    trees = h < crown
+    img[trees] = 0.58 + 0.03 * periodic_noise(n, 3, rng)[trees]
+    img[h[:, 0] < 0.6, :] = 0.5
+    img += 0.012 * periodic_noise(n, 1.0, rng)
+    return np.clip(img, 0, 1)
+
+
+DETAIL_GEN = {
+    'rubber': (1024, tex_rubber),
+    'plaster': (1024, tex_plaster),
+    'panel': (1024, tex_panel),
+    'wood': (512, tex_wood),
+    'concrete': (512, tex_concrete),
+    'exterior': (512, tex_exterior),
+}
 
 
 def make_detail_images():
@@ -220,14 +275,53 @@ def make_detail_images():
 # ---------------------------------------------------------------------------------------------
 # Construcción de geometría
 # ---------------------------------------------------------------------------------------------
+def text_mesh(body, face=None, spacing=1.0, extrude=0.0):
+    """Texto a cuerpo 1 como bmesh (X lectura, Y arriba, Z grosor). Devuelve (bmesh, anchura)."""
+    cu = bpy.data.curves.new('rotulo', 'FONT')
+    cu.body = body
+    cu.size = 1
+    cu.extrude = extrude
+    # Pocas subdivisiones por tramo de curva: a la distancia de la cámara no se nota y el rótulo
+    # pesa la cuarta parte (las letras de la marca son casi todo rectas).
+    cu.resolution_u = 3
+    if extrude == 0:
+        cu.fill_mode = 'FRONT'  # pintura: una sola cara
+    cu.space_character = spacing
+    if face is not None:
+        cu.font = face
+    else:
+        cu.offset = 0.012  # la fuente de serie es fina: se engruesa un poco
+    ob = bpy.data.objects.new('rotulo', cu)
+    bpy.context.scene.collection.objects.link(ob)
+    me = bpy.data.meshes.new_from_object(ob.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    bpy.data.objects.remove(ob)
+    bpy.data.curves.remove(cu)
+    tmp = bmesh.new()
+    tmp.from_mesh(me)
+    bpy.data.meshes.remove(me)
+    bmesh.ops.triangulate(tmp, faces=tmp.faces[:])
+    return tmp, max((v.co.x for v in tmp.verts), default=0.0)
+
+
+def text_extent(body, face=None, spacing=1.0):
+    """Anchura y altura máxima (a cuerpo 1) de un texto, sin crear geometría en la sala."""
+    tmp, width = text_mesh(body, face, spacing)
+    top = max((v.co.y for v in tmp.verts), default=0.0)
+    tmp.free()
+    return width, top
+
+
 class Part:
     """Un grupo de la sala (acaba siendo un objeto, y un nodo en el glTF).
 
     `light`: 'atlas' (atlas de luz), 'vertex' (luz en color de vértice) o 'none' (sin luz
-    horneada: vidrio, espejos, LED y rótulos, que la app pinta con material propio)."""
+    horneada: vidrio, espejos, LED y rótulos, que la app pinta con material propio).
+    `reflect`: luna de espejo; se hornea lo que refleja (sala estática) en su propio atlas (UV 1).
+    `diffuse=False`: invisible para la luz rebotada en el horneado (exterior tras los ventanales)."""
 
-    def __init__(self, room, name, fade='', light='atlas', shadow=True, cull=(), keep=()):
+    def __init__(self, room, name, fade='', light='atlas', shadow=True, cull=(), keep=(), reflect=False, diffuse=True):
         self.room, self.name, self.fade, self.light, self.shadow = room, name, fade, light, shadow
+        self.reflect, self.diffuse = reflect, diffuse
         # Se descartan las caras que miran hacia `cull` y, si se indica `keep`, las que no miran
         # hacia ninguna de esas direcciones (ejes de la app).
         self.cull = [TO_B @ V(c) for c in cull]
@@ -313,32 +407,50 @@ class Part:
                 f = self.bm.faces.new((vs[i, j], vs[i, j + 1], vs[i + 1, j + 1], vs[i + 1, j]))
                 f.material_index = self._mi(slot_at((xs[i] + xs[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2))
 
-    def text(self, body, origin, right, height, slot, depth=0.012):
-        """Rótulo en relieve: `origin` = inicio de la línea base, `right` = dirección de lectura.
-        Se lee de frente desde el lado hacia el que apunta `right × arriba`."""
-        cu = bpy.data.curves.new('rotulo', 'FONT')
-        cu.body = body
-        cu.size = 1
-        cu.extrude = depth / height / 2
-        cu.offset = 0.012
-        ob = bpy.data.objects.new('rotulo', cu)
-        bpy.context.scene.collection.objects.link(ob)
-        me = bpy.data.meshes.new_from_object(ob.evaluated_get(bpy.context.evaluated_depsgraph_get()))
-        bpy.data.objects.remove(ob)
-        bpy.data.curves.remove(cu)
-        tmp = bmesh.new()
-        tmp.from_mesh(me)
-        bpy.data.meshes.remove(me)
-        bmesh.ops.triangulate(tmp, faces=tmp.faces[:])
+    def text(self, body, origin, right, height, slot, depth=0.012, up=UP, face=None, spacing=1.0):
+        """Rótulo en relieve: `origin` = inicio de la línea base, `right` = dirección de lectura,
+        `up` = arriba de la letra, `height` = cuerpo de la fuente (m). Se lee de frente desde el lado
+        hacia el que apunta `right × up`. Devuelve la anchura (m). Con `depth` de pintura (≤ 3 mm),
+        solo la cara: sin cantos que no se verían."""
+        tmp, width = text_mesh(body, face, spacing, 0.0 if depth <= 0.003 else depth / height / 2)
         # Ejes locales de la curva: X lectura, Y altura de la letra, Z grosor.
-        r = V(right).normalized()
-        n = r.cross(UP)
+        r, u = V(right).normalized(), V(up).normalized()
+        n = r.cross(u)
         m = Matrix.Identity(4)
         m.col[0][:3] = r * height
-        m.col[1][:3] = UP * height
+        m.col[1][:3] = u * height
         m.col[2][:3] = n * height
         m.translation = V(origin) + n * depth / 2
         self.add(tmp, slot, m)
+        return width * height
+
+    def prism(self, pts, origin, right, up, depth, slot):
+        """Polígono convexo `pts` (coordenadas (x, y) en el plano right/up) extruido `depth` hacia
+        right × up, con todas sus caras."""
+        r, u = V(right).normalized(), V(up).normalized()
+        n = r.cross(u)
+        o = V(origin)
+        tmp = bmesh.new()
+        back = [tmp.verts.new(o + r * x + u * y) for x, y in pts]
+        front = [tmp.verts.new(o + r * x + u * y + n * depth) for x, y in pts]
+        tmp.faces.new(front)
+        tmp.faces.new(list(reversed(back)))
+        k = len(pts)
+        for i in range(k):
+            j = (i + 1) % k
+            tmp.faces.new((back[i], back[j], front[j], front[i]))
+        bmesh.ops.recalc_face_normals(tmp, faces=tmp.faces[:])
+        self.add(tmp, slot)
+
+    def quad(self, a, b, c, d, slot, facing):
+        """Cara única (luna de espejo) orientada hacia `facing` (ejes de la app)."""
+        tmp = bmesh.new()
+        vs = [tmp.verts.new(V(p)) for p in (a, b, c, d)]
+        f = tmp.faces.new(vs)
+        f.normal_update()
+        if f.normal.dot(V(facing)) < 0:
+            f.normal_flip()
+        self.add(tmp, slot)
 
     def finish(self, materials):
         bm = self.bm
@@ -361,7 +473,7 @@ class Part:
         me = bpy.data.meshes.new(name)
         bm.to_mesh(me)
         bm.free()
-        if self.light == 'atlas':
+        if self.light == 'atlas' or self.reflect:
             me.uv_layers.new(name='lightmap')
         if self.light == 'vertex':
             attr = me.color_attributes.new('light', 'FLOAT_COLOR', 'CORNER')
@@ -374,6 +486,8 @@ class Part:
         ob['light'] = self.light
         if not self.shadow:
             ob.visible_shadow = False
+        if not self.diffuse:
+            ob.visible_diffuse = False
         self.room.coll.objects.link(ob)
         self.obj = ob
         return ob
@@ -493,11 +607,23 @@ def build_wall(room, fr, height, openings=()):
     return w
 
 
-def window(w, u0, u1, v0, v1, mullions=2):
-    """Ventana: vidrio (cielo en la app), carpintería y alféizar."""
+def exterior(w, u0, u1, v0, v1):
+    """Fondo exterior tras un hueco (ventana o puerta): cielo, edificios y árboles en la textura.
+    Pegado a la cara exterior del muro, para que no asome por encima de la pared con la cámara alta;
+    se ve con un poco de paralaje (cubre algo más que el hueco). Sin sombra ni rebotes en el
+    horneado: no tapa el cielo que entra por la ventana."""
+    fr = w.fr
+    p = w.room.part(f'exterior_{fr.key}_{len(w.room.parts)}', fade=fr.key, light='none', shadow=False, diffuse=False, keep=[fr.n])
+    fr.box(p, u0 - 0.35, u1 + 0.35, max(0.0, v0 - 0.5), v1, -THICK - 0.11, -THICK - 0.1, 'exterior')
+
+
+def window(w, u0, u1, v0, v1, mullions=2, blind=0.0):
+    """Ventana: vidrio (translúcido en la app), exterior, carpintería, alféizar y, si `blind` > 0,
+    estor enrollable bajado esa fracción del hueco."""
     fr = w.fr
     glass = w.room.part(f'glass_{fr.key}_{len(w.room.parts)}', fade=fr.key, light='none', shadow=False)
     fr.box(glass, u0, u1, v0, v1, -THICK * 0.55, -THICK * 0.5, 'window')
+    exterior(w, u0, u1, v0, v1)
     t = 0.05
     for a, b, c, d in ((u0, u1, v0, v0 + t), (u0, u1, v1 - t, v1), (u0, u0 + t, v0, v1), (u1 - t, u1, v0, v1)):
         fr.box(w.solid, a, b, c, d, -THICK * 0.6, -THICK * 0.35, 'line')
@@ -506,13 +632,23 @@ def window(w, u0, u1, v0, v1, mullions=2):
         fr.box(w.solid, u - t / 2, u + t / 2, v0, v1, -THICK * 0.6, -THICK * 0.4, 'line')
     # Alféizar un pelo por encima del hueco: sin caras coplanarias con el muro.
     fr.box(w.solid, u0 - 0.04, u1 + 0.04, v0 - 0.04, v0 + 0.006, -THICK - 0.004, 0.06, 'concrete')
+    if blind > 0:
+        low = v1 - 0.1 - blind * (v1 - v0 - 0.1)
+        fr.box(w.furniture, u0 - 0.06, u1 + 0.06, v1 - 0.1, v1 + 0.02, 0.0, 0.12, 'iron')
+        fr.box(w.furniture, u0 + 0.02, u1 - 0.02, low, v1 - 0.1, 0.05, 0.062, 'concrete')
+        fr.box(w.furniture, u0 + 0.02, u1 - 0.02, low - 0.03, low, 0.044, 0.07, 'iron')
 
 
-def mirror(w, u0, u1, v0, v1):
+def mirror(w, u0, u1, v0, v1, tilt=0.0):
+    """Luna de espejo con marco de acero. `tilt` (grados) la gira un poco sobre su eje vertical: las
+    lunas de verdad nunca son coplanarias, así el reflejo horneado cambia algo de una a otra."""
     fr = w.fr
-    m = w.room.part(f'mirror_{fr.key}_{len(w.room.parts)}', fade=fr.key, light='none')
-    fr.box(w.furniture, u0 - 0.025, u1 + 0.025, v0 - 0.025, v1 + 0.025, 0, 0.018, 'metal')
-    fr.box(m, u0, u1, v0, v1, 0.018, 0.024, 'mirror')
+    m = w.room.part(f'mirror_{fr.key}_{len(w.room.parts)}', fade=fr.key, light='none', reflect=True)
+    fr.box(w.furniture, u0 - 0.025, u1 + 0.025, v0 - 0.025, v1 + 0.025, 0, 0.018, 'iron')
+    uc = (u0 + u1) / 2
+    k = math.tan(math.radians(tilt))
+    d = lambda u: 0.03 + (u - uc) * k  # noqa: E731
+    m.quad(fr.p(u0, v0, d(u0)), fr.p(u1, v0, d(u1)), fr.p(u1, v1, d(u1)), fr.p(u0, v1, d(u0)), 'mirror', fr.n)
 
 
 def led_strip(w, u0, u1, v):
@@ -520,16 +656,86 @@ def led_strip(w, u0, u1, v):
     w.fr.box(s, u0, u1, v, v + 0.035, 0.02, 0.06, 'led')
 
 
-def sign(w, u, v, h, text='MYGYM', sub='GUION ARTICULAR'):
-    """Rótulo en relieve: marca y subtítulo (con el bloque de color de la cabecera de la app).
+# --- marca: ◢◣ MYGYM guion articular (como la cabecera de la app) ---------------------------------
+CAP = None  # altura de las mayúsculas de la fuente de la marca (a cuerpo 1)
+
+
+def brand_cap():
+    global CAP
+    if CAP is None:
+        CAP = text_extent('MYGYM', font('display'))[1] or 0.7
+    return CAP
+
+
+def mark_tris(x0, y0, s, gap):
+    """Los dos triángulos de la marca (◢◣) de lado `s` desde (x0, y0) en el plano del rótulo."""
+    return [[(x0, y0), (x0 + s, y0), (x0 + s, y0 + s)], [(x0 + s + gap, y0), (x0 + 2 * s + gap, y0), (x0 + s + gap, y0 + s)]]
+
+
+def lockup_layout(cap, sub=True):
+    """Medidas del logotipo para mayúsculas de `cap` metros: [(pieza, x, cuerpo)] y anchura total."""
+    size = cap / brand_cap()
+    s, gap, sp = 0.62 * cap, 0.05 * cap, 0.32 * size
+    items = [('mark', 0.0, s)]
+    x = 2 * s + gap + sp
+    items.append(('name', x, size))
+    x += text_extent('MYGYM', font('display'))[0] * size
+    if sub:
+        sub_size = 0.26 * size
+        x += sp
+        items.append(('sub', x, sub_size))
+        x += text_extent('GUION ARTICULAR', font('mono'), 1.12)[0] * sub_size
+    return items, x
+
+
+def lockup(part, origin, right, up, cap, slots=('accent', 'sign', 'metal'), sub=True, depth=0.02):
+    """Logotipo en relieve (o pintado, con `depth` mínimo): `origin` = inicio de la línea base."""
+    r, u = V(right).normalized(), V(up).normalized()
+    items, width = lockup_layout(cap, sub)
+    o = V(origin)
+    for kind, x, size in items:
+        if kind == 'mark':
+            for tri in mark_tris(x, 0.0, size, 0.05 * cap):
+                part.prism(tri, o, r, u, depth, slots[0])
+        elif kind == 'name':
+            part.text('MYGYM', o + r * x, r, size, slots[1], depth=depth, up=u, face=font('display'))
+        else:
+            part.text('GUION ARTICULAR', o + r * x, r, size, slots[2], depth=depth * 0.6, up=u, face=font('mono'), spacing=1.12)
+    return width
+
+
+def emblem(part, center, right, up, R, slots=('accent', 'accent', None), depth=0.02):
+    """Emblema circular con la marca dentro (se lee igual desde cualquier lado): aro, ◢◣ y, si se
+    indica, un disco de fondo."""
+    r, u = V(right).normalized(), V(up).normalized()
+    c = V(center)
+    segs = 40
+    ring = [(math.cos(2 * math.pi * i / segs), math.sin(2 * math.pi * i / segs)) for i in range(segs)]
+    for i in range(segs):
+        (a0, b0), (a1, b1) = ring[i], ring[(i + 1) % segs]
+        part.prism([(a0 * R, b0 * R), (a1 * R, b1 * R), (a1 * 0.86 * R, b1 * 0.86 * R), (a0 * 0.86 * R, b0 * 0.86 * R)], c, r, u, depth, slots[0])
+    if slots[2]:
+        part.prism([(a * 0.86 * R, b * 0.86 * R) for a, b in ring], c - r.cross(u) * 0.006, r, u, depth * 0.5, slots[2])
+    s = 0.5 * R
+    gap = 0.05 * R
+    for tri in mark_tris(-(2 * s + gap) / 2, -s * 0.55, s, gap):
+        part.prism(tri, c, r, u, depth * 1.2, slots[1])
+
+
+def wall_lockup(w, uc, v, cap, sub=True):
+    """Logotipo en relieve centrado en `uc` con la línea base a la altura `v`.
     Sin luz horneada: las letras son cientos de triángulos diminutos; la app las tiñe sin más."""
     fr = w.fr
-    part = w.room.part(f'sign_{fr.key}', fade=fr.key, light='none')
-    part.text(text, fr.p(u, v, 0.0), fr.r, h, 'decal', depth=0.025)
-    wd = 0.62 * h * len(text)
-    fr.box(part, u + wd + 0.04, u + wd + 0.04 + h * 0.16, v + h * 0.25, v + h * 0.55, 0, 0.02, 'decal')
-    if sub:
-        part.text(sub, fr.p(u + wd + 0.04 + h * 0.3, v + h * 0.22, 0.0), fr.r, h * 0.3, 'frame', depth=0.012)
+    part = w.room.part(f'sign_{fr.key}_{len(w.room.parts)}', fade=fr.key, light='none')
+    width = lockup_layout(cap, sub)[1]
+    lockup(part, fr.p(uc - width / 2, v, 0.0), fr.r, UP, cap, sub=sub, depth=0.03)
+    log(w.room.name, f'logotipo en {fr.key}: {width:.2f} × {cap:.2f} m')
+    return width
+
+
+def wall_emblem(w, u, v, R):
+    part = w.room.part(f'emblem_{w.fr.key}_{len(w.room.parts)}', fade=w.fr.key, light='none')
+    emblem(part, w.fr.p(u, v, 0.0), w.fr.r, UP, R, slots=('accent', 'accent', 'iron'), depth=0.025)
 
 
 # --- atrezo ----------------------------------------------------------------------------------
@@ -746,18 +952,19 @@ def build_station():
     room.part('floor').grid([-h, h], [-h, h], lambda x, z: 'floor')
     F = {k: WallFrame(k, h, h) for k in ('xp', 'xn', 'zp', 'zn')}
 
-    # zn · pared de espejos con el rótulo (fondo de las vistas frontal e isométrica).
+    # zn · pared de espejos con el logotipo centrado encima (fondo de las vistas frontal e isométrica).
     w = build_wall(room, F['zn'], H)
-    for u0, u1 in ((-2.15, -0.79), (-0.68, 0.68), (0.79, 2.15)):
-        mirror(w, u0, u1, 0.42, 2.3)
-    sign(w, -1.75, 2.48, 0.42)
-    led_strip(w, -2.5, 2.5, H - 0.16)
+    for (u0, u1), tilt in zip(((-2.15, -0.79), (-0.68, 0.68), (0.79, 2.15)), (0.5, -0.3, 0.4)):
+        mirror(w, u0, u1, 0.42, 2.14, tilt)
+    led_strip(w, -2.5, 2.5, 2.2)
+    # Sin subtítulo: con él, a 0,7 m de letra no cabría en los 5,6 m de pared.
+    wall_lockup(w, 0.0, 2.33, 0.7, sub=False)
 
-    # xp · ventanales con banco (fondo de las vistas laterales).
+    # xp · ventanales con estores y banco (fondo de las vistas laterales).
     win = [(-2.25, -0.25, 0.95, 2.7), (0.25, 2.25, 0.95, 2.7)]
     w = build_wall(room, F['xp'], H, win)
-    for o in win:
-        window(w, *o)
+    for o, blind in zip(win, (0.3, 0.42)):
+        window(w, *o, blind=blind)
         sky_light(w, *o, 200)
     bench(w, -1.6, 1.6, d=0.25)
     plant(w, -2.4, seed=3)
@@ -817,43 +1024,64 @@ def build_hub():
     room.part('floor').grid(sorted(xs), sorted(zs), floor_slot)
     F = {k: WallFrame(k, hx, hz) for k in ('xp', 'xn', 'zp', 'zn')}
 
-    # zn · pared del fondo: espejos bajo una banda de ventanas altas.
-    hi_win = [(-8.6 + 3.1 * i, -6.4 + 3.1 * i, 2.25, 2.95) for i in range(6)]
+    # Cada giro del plano levanta dos paredes (0: xp+zn · 1: xn+zn · 2: xn+zp · 3: xp+zp): todas
+    # llevan la marca y las dos laterales, ventanales; así ningún giro se queda sin «postal».
+
+    # Suelo: logotipo pintado en el hueco libre de la zona de empuje y el emblema entre pierna y zona
+    # libre. Es lo único de la marca que se ve con cualquier giro. Se lee desde la cámara del giro 0.
+    paint = room.part('floor_logo', light='vertex')
+    cap = 0.95
+    width = lockup_layout(cap, sub=False)[1]
+    lockup(paint, (-0.9 - width / 2, 0.002, 5.05), (1, 0, 0), (0, 0, -1), cap, slots=('accent', 'line', 'line'), sub=False, depth=0.002)
+    emblem(paint, (6.15, 0.002, 2.3), (1, 0, 0), (0, 0, -1), 0.62, slots=('line', 'accent', None), depth=0.002)
+    log('hub', f'logotipo del suelo: {width:.2f} × {cap:.2f} m')
+
+    # zn · pared del fondo: espejos, el logotipo grande encima y ventanas altas a los lados.
+    zn_logo = lockup_layout(0.9)[1]
+    edge = zn_logo / 2 + 0.5
+    span = (8.9 - edge - 0.4) / 2
+    hi_win = [(s * a, s * b, 2.25, 2.95) for s in (-1, 1) for a, b in ((edge, edge + span), (edge + span + 0.4, 8.9))]
+    hi_win = [(min(a, b), max(a, b), c, d) for a, b, c, d in hi_win]
     w = build_wall(room, F['zn'], H, hi_win)
     for o in hi_win:
         window(w, *o, mullions=1)
         sky_light(w, *o, 120)
+    rng = np.random.default_rng(5)
     for i in range(10):
-        u0 = -8.9 + i * 1.62
-        mirror(w, u0, u0 + 1.5, 0.42, 2.05)
-    led_strip(w, -9.0, 9.0, 2.12)
+        u0 = -8.04 + i * 1.62
+        mirror(w, u0, u0 + 1.5, 0.4, 1.92, tilt=float(rng.uniform(-0.6, 0.6)))
+    led_strip(w, -9.0, 9.0, 1.99)
+    wall_lockup(w, 0.0, 2.15, 0.9)
 
-    # xp · ventanales grandes hacia la zona de pierna.
+    # xp · ventanales grandes con estores hacia la zona de pierna y emblema en la esquina.
     win = [(-5.6, -3.0, 0.9, 2.75), (-2.3, 0.3, 0.9, 2.75), (1.0, 3.6, 0.9, 2.75)]
     w = build_wall(room, F['xp'], H, win)
-    for o in win:
-        window(w, *o)
+    for o, blind in zip(win, (0.25, 0.4, 0.3)):
+        window(w, *o, blind=blind)
         sky_light(w, *o, 300)
+    wall_emblem(w, 5.0, 2.2, 0.55)
     plant(w, -6.0, seed=11)
     plant(w, 5.9, seed=12)
 
-    # zp · fachada de entrada: puerta, rótulo, taquillas, fuente y planta.
+    # zp · fachada de entrada: puerta con el logotipo encima, taquillas, fuente y planta.
     dw = (-2.4, -0.6, 0, 2.25)  # hueco de la puerta (en esta pared u crece hacia −X)
     w = build_wall(room, F['zp'], H, [dw])
     door(w, dw[0], dw[1], dw[3])
-    sign(w, -2.25, 2.45, 0.38, sub=None)
+    exterior(w, *dw)
+    wall_lockup(w, -1.5, 2.42, 0.55)
     lockers(w, 0.6, 4.2)
     water_fountain(w, -3.3)
     plant(w, -4.3, seed=13)
     tv(w, 2.4, 2.05, 1.2)
 
-    # xn · ventanales y reloj.
-    win = [(-4.6, -2.0, 0.9, 2.75), (2.2, 4.8, 0.9, 2.75)]
+    # xn · tres ventanales (como xp), reloj y emblema pequeño.
+    win = [(-4.2, -1.8, 0.9, 2.75), (-1.2, 1.2, 0.9, 2.75), (1.8, 4.2, 0.9, 2.75)]
     w = build_wall(room, F['xn'], H, win)
-    for o in win:
-        window(w, *o)
+    for o, blind in zip(win, (0.35, 0.2, 0.3)):
+        window(w, *o, blind=blind)
         sky_light(w, *o, 300)
-    clock(w, 0.1, 2.35)
+    clock(w, -5.3, 2.3)
+    wall_emblem(w, 5.3, 2.15, 0.45)
     plant(w, -5.9, seed=14)
     plant(w, 5.9, seed=15)
 
@@ -901,6 +1129,34 @@ def make_materials(room):
     return mats
 
 
+_BACKEND = []
+
+
+def gpu_backend():
+    """Activa la primera GPU que Cycles reconozca y devuelve su tipo (o None: se hornea en la CPU)."""
+    if _BACKEND:
+        return _BACKEND[0]
+    kind = None
+    try:
+        prefs = bpy.context.preferences.addons['cycles'].preferences
+        for k in ('METAL', 'OPTIX', 'CUDA', 'HIP', 'ONEAPI'):
+            try:
+                prefs.compute_device_type = k
+            except TypeError:
+                continue
+            prefs.get_devices()
+            if any(d.type == k for d in prefs.devices):
+                for d in prefs.devices:
+                    d.use = d.type == k
+                kind = k
+                break
+    except (KeyError, AttributeError) as err:
+        log('sin GPU para Cycles:', err)
+    log('horneado en', kind or 'CPU')
+    _BACKEND.append(kind)
+    return kind
+
+
 def select_only(objs):
     for o in bpy.context.view_layer.objects:
         o.select_set(False)
@@ -909,7 +1165,7 @@ def select_only(objs):
     bpy.context.view_layer.objects.active = objs[0]
 
 
-def lightmap_uv(room, objs):
+def lightmap_uv(room, objs, res=None):
     for o in objs:
         o.data.uv_layers.active = o.data.uv_layers['lightmap']
     select_only(objs)
@@ -917,7 +1173,7 @@ def lightmap_uv(room, objs):
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.uv.smart_project(angle_limit=math.radians(60), island_margin=0.0, scale_to_bounds=False)
     bpy.ops.uv.average_islands_scale()
-    margin = 4 / RES[room.name]
+    margin = 4 / (res or RES[room.name])
     bpy.ops.uv.pack_islands(udim_source='ACTIVE_UDIM', rotate=True, rotate_method='CARDINAL', scale=True, margin_method='FRACTION', margin=margin, shape_method='AABB')
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -1002,7 +1258,7 @@ def bake_room(room):
     lightmap_uv(room, atlas)
     sc = bpy.context.scene
     sc.render.engine = 'CYCLES'
-    sc.cycles.device = 'CPU'
+    sc.cycles.device = 'GPU' if GPU and gpu_backend() else 'CPU'
     sc.cycles.samples = 1
     sc.render.bake.use_selected_to_active = False
     sc.render.bake.normal_space = 'OBJECT'
@@ -1053,11 +1309,54 @@ def bake_room(room):
         rgba = np.ones((len(me.loops), 4), np.float32)
         rgba[:, :3] = np.clip(c, 0, 1)
         me.color_attributes['light'].data.foreach_set('color', rgba.ravel())
-    return out, headroom
+    return out, headroom, bake_reflections(room)
 
 
-def export_materials(mats, lightmap, details):
-    """Material final: detalle como color base (UV 0) y, si va con atlas, el atlas como emisión (UV 1)."""
+MIRROR_RES = {'station': 512, 'hub': 1024}
+
+
+def bake_reflections(room):
+    """Lo que refleja cada luna (la sala estática, sin máquinas ni avatar), visto de frente: Cycles
+    hornea lo especular con la vista a lo largo de la normal. Se guarda en escala de grises (la app
+    lo tiñe con el tema) con la mediana en 0,5: la app lo multiplica por 2."""
+    objs = [p.obj for p in room.parts if p.reflect and len(p.obj.data.polygons)]
+    if not objs:
+        return None
+    res = opt('--mirror-res', 256 if QUICK else MIRROR_RES[room.name])
+    lightmap_uv(room, objs, res)
+    sc = bpy.context.scene
+    sc.cycles.samples = 1
+    pos_img = bpy.data.images.new(f'{room.name}_mpos', res, res, float_buffer=True)
+    nrm_img = bpy.data.images.new(f'{room.name}_mnrm', res, res, float_buffer=True)
+    bake_pass(objs, pos_img, 'POSITION')
+    bake_pass(objs, nrm_img, 'NORMAL')
+    sc.cycles.samples = SAMPLES
+    img = bpy.data.images.new(f'{room.name}_mrad', res, res, float_buffer=True)
+    t = time.time()
+    bake_pass(objs, img, 'GLOSSY', pass_filter={'DIRECT', 'INDIRECT', 'COLOR'})
+    log(room.name, f'reflejos de {len(objs)} lunas ({res}px) en {time.time() - t:.0f}s')
+    P, N, R = pixels(pos_img), pixels(nrm_img), pixels(img)
+    cover = (R[..., 3] > 0.5).astype(np.float32)
+    rad = guided_denoise(R[..., :3], P[..., :3], N[..., :3] * 2 - 1, cover, radius=2, sigma_px=1.2)
+    lum = rad @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+    ref = float(np.median(lum[cover > 0])) or 1.0
+    # Contraste suavizado: un espejo se lee como espejo, no como una foto pegada en la pared.
+    val = np.clip(0.5 * (0.35 + 0.65 * lum / ref), 0, 1)
+    out = bpy.data.images.new(f'reflect_{room.name}', res, res, alpha=False)
+    out.colorspace_settings.name = 'sRGB'
+    rgba = np.ones((res, res, 4), dtype=np.float32)
+    rgba[..., :3] = linear_to_srgb(val)[..., None]
+    out.pixels.foreach_set(rgba.ravel())
+    out.file_format = 'JPEG'
+    out.pack()
+    for im in (pos_img, nrm_img, img):
+        bpy.data.images.remove(im)
+    return out
+
+
+def export_materials(mats, lightmap, details, reflect=None):
+    """Material final: detalle como color base (UV 0) y, si va con atlas, el atlas como emisión (UV 1).
+    Los espejos llevan su reflejo horneado como emisión (UV 1)."""
     for (slot, mode), m in mats.items():
         nt = m.node_tree
         for n in list(nt.nodes):
@@ -1078,6 +1377,14 @@ def export_materials(mats, lightmap, details):
             uv2.uv_map = 'lightmap'
             nt.links.new(uv2.outputs['UV'], lm.inputs['Vector'])
             nt.links.new(lm.outputs['Color'], bsdf.inputs['Emission Color'])
+            bsdf.inputs['Emission Strength'].default_value = 1.0
+        elif slot == 'mirror' and mode == 'none' and reflect is not None:
+            rf = nt.nodes.new('ShaderNodeTexImage')
+            rf.image = reflect
+            uv2 = nt.nodes.new('ShaderNodeUVMap')
+            uv2.uv_map = 'lightmap'
+            nt.links.new(uv2.outputs['UV'], rf.inputs['Vector'])
+            nt.links.new(rf.outputs['Color'], bsdf.inputs['Emission Color'])
             bsdf.inputs['Emission Strength'].default_value = 1.0
         else:
             bsdf.inputs['Emission Strength'].default_value = 0.0
@@ -1103,8 +1410,8 @@ def main():
     for room in rooms:
         for other in rooms:
             vl.layer_collection.children[other.coll.name].exclude = other is not room
-        lightmap, ranges[room.name] = bake_room(room)
-        export_materials(mats[room.name], lightmap, details)
+        lightmap, ranges[room.name], reflect = bake_room(room)
+        export_materials(mats[room.name], lightmap, details, reflect)
     for room in rooms:
         vl.layer_collection.children[room.coll.name].exclude = False
         empty = [p.obj for p in room.parts if p is not room.ceiling and not len(p.obj.data.polygons)]

@@ -5,6 +5,7 @@ import { JOINT_MOMENT_LABEL } from '../engine/moments';
 import { compositionId } from '../remotion/props';
 import { PHASE_LABEL, parseTempo, tempoToString } from '../engine/timeline';
 import { phaseEntry } from '../remotion/timing';
+import { HUB_HOME, HUB_ISO_ELEVATION, HUB_TILT, HUB_ZOOM, clampPan } from '../scene/hubCamera';
 import type { ThemeId } from '../scene/palette';
 import { CATALOG } from '../stations/catalog';
 import { getModule } from '../stations/modules';
@@ -41,6 +42,28 @@ function activeStation() {
 }
 
 const STATION_IDS = () => CATALOG.map((c) => c.id);
+const HUB_VIEW_IDS = ['iso1', 'iso2', 'iso3', 'iso4', 'planta', 'inicio'];
+
+/** «vista» en el gimnasio: las cuatro isométricas, la planta o la vista de arranque. */
+function hubVista(v: string | undefined) {
+  const s = useApp.getState();
+  if (!v) return ['  iso1 … iso4   isométricas (giros de 90°)', '  planta        vista cenital', '  inicio        vista de arranque'];
+  const n = norm(v);
+  const iso = n.match(/^iso([1-4])$/);
+  if (iso) {
+    s.set({ hubRotation: Number(iso[1]) - 1, hubPlan: false, hubTilt: HUB_ISO_ELEVATION, hubZoom: 1, hubPan: [0, 0] });
+    return `Vista del plano: isométrica ${iso[1]}`;
+  }
+  if (n === 'planta') {
+    s.set({ hubRotation: 0, hubPlan: true, hubZoom: 1, hubPan: [0, 0] });
+    return 'Vista del plano: planta';
+  }
+  if (n === 'inicio') {
+    s.resetHubView();
+    return 'Vista del plano: de arranque';
+  }
+  return fail(`Vista «${v}» no existe en el gimnasio: ${HUB_VIEW_IDS.join(', ')}.`);
+}
 const BOOL = (v: string | undefined) => {
   const n = norm(v ?? '');
   if (['si', 'on', '1', 'true', 'mostrar'].includes(n)) return true;
@@ -191,9 +214,10 @@ export const COMMANDS: Command[] = [
     help: 'Cambia la cámara (isométrica, lateral…).',
     complete: () => {
       const s = useApp.getState();
-      return s.route.name === 'station' ? getModule(s.route.id)!.content.views.map((v) => v.id) : [];
+      return s.route.name === 'station' ? getModule(s.route.id)!.content.views.map((v) => v.id) : HUB_VIEW_IDS;
     },
     run: ([v]) => {
+      if (useApp.getState().route.name === 'hub') return hubVista(v);
       const { id, mod } = activeStation();
       if (!v) return mod.content.views.map((x) => `  ${x.id.padEnd(12)} ${x.label}`);
       const view = mod.content.views.find((x) => x.id === norm(v)) ?? fail(`Vista «${v}» no existe.`);
@@ -204,11 +228,17 @@ export const COMMANDS: Command[] = [
   {
     name: 'girar',
     usage: 'girar <grados>',
-    help: 'Gira la cámara alrededor del eje vertical.',
+    help: 'Gira la cámara alrededor del eje vertical (en el gimnasio, en cuartos de vuelta).',
     run: ([g]) => {
-      const { id, st } = activeStation();
       const n = Number(g);
       if (!Number.isFinite(n)) return fail('Indica grados, p. ej. «girar 45».');
+      if (useApp.getState().route.name === 'hub') {
+        const s = useApp.getState();
+        const quarters = Math.round(n / 90);
+        s.set({ hubRotation: (((s.hubRotation + quarters) % 4) + 4) % 4 });
+        return quarters ? `Giro del plano: ${quarters * 90}°` : 'El plano gira en cuartos de vuelta: «girar 90».';
+      }
+      const { id, st } = activeStation();
       useApp.getState().update(id, { azimuthOffset: st.azimuthOffset + n });
       return `Giro: ${st.azimuthOffset + n}°`;
     },
@@ -218,13 +248,40 @@ export const COMMANDS: Command[] = [
     usage: 'inclinar <grados>',
     help: 'Sube (positivo) o baja (negativo) la cámara respecto a la vista.',
     run: ([g]) => {
-      const { id, st, mod } = activeStation();
       const n = Number(g);
       if (!Number.isFinite(n)) return fail('Indica grados, p. ej. «inclinar 15».');
+      if (useApp.getState().route.name === 'hub') {
+        const s = useApp.getState();
+        const tilt = Math.min(HUB_TILT[1], Math.max(HUB_TILT[0], (s.hubPlan ? HUB_TILT[1] : s.hubTilt) + n));
+        s.set({ hubPlan: false, hubTilt: tilt });
+        return `Elevación del plano: ${Math.round(tilt)}° (entre ${HUB_TILT[0]}° y ${HUB_TILT[1]}°; «vista planta» para la cenital)`;
+      }
+      const { id, st, mod } = activeStation();
       const view = mod.content.views.find((v) => v.id === st.viewId) ?? mod.content.views[0]!;
       const next = Math.min(89, Math.max(0, view.elevation + st.elevationOffset + n)) - view.elevation;
       useApp.getState().update(id, { elevationOffset: next });
       return `Elevación: ${Math.round(view.elevation + next)}°`;
+    },
+  },
+  {
+    name: 'zoom',
+    aliases: ['acercar'],
+    usage: 'zoom <factor>',
+    help: 'Acerca o aleja la cámara (1 = encuadre completo).',
+    run: ([z]) => {
+      const n = Number(String(z ?? '').replace(',', '.'));
+      if (!(n > 0)) return fail('Indica un factor, p. ej. «zoom 2» o «zoom 1».');
+      const s = useApp.getState();
+      if (s.route.name === 'hub') {
+        const zoom = Math.min(HUB_ZOOM[1], Math.max(HUB_ZOOM[0], n));
+        const v = clampPan({ ...HUB_HOME, zoom, panX: s.hubPan[0], panZ: s.hubPan[1] });
+        s.set({ hubZoom: zoom, hubPan: [v.panX, v.panZ] });
+        return `Zoom del plano: ${num(zoom, 1)}×`;
+      }
+      const { id } = activeStation();
+      const zoom = Math.min(2.2, Math.max(0.6, n));
+      s.update(id, { zoom });
+      return `Zoom: ${num(zoom, 1)}×`;
     },
   },
   {
