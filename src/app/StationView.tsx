@@ -306,11 +306,13 @@ export function StationView({ id, active }: { id: string; active: boolean }) {
       showMuscles: app.showMuscles,
       showGauges: app.showGauges,
       showOverlay: app.showOverlay,
+      mirror: app.showReflection,
       theme: app.theme,
+      ambient: app.ambient,
       uiScale: 1,
       embedded: true,
     }),
-    [id, variant.id, st, app.anthro, app.showMuscles, app.showGauges, app.showOverlay, app.theme],
+    [id, variant.id, st, app.anthro, app.showMuscles, app.showGauges, app.showOverlay, app.showReflection, app.theme, app.ambient],
   );
   const startAt = startAtOf(mod.logic, variant.id);
   const duration = useMemo(() => durationInFrames(stationTimeline(st.tempo, st.reps, startAt), FPS), [st.tempo, st.reps, startAt]);

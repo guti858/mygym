@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CATALOG } from '../stations/catalog';
 import { hubCorners, hubPoint } from '../stations/hubPlacement';
 import { boxCorners, fitCamera, project } from './camera';
-import { HUB_HOME, HUB_ISO_ELEVATION, HUB_PLAN_ELEVATION, HUB_ZOOM, clampPan, focusView, hubCamera, hubMargins, labelLevel, neighbor, panBy, zoomAt, type HubView } from './hubCamera';
+import { HUB_HOME, HUB_ISO_ELEVATION, HUB_PLAN_ELEVATION, HUB_ZOOM, centerOn, clampPan, focusView, hubCamera, hubMargins, labelLevel, neighbor, panBy, screenToFloor, zoomAt, type HubView } from './hubCamera';
 import { HUB_FLOOR } from './layout';
 
 const SIZE = { width: 1600, height: 900 };
@@ -75,6 +75,25 @@ describe('cámara del plano del gimnasio', () => {
       }
     });
   }
+
+  it('del píxel al suelo y del suelo al píxel (mini-mapa)', () => {
+    for (const view of [HUB_HOME, { ...HUB_HOME, azimuth: 135, elevation: 50, zoom: 2.2, panX: 1.5, panZ: -1 }]) {
+      const cam = hubCamera(view, SIZE);
+      for (const p of [new Vector3(0, 0, 0), new Vector3(-6, 0, 4), new Vector3(7, 0, -3)]) {
+        const [px, py] = project(cam, p);
+        const [x, z] = screenToFloor(cam, px, py);
+        expect(x).toBeCloseTo(p.x, 6);
+        expect(z).toBeCloseTo(p.z, 6);
+      }
+    }
+  });
+
+  it('centrar en un punto del suelo lo lleva al centro del encuadre', () => {
+    const view: HubView = { ...HUB_HOME, zoom: 2.5 };
+    const next = centerOn(view, [-3, 2], SIZE);
+    const [px, py] = project(hubCamera(next, SIZE), new Vector3(-3, 0, 2));
+    expect(near([px, py], [SIZE.width / 2, SIZE.height / 2])).toBe(true);
+  });
 
   it('rótulos según el zoom', () => {
     expect(labelLevel(1)).toBe(0);

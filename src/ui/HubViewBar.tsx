@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { HUB_ISO_ELEVATION, HUB_TILT, HUB_ZOOM } from '../scene/hubCamera';
 import { useApp } from '../state/store';
-import type { ViewBarSize } from './ViewBar';
+import { AmbientField, type ViewBarSize } from './ViewBar';
 
 /**
  * Las cuatro isométricas, por lo que se ve al fondo (cada giro levanta dos paredes de la sala:
@@ -159,6 +159,9 @@ export function HubViewBar({
             <input type="checkbox" checked={app.hubZones} onChange={(e) => app.set({ hubZones: e.target.checked })} /> Nombres de zona
           </label>
           <label>
+            <input type="checkbox" checked={app.hubMiniMap} onChange={(e) => app.set({ hubMiniMap: e.target.checked })} /> Mini-mapa (con zoom)
+          </label>
+          <label>
             <input type="checkbox" checked={playing} onChange={(e) => onPlaying(e.target.checked)} /> Movimiento
           </label>
           <label className="hud__field">
@@ -169,6 +172,7 @@ export function HubViewBar({
               <option value={2}>2×</option>
             </select>
           </label>
+          <AmbientField />
         </div>
       )}
     </div>

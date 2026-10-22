@@ -1,7 +1,7 @@
 import type { Anthropometry } from '../engine/anthropometry';
 import type { Tempo } from '../engine/timeline';
 import type { HubView } from '../scene/hubCamera';
-import type { ThemeId } from '../scene/palette';
+import type { Ambient, ThemeId } from '../scene/palette';
 
 export const FPS = 30;
 export const SETUP_SEC = 2;
@@ -33,7 +33,11 @@ export type StationCompProps = {
   showMuscles: boolean;
   showGauges: boolean;
   showOverlay: boolean;
+  /** Reflejo vivo de máquina y avatar en los espejos (capa opcional: otro render por fotograma). */
+  mirror?: boolean;
   theme: ThemeId;
+  /** Ambiente de la sala (por defecto, día). */
+  ambient?: Ambient;
   /** Escala de rótulos (1 con el vídeo a tamaño completo, mayor cuanto más pequeño se muestra). */
   uiScale: number;
   /**
@@ -46,6 +50,8 @@ export type StationCompProps = {
 
 export type HubCompProps = {
   theme: ThemeId;
+  /** Ambiente de la sala (por defecto, día). */
+  ambient?: Ambient;
   uiScale: number;
   /** Giros de 90° (admite fracciones mientras la sala gira). Azimut = −45° + 90° × rotation. */
   rotation: number;

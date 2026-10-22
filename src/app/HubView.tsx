@@ -5,13 +5,17 @@ import { MUSCLES, type MuscleId } from '../content/muscles';
 import { FPS, type HubCompProps } from '../remotion/props';
 import { HubComposition } from '../remotion/HubComposition';
 import { project } from '../scene/camera';
-import { HUB_PLAN_ELEVATION, clampPan, focusView, hubCamera, hubMargins, labelLevel, neighbor, panBy, zoomAt, type HubView as HubCam } from '../scene/hubCamera';
+import { HUB_PLAN_ELEVATION, centerOn, clampPan, focusView, hubCamera, hubMargins, labelLevel, neighbor, panBy, zoomAt, type HubView as HubCam } from '../scene/hubCamera';
+import { HUB_ROUTE } from '../scene/layout';
+import { PALETTES } from '../scene/palette';
 import { CATALOG, ZONE_LABEL, roleInStation, type Zone } from '../stations/catalog';
 import { hubCorners, hubLabelY, hubPoint } from '../stations/hubPlacement';
 import { getModule } from '../stations/modules';
 import { settingsFor, useApp } from '../state/store';
 import { BodyMap, type BodyMapEntry } from '../ui/BodyMap';
+import { HubMiniMap } from '../ui/HubMiniMap';
 import { HUB_ZOOM_STEP, HubViewBar } from '../ui/HubViewBar';
+import { HubTour, TOUR_LENGTH, tourPoints } from '../ui/HubTour';
 import { useMedia } from '../ui/useMedia';
 import { angleDelta, useSmoothHubView } from '../ui/useSmoothCamera';
 import type { ViewBarSize } from '../ui/ViewBar';
@@ -27,7 +31,11 @@ const FLIGHT_MAX_MS = 1200;
 /** Al volver, la máquina visitada queda destacada este tiempo. */
 const RECENT_MS = 1500;
 
-const ZONE_ORDER: Zone[] = ['traccion', 'brazos', 'empuje', 'pierna', 'libre'];
+/** Índice en el orden del recorrido docente (el cardio, sin estaciones, no aparece). */
+const ZONE_ORDER = HUB_ROUTE.map((r) => r.id).filter((id): id is Zone => id !== 'cardio');
+const ROUTE_STEP = new Map<string, number>(HUB_ROUTE.map((r, i) => [r.id, i + 1]));
+/** Pausa de cada parada del recorrido guiado. */
+const TOUR_STOP_MS = 7000;
 /** Músculos que trabaja alguna estación, por orden alfabético (selector del filtro). */
 const FILTER_MUSCLES = [...new Set(CATALOG.flatMap((c) => [...c.principal, ...c.secundarios]))].sort((a, b) => MUSCLES[a].name.localeCompare(MUSCLES[b].name, 'es'));
 
@@ -71,7 +79,10 @@ export function HubView({ active }: { active: boolean }) {
     }),
     [app.hubRotation, drag, app.hubPlan, app.hubTilt, app.hubZoom, app.hubPan],
   );
-  const shown = useSmoothHubView(flight?.view ?? userView, reduceMotion);
+  // Recorrido guiado: la cámara va de parada en parada (zona a zona) sobre la vista del usuario.
+  const tour = app.hubTour;
+  const tourView = useMemo(() => (tour === null ? null : focusView(userView, tourPoints(tour), size, margins)), [tour, userView, size, margins]);
+  const shown = useSmoothHubView(flight?.view ?? tourView ?? userView, reduceMotion);
   // Fundido pendiente del acercamiento a una máquina: se lanza cuando la cámara llega.
   const landing = useRef<(() => void) | null>(null);
   const arrived =
@@ -125,7 +136,7 @@ export function HubView({ active }: { active: boolean }) {
         const st = settingsFor(s, id);
         const view = getModule(id)?.content.views.find((w) => w.id === st.viewId);
         const near = view && Math.abs(angleDelta(azimuth, view.azimuth + st.azimuthOffset)) <= 120;
-        useApp.setState({ entryCamera: near ? { stationId: id, azimuth, elevation, key: performance.now() } : null, hubSelected: null });
+        useApp.setState({ entryCamera: near ? { stationId: id, azimuth, elevation, key: performance.now() } : null, hubSelected: null, hubTour: null });
         s.go({ name: 'station', id });
       };
       const from = live.current.userView;
@@ -158,6 +169,20 @@ export function HubView({ active }: { active: boolean }) {
     },
     [open],
   );
+
+  // Cualquier cambio de la vista del usuario (giro, zoom, arrastre, barra) acaba el recorrido.
+  const lastView = useRef(userView);
+  useEffect(() => {
+    if (lastView.current !== userView && useApp.getState().hubTour !== null) useApp.getState().set({ hubTour: null });
+    lastView.current = userView;
+  }, [userView]);
+  // El recorrido avanza solo (salvo en pausa o con «reducir movimiento», que empieza en pausa).
+  const [tourPlaying, setTourPlaying] = useState(!reduceMotion);
+  useEffect(() => {
+    if (tour === null || !tourPlaying || !active || tour >= TOUR_LENGTH - 1) return;
+    const t = window.setTimeout(() => useApp.getState().set({ hubTour: tour + 1 }), TOUR_STOP_MS);
+    return () => window.clearTimeout(t);
+  }, [tour, tourPlaying, active]);
 
   // Movimiento de las máquinas del plano: se puede pausar y cambiar de velocidad. Con «reducir
   // movimiento» empieza en pausa, pero se puede activar.
@@ -324,6 +349,7 @@ export function HubView({ active }: { active: boolean }) {
       if (s.hubSelected) open(s.hubSelected);
       else s.set({ hubSelected: centerPick() });
     } else if (e.key === 'Escape' && s.hubSelected) s.set({ hubSelected: null });
+    else if (e.key === 'Escape' && s.hubTour !== null) s.set({ hubTour: null });
     else if (e.key === '+' || e.key === '=') zoomBy(HUB_ZOOM_STEP);
     else if (e.key === '-' || e.key === '_') zoomBy(1 / HUB_ZOOM_STEP);
     else if (e.key === '0') s.resetHubView();
@@ -360,6 +386,7 @@ export function HubView({ active }: { active: boolean }) {
       embedded: true,
       dpr,
       anthro: app.anthro,
+      ambient: app.ambient,
       onSelect: (id: string) => {
         // El clic que cierra un arrastre no elige la máquina que haya debajo.
         if (!dragged.current) pick(id);
@@ -369,7 +396,7 @@ export function HubView({ active }: { active: boolean }) {
         if (!dragged.current && useApp.getState().hubSelected) useApp.getState().set({ hubSelected: null });
       },
     }),
-    [app.theme, shown, app.anthro, app.hubLabels, app.hubZones, hovered, highlight, selected, recent, flight, dpr, narrow, pick],
+    [app.theme, app.ambient, shown, app.anthro, app.hubLabels, app.hubZones, hovered, highlight, selected, recent, flight, dpr, narrow, pick],
   );
 
   const mapActive: Partial<Record<MuscleId, BodyMapEntry>> = {};
@@ -425,11 +452,24 @@ export function HubView({ active }: { active: boolean }) {
     <nav className={`block hub__index${narrow ? ' hub__index--list' : ''}`} aria-labelledby="hub-index">
       <h2 className="block__title" id="hub-index">
         Estaciones
+        <button
+          className="link-btn"
+          onClick={() => {
+            setTourPlaying(!reduceMotion);
+            app.set({ hubTour: 0, hubSelected: null });
+          }}
+          disabled={tour !== null}
+          title="Visita el gimnasio zona a zona, en el orden de una sesión"
+        >
+          ▶ Recorrido guiado
+        </button>
       </h2>
       <ul className="zones">
         {ZONE_ORDER.map((z) => (
           <li key={z} className="zone">
-            <h3 className="zone__title">{ZONE_LABEL[z]}</h3>
+            <h3 className="zone__title">
+              {ROUTE_STEP.get(z)} · {ZONE_LABEL[z]}
+            </h3>
             <div className="zone__chips">
               {CATALOG.filter((c) => c.zone === z).map((c) => {
                 const role = filter ? roleInStation(c, filter) : null;
@@ -505,7 +545,13 @@ export function HubView({ active }: { active: boolean }) {
               style={{ width: '100%', height: '100%' }}
             />
             {/* Capa con la proporción de la composición (a pantalla completa queda centrada). */}
-            <div className="hub__overlay">{card}</div>
+            <div className="hub__overlay">
+              {card}
+              {tour !== null && <HubTour step={tour} playing={tourPlaying} onStep={(n) => app.set({ hubTour: Math.max(0, Math.min(TOUR_LENGTH - 1, n)) })} onPlaying={setTourPlaying} onExit={() => app.set({ hubTour: null })} onOpen={(id) => open(id)} />}
+              {app.hubMiniMap && zoomed && barSize === 'wide' && (
+                <HubMiniMap palette={PALETTES[app.theme]} cam={cam} chosen={selected ?? recent} onCenter={(p) => commit(centerOn(live.current.userView, p, live.current.size, margins))} />
+              )}
+            </div>
             <div onPointerDown={(e) => e.stopPropagation()}>
               <HubViewBar
                 size={barSize}

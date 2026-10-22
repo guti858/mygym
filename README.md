@@ -19,6 +19,7 @@ Gimnasio isométrico en el navegador donde cada máquina es una **estación** co
 | Interfaz **single-view**: cada vista cabe en la pantalla sin desplazarse (Técnica = guion + errores + articulaciones; vista dentro de la escena) | ✅ acta del consejo en [`docs/UX_CONSEJO.md`](docs/UX_CONSEJO.md) |
 | **Modelo anatómico propio** (hombre y mujer): músculos a la vista bajo una piel envolvente, generado por código | ✅ ver [`docs/MODELO_ANATOMICO.md`](docs/MODELO_ANATOMICO.md) |
 | Gimnasio v2: **navegación** (zoom, desplazamiento, planta, inclinación, teclado), **elegir y abrir** una máquina (tarjeta y acercamiento real de la cámara) y **escenario** con la marca en las cuatro paredes y el suelo, ventanales con exterior y estores, y espejos con reflejo horneado | ✅ fases F1–F3 del acta [`docs/CONSEJO_GIMNASIO_3D.md`](docs/CONSEJO_GIMNASIO_3D.md) |
+| Gimnasio v3: **planta** de 17,5 × 12,5 m con pasillos de 1,45 m, cardio, recepción y estiramientos, **recorrido docente** numerado (1 cardio → 6 zona libre) y guiado, **mini-mapa**, **ambiente** día/tarde/noche, sala de estación con el color de su zona y **reflejo vivo** opcional en los espejos | ✅ fases F4–F5 del acta |
 
 Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
 
@@ -58,11 +59,11 @@ En la app, el comando de consola `exportar` imprime el comando exacto con tus aj
 
 ### Consola
 
-Pulsa `:` (o el botón *Consola*). Ejemplos: `ir jalon`, `variante supino-estrecho`, `carga 45`, `error balanceo`, `tempo 3-1-1-1`, `vista lateral`, `girar 45`, `inclinar 15`, `zoom 1.5`, `fase siguiente`, `angulos`, `ajuste`, `momentos`, `cuerpo mujer`, `altura 182`, `movilidad cadera 110`, `tema terminal`, `ayuda`. En el gimnasio: `vista iso2`, `vista planta`, `vista inicio`, `girar 90`, `zoom 2`.
+Pulsa `:` (o el botón *Consola*). Ejemplos: `ir jalon`, `variante supino-estrecho`, `carga 45`, `error balanceo`, `tempo 3-1-1-1`, `vista lateral`, `girar 45`, `inclinar 15`, `zoom 1.5`, `fase siguiente`, `angulos`, `ajuste`, `momentos`, `cuerpo mujer`, `altura 182`, `movilidad cadera 110`, `tema terminal`, `ayuda`. En el gimnasio: `vista iso2`, `vista planta`, `vista inicio`, `girar 90`, `zoom 2`, `recorrido`, `recorrido siguiente`, `recorrido fin`. En los dos: `ambiente noche`.
 
 ### Plano del gimnasio
 
-Un clic en una máquina la elige (tarjeta con sus modalidades y músculos); otro clic, *Abrir estación* o Intro la abren con un acercamiento de la cámara. Barra de vista: cuatro isométricas y planta, giro, inclinación, zoom (también Ctrl/⌘ + rueda y pellizco), vista de arranque, capas y pantalla completa. Con zoom, el arrastre desplaza el plano. Teclado sobre el plano: flechas (máquina vecina), Intro, Esc, + −, Q E (girar) y 0 (arranque).
+Un clic en una máquina la elige (tarjeta con sus modalidades y músculos); otro clic, *Abrir estación* o Intro la abren con un acercamiento de la cámara. Barra de vista: cuatro isométricas y planta, giro, inclinación, zoom (también Ctrl/⌘ + rueda y pellizco), vista de arranque, capas y pantalla completa. Con zoom, el arrastre desplaza el plano. Teclado sobre el plano: flechas (máquina vecina), Intro, Esc, + −, Q E (girar) y 0 (arranque). Con zoom aparece un mini-mapa; «▶ Recorrido guiado» (en el índice) visita las zonas en el orden de una sesión.
 
 ## Arquitectura
 

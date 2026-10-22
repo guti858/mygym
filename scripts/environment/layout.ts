@@ -5,7 +5,7 @@
  * Uso: npx tsx scripts/environment/layout.ts [salida.json]
  */
 import { writeFileSync } from 'node:fs';
-import { HUB_FLOOR, HUB_HEIGHT, HUB_ZONES, STATION_ROOM } from '../../src/scene/layout';
+import { HUB_AREAS, HUB_FLOOR, HUB_HEIGHT, HUB_PATH, HUB_ROUTE, HUB_ZONES, STATION_ROOM } from '../../src/scene/layout';
 import { CATALOG } from '../../src/stations/catalog';
 import { STATION_MODULES } from '../../src/stations/modules';
 
@@ -31,7 +31,7 @@ const stations = CATALOG.map((e) => {
 });
 
 const layout = {
-  hub: { floor: HUB_FLOOR, height: HUB_HEIGHT, zones: HUB_ZONES, stations },
+  hub: { floor: HUB_FLOOR, height: HUB_HEIGHT, zones: HUB_ZONES, areas: HUB_AREAS, route: HUB_ROUTE, path: HUB_PATH, stations },
   station: STATION_ROOM,
 };
 writeFileSync(out, `${JSON.stringify(layout, null, 2)}\n`);

@@ -304,6 +304,54 @@ test('plano del gimnasio: barra de vista (zoom, planta, vista de arranque), tecl
   expect(errors).toEqual([]);
 });
 
+test('gimnasio: recorrido guiado, mini-mapa con zoom, ambiente y reflejo vivo en la estación', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Consola y mini-mapa se prueban en escritorio');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page, '#/');
+  const plan = page.locator('.hub__player');
+  await expect(plan.locator('canvas')).toBeVisible();
+  // Recorrido guiado: seis paradas en el orden de una sesión; con «reducir movimiento» no avanza solo.
+  await page.getByRole('button', { name: /Recorrido guiado/ }).click();
+  const tour = page.getByRole('region', { name: 'Recorrido guiado' });
+  await expect(tour).toContainText('paso 1 de 6');
+  await expect(tour.getByRole('heading')).toContainText('Cardio');
+  await tour.getByRole('button', { name: 'Paso siguiente' }).click();
+  await expect(tour.getByRole('heading')).toContainText('Empuje');
+  await expect(tour.getByRole('button', { name: 'Press de banca' })).toBeVisible();
+  // Cualquier cambio de la vista (aquí, el zoom) acaba el recorrido.
+  const bar = page.getByRole('toolbar', { name: 'Vista del plano' });
+  await bar.getByRole('button', { name: 'Acercar' }).click();
+  await expect(tour).toHaveCount(0);
+  // Con zoom aparece el mini-mapa.
+  await expect(page.getByRole('img', { name: /Mini-mapa del gimnasio/ })).toBeVisible();
+  await bar.getByRole('button', { name: 'Vista de arranque' }).click();
+  await expect(page.getByRole('img', { name: /Mini-mapa del gimnasio/ })).toHaveCount(0);
+  // Ambiente desde la consola (se guarda como preferencia).
+  await page.keyboard.press(':');
+  const input = page.locator('#console-input');
+  await input.fill('ambiente noche');
+  await input.press('Enter');
+  await expect(page.locator('.console__log')).toContainText('Ambiente: Noche');
+  await input.fill('recorrido');
+  await input.press('Enter');
+  await expect(tour).toContainText('paso 1 de 6');
+  await input.fill('recorrido fin');
+  await input.press('Enter');
+  await expect(tour).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  // Estación: el reflejo vivo en los espejos es una capa opcional.
+  await page.goto('/#/e/jalon');
+  await expect(page.locator('.stage canvas')).toBeVisible();
+  const vbar = page.getByRole('toolbar', { name: 'Vista de la escena' });
+  await vbar.getByRole('button', { name: /^(Capas|Más)/ }).click();
+  const reflejo = page.getByRole('checkbox', { name: 'Reflejo en los espejos' });
+  await expect(reflejo).not.toBeChecked();
+  await reflejo.check();
+  await expect(reflejo).toBeChecked();
+  await page.waitForTimeout(1500);
+  expect(errors).toEqual([]);
+});
+
 test('barra de vista sobre la escena: vistas, capas y giro', async ({ page }) => {
   await open(page, '#/e/jalon');
   await expect(page.locator('.stage canvas')).toBeVisible();

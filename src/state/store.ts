@@ -5,7 +5,7 @@ import { findVariant } from '../engine/evaluate';
 import { clampLoad } from '../engine/load';
 import type { Tempo } from '../engine/timeline';
 import { HUB_ISO_ELEVATION } from '../scene/hubCamera';
-import type { ThemeId } from '../scene/palette';
+import { isAmbient, type Ambient, type ThemeId } from '../scene/palette';
 import { getModule } from '../stations/modules';
 
 export interface StationSettings {
@@ -38,6 +38,8 @@ export interface AppState {
   showMuscles: boolean;
   showGauges: boolean;
   showOverlay: boolean;
+  /** Reflejo vivo de máquina y avatar en los espejos de la estación (capa opcional). */
+  showReflection: boolean;
   hubRotation: number;
   /** Plano del gimnasio: inclinación (fuera de la planta), vista en planta, zoom y desplazamiento (m). */
   hubTilt: number;
@@ -46,9 +48,14 @@ export interface AppState {
   hubPan: readonly [number, number];
   /** Máquina elegida en el plano (su tarjeta, a un paso de abrirla). */
   hubSelected: string | null;
-  /** Capas del plano: rótulos de las máquinas y nombres de zona. */
+  /** Capas del plano: rótulos de las máquinas, nombres de zona y mini-mapa (este, solo con zoom). */
   hubLabels: boolean;
   hubZones: boolean;
+  hubMiniMap: boolean;
+  /** Recorrido guiado por el gimnasio: paso actual (índice de HUB_ROUTE) o null si no hay recorrido. */
+  hubTour: number | null;
+  /** Ambiente de la sala (luz de los ventanales y de las tiras LED). */
+  ambient: Ambient;
   /**
    * Cámara con la que se abre una estación desde el plano del gimnasio (el mismo lado desde el que
    * se veía la máquina); la estación la consume al montarse y orbita hasta su vista.
@@ -73,6 +80,7 @@ export interface AppState {
         | 'showMuscles'
         | 'showGauges'
         | 'showOverlay'
+        | 'showReflection'
         | 'hubRotation'
         | 'hubTilt'
         | 'hubPlan'
@@ -81,6 +89,9 @@ export interface AppState {
         | 'hubSelected'
         | 'hubLabels'
         | 'hubZones'
+        | 'hubMiniMap'
+        | 'hubTour'
+        | 'ambient'
         | 'muscleFilter'
         | 'consoleOpen'
         | 'anthroOpen'
@@ -126,6 +137,8 @@ interface Persisted {
   showMuscles?: boolean;
   showGauges?: boolean;
   showOverlay?: boolean;
+  showReflection?: boolean;
+  ambient?: Ambient;
   settings?: Record<string, StationSettings>;
 }
 
@@ -162,6 +175,7 @@ export const useApp = create<AppState>((set, get) => ({
   showMuscles: persisted.showMuscles ?? true,
   showGauges: persisted.showGauges ?? true,
   showOverlay: persisted.showOverlay ?? true,
+  showReflection: persisted.showReflection ?? false,
   hubRotation: 0,
   hubTilt: HUB_ISO_ELEVATION,
   hubPlan: false,
@@ -170,6 +184,9 @@ export const useApp = create<AppState>((set, get) => ({
   hubSelected: null,
   hubLabels: true,
   hubZones: true,
+  hubMiniMap: true,
+  hubTour: null,
+  ambient: isAmbient(persisted.ambient) ? persisted.ambient : 'dia',
   entryCamera: null,
   muscleFilter: null,
   consoleOpen: false,
@@ -233,6 +250,8 @@ if (typeof window !== 'undefined') {
         showMuscles: s.showMuscles,
         showGauges: s.showGauges,
         showOverlay: s.showOverlay,
+        showReflection: s.showReflection,
+        ambient: s.ambient,
         settings: s.settings,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

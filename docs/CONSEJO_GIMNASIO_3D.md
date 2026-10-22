@@ -334,3 +334,44 @@ Ajustes que salieron de la revisión conjunta:
 gimnasio entero), así que las animaciones se han comprobado por su estado final y por la copia del
 fundido, no a la velocidad real. Conviene probar el acercamiento y el pellizco en el M3 (y en un
 móvil real) antes de dar F2 por cerrada.
+
+---
+
+## 9. Implementación de F4 y F5
+
+Rama apilada sobre F1–F3. F3 dejó el escenario; F4 rehace la planta y F5 añade los extras.
+
+### 9.1 F4 · Áreas
+
+| Decisión | Implementación |
+|---|---|
+| **D1 · Compactar y decorar el perímetro** | El suelo pasa de 19 × 13 m (247 m²) a **17,5 × 12,5 m** (219 m², −11 %): el plano encuadra las máquinas más grandes sin tocar la cámara. Tres filas: al fondo tracción, brazos y pierna contra los espejos; en medio, empuje; delante, zona libre, entrada y cardio. El sobrante del perímetro tiene función: **cardio** (tres cintas y dos bicicletas de cara a los ventanales del este), **recepción** (mostrador con el emblema, pantalla y taburete, junto a la puerta) y **estiramientos** (esterillas, cajones, rodillos y kettlebells en la zona libre). |
+| **D5 · Ritmo de máquinas** | Pasillos de **al menos 1,45 m** entre huellas (antes, 1,0 m entre el press de banca y el inclinado) y 0,65 m o más a las paredes. La prensa gira a lo largo de la fila (yaw 0) y fondos se suma a la fila de empuje. La planta vive en `src/scene/layout.ts` y `src/stations/catalog.ts`; un test (`src/scene/layout.test.ts`) vigila pasillos, paredes, zonas y que nada de lo pintado pise una máquina. |
+| **D2 · Recorrido docente** | Orden de una sesión: **1 cardio → 2 empuje → 3 tracción → 4 brazos → 5 pierna → 6 zona libre**. Marcas numeradas pintadas en los pasillos y flechas que lo siguen desde la entrada (pasillo sur, oeste y norte). Los rótulos de zona del plano llevan el número, y el índice de estaciones sigue ese orden. |
+| **D3 · Áreas decorativas** | Cardio, recepción y estiramientos (arriba): atrezo horneado, sin anillo ni tarjeta, con rótulo propio en el plano («1 · Cardio», «Recepción»). |
+| **D4 · Suelo con personalidad** | El suelo de cada zona, su línea y el contorno del cardio en una sola malla; logotipo pintado delante de la puerta (se lee desde la vista de arranque) y marcas numeradas como señalética. Los pictogramas por zona quedan fuera: no caben sin tapar máquinas. |
+| D6 · Oclusión | Con la nueva planta, la fila alta (tracción y pierna) queda al fondo en la vista de arranque; en los giros 2–3 la viñeta de la selección ya separa la máquina elegida. Sin cambios. |
+
+### 9.2 F5 · Extras
+
+| Decisión | Implementación |
+|---|---|
+| **M7 · Mini-mapa** | `src/ui/HubMiniMap.tsx`: con zoom, arriba a la derecha del plano, planta esquemática con el norte arriba (zonas, áreas, máquinas y la elegida) y el trozo que se ve; un clic o un arrastre centran el plano ahí. Se puede ocultar en Capas. |
+| **M8 · Recorrido guiado** | `src/ui/HubTour.tsx`: «▶ Recorrido guiado» en el índice o `recorrido` en la consola. La cámara visita las seis paradas (7 s cada una; con «reducir movimiento», a mano), cada parada dice qué se hace y lista sus estaciones para abrirlas. Anterior, pausa, siguiente y salir; cualquier cambio de la vista del usuario lo termina. |
+| **M10 · Ambiente** | Opción A del acta (§4.5), sin nuevo horneado: día, tarde y noche cambian el cielo de los ventanales y el tono de las tiras LED, y atenúan la luz horneada (`withAmbient` en `src/scene/palette.ts`). Capas del plano y de la estación, y `ambiente <dia\|tarde\|noche>`; se guarda como preferencia. |
+| **Z5 · Sala de estación por zona** | Versión ligera: el suelo de la sala de cada estación toma el color de su zona del gimnasio (`withFloorTint`). Una sala distinta por zona (cinco horneados) queda para más adelante. |
+| **E3 · Reflejo vivo** | `src/scene/env/LiveMirror.tsx`, capa **opcional y apagada** por defecto en la estación («Reflejo en los espejos»). Una cámara virtual, reflejo de la de la escena en el plano de las lunas, pinta solo máquina y avatar en una textura a media resolución que las lunas proyectan sobre su reflejo horneado. Es óptica real: se ve con la cámara baja y de cara a los espejos (con la cámara a 35°, un espejo vertical refleja el suelo de delante, no al avatar). Cuesta otro render de máquina y avatar por fotograma. |
+
+Peso del entorno: el glTF pasa de 2,13 a **2,43 MB** (base64 en la app, ~3,24 MB), dentro del techo de
+3,5 MB del acta; lo nuevo es sobre todo el atrezo de cardio, recepción y estiramientos.
+
+### 9.3 Verificación
+
+| Comprobación | Resultado |
+|---|---|
+| `npm run typecheck` y `npm run lint` | Sin errores |
+| `npm test` | 210 superadas. Nuevas: planta (`src/scene/layout.test.ts`: pasillos ≥ 1,4 m, paredes, zonas, áreas, marcas y flechas sin pisar máquinas), paletas de ambiente y suelo de estación, y en la cámara, del píxel al suelo y centrar en un punto (mini-mapa) |
+| `npm run build` | Correcto |
+| `npm run e2e` | 34 superadas, 8 omitidas por diseño, 0 fallos. Nueva: recorrido guiado (paradas, estaciones de cada parada, fin al cambiar la vista), mini-mapa con zoom, ambiente por consola y reflejo vivo en la estación. El «cero scroll» a 1440×900 y 1280×720 sigue en verde con la nueva planta |
+| Revisión visual | Cuatro giros y planta con la nueva distribución, recorrido (parada de empuje), mini-mapa, noche en el gimnasio y en una estación (suelo con el color de su zona) y reflejo vivo con la cámara de cara a los espejos (se ve la espalda del avatar y la máquina) |
+| Horneado | Completo en ~11 min en el contenedor; el script comprueba que el atrezo nuevo no invade ninguna máquina |

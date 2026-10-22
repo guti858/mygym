@@ -6,7 +6,8 @@ import { compositionId } from '../remotion/props';
 import { PHASE_LABEL, parseTempo, tempoToString } from '../engine/timeline';
 import { phaseEntry } from '../remotion/timing';
 import { HUB_HOME, HUB_ISO_ELEVATION, HUB_TILT, HUB_ZOOM, clampPan } from '../scene/hubCamera';
-import type { ThemeId } from '../scene/palette';
+import { HUB_ROUTE } from '../scene/layout';
+import { AMBIENTS, AMBIENT_LABEL, isAmbient, type ThemeId } from '../scene/palette';
 import { CATALOG } from '../stations/catalog';
 import { getModule } from '../stations/modules';
 import { bridge } from './bridge';
@@ -282,6 +283,39 @@ export const COMMANDS: Command[] = [
       const zoom = Math.min(2.2, Math.max(0.6, n));
       s.update(id, { zoom });
       return `Zoom: ${num(zoom, 1)}×`;
+    },
+  },
+  {
+    name: 'recorrido',
+    aliases: ['tour'],
+    usage: 'recorrido [siguiente|anterior|fin]',
+    help: 'Recorrido guiado por el gimnasio, zona a zona.',
+    complete: () => ['siguiente', 'anterior', 'fin'],
+    run: ([a]) => {
+      const s = useApp.getState();
+      if (s.route.name !== 'hub') s.go({ name: 'hub' });
+      const n = norm(a ?? '');
+      const last = HUB_ROUTE.length - 1;
+      if (n === 'fin' || n === 'salir') {
+        s.set({ hubTour: null });
+        return 'Recorrido terminado.';
+      }
+      const cur = s.hubTour;
+      const step = n.startsWith('sig') ? Math.min(last, (cur ?? -1) + 1) : n.startsWith('ant') ? Math.max(0, (cur ?? 1) - 1) : 0;
+      s.set({ hubTour: step, hubSelected: null });
+      return `Recorrido: paso ${step + 1} de ${last + 1}`;
+    },
+  },
+  {
+    name: 'ambiente',
+    usage: 'ambiente <dia|tarde|noche>',
+    help: 'Luz de la sala: día, tarde o noche.',
+    complete: () => [...AMBIENTS],
+    run: ([a]) => {
+      const n = norm(a ?? '');
+      if (!isAmbient(n)) return fail('Usa «ambiente dia», «ambiente tarde» o «ambiente noche».');
+      useApp.getState().set({ ambient: n });
+      return `Ambiente: ${AMBIENT_LABEL[n]}`;
     },
   },
   {

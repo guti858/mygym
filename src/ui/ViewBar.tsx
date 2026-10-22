@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { StationModule } from '../stations/modules';
+import { AMBIENTS, AMBIENT_LABEL, type Ambient } from '../scene/palette';
 import { useApp, type StationSettings } from '../state/store';
 
 /** Rótulos cortos para los botones de vista (el nombre completo va en el título y en el nombre accesible). */
@@ -115,8 +116,29 @@ export function ViewBar({ mod, st, size, onFullscreen }: { mod: StationModule; s
           <label>
             <input type="checkbox" checked={app.showOverlay} onChange={(e) => app.set({ showOverlay: e.target.checked })} /> Rótulos de estado
           </label>
+          <label title="Máquina y avatar en los espejos: más trabajo para la tarjeta gráfica">
+            <input type="checkbox" checked={app.showReflection} onChange={(e) => app.set({ showReflection: e.target.checked })} /> Reflejo en los espejos
+          </label>
+          <AmbientField />
         </div>
       )}
     </div>
+  );
+}
+
+/** Ambiente de la sala (día, tarde o noche), en el desplegable de capas del plano y de la estación. */
+export function AmbientField() {
+  const ambient = useApp((s) => s.ambient);
+  return (
+    <label className="hud__field">
+      Ambiente
+      <select className="select select--small" value={ambient} onChange={(e) => useApp.getState().set({ ambient: e.target.value as Ambient })}>
+        {AMBIENTS.map((a) => (
+          <option key={a} value={a}>
+            {AMBIENT_LABEL[a]}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

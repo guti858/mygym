@@ -205,3 +205,51 @@ export const PALETTES: Record<ThemeId, ScenePalette> = {
     },
   },
 };
+
+/**
+ * Ambiente de la sala (decisión M10 del acta, variante cromática): la luz horneada es la de día;
+ * por la tarde y de noche cambian el cielo de los ventanales y el tono de las tiras LED, y la luz
+ * horneada se atenúa. Las máquinas y el avatar no cambian (su luz es en tiempo real).
+ */
+export type Ambient = 'dia' | 'tarde' | 'noche';
+export const AMBIENTS: readonly Ambient[] = ['dia', 'tarde', 'noche'];
+export const AMBIENT_LABEL: Record<Ambient, string> = { dia: 'Día', tarde: 'Tarde', noche: 'Noche' };
+/** Factor de la luz horneada de la sala. */
+export const AMBIENT_LIGHT: Record<Ambient, number> = { dia: 1, tarde: 0.9, noche: 0.68 };
+
+export const isAmbient = (v: unknown): v is Ambient => typeof v === 'string' && (AMBIENTS as readonly string[]).includes(v);
+
+/** Mezcla de dos colores «#rrggbb» (t = 0 → a, t = 1 → b). */
+export function mixHex(a: string, b: string, t: number): string {
+  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  return `#${pa.map((v, i) => Math.round(v + (pb[i]! - v) * t).toString(16).padStart(2, '0')).join('')}`;
+}
+
+// Una paleta derivada por combinación: la identidad se conserva (las salas no se rehacen en cada fotograma).
+const derived = new WeakMap<ScenePalette, Map<string, ScenePalette>>();
+function derive(p: ScenePalette, key: string, make: () => ScenePalette): ScenePalette {
+  let m = derived.get(p);
+  if (!m) derived.set(p, (m = new Map()));
+  let out = m.get(key);
+  if (!out) m.set(key, (out = make()));
+  return out;
+}
+
+/** Colores de la sala para un ambiente. */
+export function withAmbient(p: ScenePalette, a: Ambient): ScenePalette {
+  if (a === 'dia') return p;
+  return derive(p, `ambiente:${a}`, () => ({
+    ...p,
+    room: {
+      ...p.room,
+      window: a === 'tarde' ? mixHex(p.room.window, '#f29c55', 0.45) : mixHex(p.room.window, '#0a1428', 0.78),
+      led: mixHex(p.room.led, a === 'tarde' ? '#ffc890' : '#ffd9a0', a === 'tarde' ? 0.25 : 0.4),
+    },
+  }));
+}
+
+/** Suelo de la sala de una estación con el color de su zona del gimnasio (decisión Z5 del acta). */
+export function withFloorTint(p: ScenePalette, color: string, t = 0.55): ScenePalette {
+  return derive(p, `suelo:${color}:${t}`, () => ({ ...p, room: { ...p.room, floorA: mixHex(p.room.floorA, color, t) } }));
+}

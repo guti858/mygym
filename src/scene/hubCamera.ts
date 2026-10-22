@@ -114,6 +114,24 @@ export function focusView(view: HubView, points: readonly Vector3[], size: Size,
   return { ...view, zoom, panX, panZ };
 }
 
+/** Punto del suelo (x, z) que se ve en el píxel (`px`, `py`) de la composición. */
+export function screenToFloor(cam: CameraSpec, px: number, py: number): [number, number] {
+  const dir = cam.position.clone().sub(cam.target).normalize();
+  const o = cam.target
+    .clone()
+    .add(cam.right.clone().multiplyScalar((px - cam.width / 2) / cam.zoom))
+    .sub(cam.camUp.clone().multiplyScalar((py - cam.height / 2) / cam.zoom));
+  const t = o.y / Math.max(1e-3, dir.y);
+  return [o.x - dir.x * t, o.z - dir.z * t];
+}
+
+/** La misma vista, desplazada para que el punto del suelo (x, z) quede en el centro (mini-mapa). */
+export function centerOn(view: HubView, point: readonly [number, number], size: Size, margins: Margins = hubMargins()): HubView {
+  const cam = hubCamera(view, size, margins);
+  const [cx, cz] = screenToFloor(cam, size.width / 2, size.height / 2);
+  return clampPan({ ...view, panX: view.panX + point[0] - cx, panZ: view.panZ + point[1] - cz });
+}
+
 /** Rótulos según el zoom: 0 = zonas y nombres; 1 = además el músculo principal; 2 = sin zonas. */
 export function labelLevel(zoom: number): 0 | 1 | 2 {
   return zoom <= 1.2 ? 0 : zoom <= 2.2 ? 1 : 2;
