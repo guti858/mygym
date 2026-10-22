@@ -52,6 +52,13 @@ export function useSmoothCamera(target: CameraAngles, instant: boolean, jumpKey 
 }
 
 /**
+ * Paso máximo de tiempo por fotograma en el plano. Más amplio que en la estación: en un equipo lento
+ * (pocos fotogramas por segundo) la cámara sigue llegando a tiempo, y el acercamiento a una máquina
+ * no se queda a medias cuando empieza el fundido con la estación.
+ */
+const HUB_MAX_DT = 0.25;
+
+/**
  * Lo mismo para el plano del gimnasio, que además se acerca y se desplaza: giro por el camino más
  * corto, zoom en escala logarítmica (acercarse de 1× a 2× dura lo mismo que de 2× a 4×) y
  * desplazamiento lineal.
@@ -69,7 +76,7 @@ export function useSmoothHubView(target: HubView, instant: boolean): HubView {
     let raf = 0;
     let last = performance.now();
     const step = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
+      const dt = Math.min(HUB_MAX_DT, (now - last) / 1000);
       last = now;
       const c = ref.current;
       const d = {

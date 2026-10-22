@@ -77,8 +77,8 @@ npm run env:layout   # planta (zonas, huellas de máquinas) → scripts/environm
 # Con GPU (p. ej. Mac con Apple Silicon: Cycles por Metal): añadir --gpu
 ```
 
-En el contenedor de desarrollo (4 vCPU, sin GPU) el horneado completo tarda unos 14 min: sala de
-estación ~2 min (atlas 1024², reflejos 512²) y gimnasio ~11 min (atlas 2048², reflejos 1024²). Con
+En el contenedor de desarrollo (4 vCPU, sin GPU) el horneado completo tarda unos 12 min: sala de
+estación ~2 min (atlas 1024², reflejos 512²) y gimnasio ~10 min (atlas 2048², reflejos 1024²). Con
 `--gpu` en un equipo con Metal, OptiX, CUDA, HIP u oneAPI, Cycles usa la primera GPU que reconoce
 (el registro dice «horneado en METAL», por ejemplo); si no encuentra ninguna, sigue en la CPU.
 

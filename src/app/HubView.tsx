@@ -5,7 +5,7 @@ import { MUSCLES, type MuscleId } from '../content/muscles';
 import { FPS, type HubCompProps } from '../remotion/props';
 import { HubComposition } from '../remotion/HubComposition';
 import { project } from '../scene/camera';
-import { HUB_PLAN_ELEVATION, clampPan, focusView, hubCamera, hubMargins, neighbor, panBy, zoomAt, type HubView as HubCam } from '../scene/hubCamera';
+import { HUB_PLAN_ELEVATION, clampPan, focusView, hubCamera, hubMargins, labelLevel, neighbor, panBy, zoomAt, type HubView as HubCam } from '../scene/hubCamera';
 import { CATALOG, ZONE_LABEL, roleInStation, type Zone } from '../stations/catalog';
 import { hubCorners, hubLabelY, hubPoint } from '../stations/hubPlacement';
 import { getModule } from '../stations/modules';
@@ -19,8 +19,11 @@ import { crossfadeFrom } from '../ui/zoomTransition';
 
 /** Píxeles de arrastre por cada giro de 90°. */
 const DRAG_PX = 220;
-/** Acercamiento a la máquina antes de fundirse con la estación (la cámara se asienta en ~0,5 s). */
-const FLIGHT_MS = 600;
+/**
+ * Tope del acercamiento a la máquina antes de fundirse con la estación: normalmente el fundido
+ * empieza en cuanto la cámara llega (~0,5 s); en un equipo lento, como mucho tras este tiempo.
+ */
+const FLIGHT_MAX_MS = 1200;
 /** Al volver, la máquina visitada queda destacada este tiempo. */
 const RECENT_MS = 1500;
 
@@ -69,6 +72,17 @@ export function HubView({ active }: { active: boolean }) {
     [app.hubRotation, drag, app.hubPlan, app.hubTilt, app.hubZoom, app.hubPan],
   );
   const shown = useSmoothHubView(flight?.view ?? userView, reduceMotion);
+  // Fundido pendiente del acercamiento a una máquina: se lanza cuando la cámara llega.
+  const landing = useRef<(() => void) | null>(null);
+  const arrived =
+    !!flight &&
+    Math.abs(Math.log(shown.zoom / flight.view.zoom)) < 0.01 &&
+    Math.hypot(shown.panX - flight.view.panX, shown.panZ - flight.view.panZ) < 0.03 &&
+    Math.abs(angleDelta(shown.azimuth, flight.view.azimuth)) < 0.5 &&
+    Math.abs(shown.elevation - flight.view.elevation) < 0.5;
+  useEffect(() => {
+    if (arrived) landing.current?.();
+  }, [arrived]);
   const cam = useMemo(() => hubCamera(shown, size, margins), [shown, size, margins]);
   // Los gestos calculan sobre la vista pedida (no la interpolada): sin saltos si llegan a mitad de
   // una transición.
@@ -117,10 +131,19 @@ export function HubView({ active }: { active: boolean }) {
       if (reduceMotion || !canvas) return enter(from);
       opening.current = true;
       const to = focusView(from, hubCorners(entry), live.current.size, margins);
+      let done = false;
+      // Se funde cuando la cámara llega (efecto de abajo) o, como mucho, al cumplirse el tope.
+      const fire = () => {
+        if (done) return;
+        done = true;
+        window.clearTimeout(timer);
+        landing.current = null;
+        // Un fotograma más: el lienzo ya muestra la cámara en su sitio cuando se copia.
+        requestAnimationFrame(() => void crossfadeFrom(canvas, () => enter(to)).finally(() => (opening.current = false)));
+      };
+      const timer = window.setTimeout(fire, FLIGHT_MAX_MS);
+      landing.current = fire;
       setFlight({ id, view: to });
-      window.setTimeout(() => {
-        void crossfadeFrom(canvas, () => enter(to)).finally(() => (opening.current = false));
-      }, FLIGHT_MS);
     },
     [reduceMotion, margins],
   );
@@ -327,7 +350,8 @@ export function HubView({ active }: { active: boolean }) {
       view: shown,
       hovered,
       highlight,
-      selected: selected ?? recent,
+      selected,
+      recent,
       focus: flight?.id ?? null,
       showLabels: app.hubLabels,
       showZones: app.hubZones,
@@ -358,7 +382,10 @@ export function HubView({ active }: { active: boolean }) {
   const card = chosen
     ? (() => {
         const [x, base] = project(cam, hubPoint(chosen, 0));
-        const [, top] = project(cam, hubPoint(chosen, hubLabelY(chosen)));
+        const [, labelBase] = project(cam, hubPoint(chosen, hubLabelY(chosen)));
+        // Encima del rótulo de la máquina (una línea o, con zoom, dos), no encima de la máquina.
+        const unit = (Math.min(compW, compH) / 900) * (narrow ? 1.5 : 1);
+        const top = labelBase - (11 + 17 * 1.2 + (labelLevel(shown.zoom) > 0 ? 12.5 * 1.2 : 0)) * unit;
         const below = base / compH < 0.62;
         const role = filter ? roleInStation(chosen, filter) : null;
         return (

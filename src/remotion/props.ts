@@ -59,6 +59,8 @@ export type HubCompProps = {
   highlight: Record<string, 'principal' | 'secundario'>;
   /** Máquina elegida (anillo y rótulo destacados; el resto, atenuado). */
   selected?: string | null;
+  /** Máquina recién visitada: anillo y rótulo destacados un momento, sin atenuar el resto. */
+  recent?: string | null;
   /** Máquina a la que se acerca la cámara al abrirla: el resto se oscurece más. */
   focus?: string | null;
   /** Rótulos de las máquinas y nombres de zona (por defecto, visibles). */

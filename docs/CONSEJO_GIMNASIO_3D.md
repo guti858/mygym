@@ -277,7 +277,7 @@ Cada fase se verifica con `npm test`, `npm run e2e` (incluido el cero-scroll) y 
 
 ## 8. Implementación de F1, F2 y F3 y valoración global
 
-Las tres fases se desarrollaron a la vez: el horneado de Blender (F3, ~14 min de CPU en el contenedor)
+Las tres fases se desarrollaron a la vez: el horneado de Blender (F3, ~12 min de CPU en el contenedor)
 corría en segundo plano mientras se programaban F1 y F2. Después se revisaron juntas y se fusionaron
 con la rama por defecto.
 
@@ -311,4 +311,26 @@ por zona y reflejo vivo del avatar. Tampoco va el enlace compartible del plano (
 
 ### 8.3 Verificación
 
-VERIFICACION_RESULTADOS
+Sobre la rama ya fusionada con la rama por defecto (que trae el modelo anatómico propio):
+
+| Comprobación | Resultado |
+|---|---|
+| `npm run typecheck` y `npm run lint` | Sin errores |
+| `npm test` (Vitest) | 202 pruebas superadas. Nuevas: `src/scene/hubCamera.test.ts` (sin zoom la vista es la de siempre; el zoom deja quieto el punto bajo el puntero; el arrastre sigue al puntero; límites de zoom y desplazamiento; el acercamiento centra cada máquina y la deja entera a 20°, 35°, 60° y en planta; flechas) y el contrato del entorno (espejos con reflejo en UV 1, exterior tras cada ventana, marca visible con cualquier giro) |
+| `npm run build` | Correcto |
+| `npm run e2e` (Chromium con WebGL por software, escritorio y móvil) | 33 superadas, 7 omitidas por diseño (escritorio o móvil), 0 fallos. Incluye el «cero scroll» a 1440×900 y 1280×720 en el gimnasio y las 12 estaciones, el flujo gimnasio → tarjeta → «Abrir estación» → vuelta (sin recrear lienzos) y una prueba nueva del plano (barra de vista, planta, vista de arranque, capas, teclado y consola) |
+| Revisión visual | Capturas en los tres temas y en los cuatro giros, planta, zoom con selección, móvil (Pixel 7), salas de estación (isométrica y lateral) y la copia del fundido al abrir una estación |
+| Script de Blender | Horneado completo en el contenedor (~12 min en CPU); `--quick` en ~45 s; `--gpu` sin GPU sigue en la CPU («horneado en CPU») |
+
+Ajustes que salieron de la revisión conjunta:
+
+- La tarjeta se coloca por encima del rótulo de su máquina, que con zoom ocupa dos líneas (antes lo tapaba).
+- La planta se abre siempre con la entrada abajo: el gimnasio queda apaisado y el logotipo del suelo se lee derecho (desde Iso 2 o Iso 4 salía vertical y más pequeño).
+- El fundido con la estación espera a que la cámara llegue a la máquina (con un tope de 1,2 s) en lugar de un tiempo fijo, y en el plano la cámara admite pasos de tiempo mayores: en un equipo lento el acercamiento ya no se queda a medias.
+- La máquina recién visitada se destaca solo con su anillo y su rótulo, sin oscurecer el resto (parecía un destello al volver).
+- Los rótulos de la marca, con las curvas de las letras simplificadas, pasan de ~230 KB a ~70 KB cada uno; el del suelo es una sola cara.
+
+**Límite conocido.** En este contenedor el WebGL es por software (1–2 fotogramas por segundo con el
+gimnasio entero), así que las animaciones se han comprobado por su estado final y por la copia del
+fundido, no a la velocidad real. Conviene probar el acercamiento y el pellizco en el M3 (y en un
+móvil real) antes de dar F2 por cerrada.

@@ -177,7 +177,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
           const mod = getModule(entry.id);
           const hl = props.highlight[entry.id];
           const hovered = props.hovered === entry.id;
-          const chosen = dim === entry.id;
+          const chosen = dim === entry.id || props.recent === entry.id;
           const ring = hovered || chosen ? palette.accent : hl === 'principal' ? palette.muscle.principal : hl === 'secundario' ? palette.muscle.sinergista : null;
           const fp = hubFootprint(entry);
           return (
@@ -255,7 +255,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
 
       {CATALOG.map((entry) => {
         const hovered = props.hovered === entry.id;
-        const chosen = dim === entry.id;
+        const chosen = dim === entry.id || props.recent === entry.id;
         if (!showLabels && !hovered && !chosen) return null;
         const [x, y] = project(cam, hubPoint(entry, hubLabelY(entry)));
         const hl = props.highlight[entry.id];

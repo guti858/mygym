@@ -53,9 +53,11 @@ export function HubViewBar({
     }
     app.set({ hubTilt: Math.min(HUB_TILT[1], Math.max(HUB_TILT[0], app.hubTilt + deg)) });
   };
+  // La planta, siempre con la entrada abajo: el gimnasio queda apaisado (como la pantalla) y el
+  // logotipo del suelo se lee derecho.
   const chooseView = (rotation: number | 'planta') =>
     app.set({
-      hubRotation: rotation === 'planta' ? app.hubRotation : rotation,
+      hubRotation: rotation === 'planta' ? 0 : rotation,
       hubPlan: rotation === 'planta',
       hubTilt: HUB_ISO_ELEVATION,
       hubZoom: 1,

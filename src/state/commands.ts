@@ -55,7 +55,7 @@ function hubVista(v: string | undefined) {
     return `Vista del plano: isométrica ${iso[1]}`;
   }
   if (n === 'planta') {
-    s.set({ hubPlan: true, hubZoom: 1, hubPan: [0, 0] });
+    s.set({ hubRotation: 0, hubPlan: true, hubZoom: 1, hubPan: [0, 0] });
     return 'Vista del plano: planta';
   }
   if (n === 'inicio') {
