@@ -13,7 +13,18 @@
 const ZOOM_MS = 620;
 const FADE_MS = 220;
 
-const frame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+/**
+ * Siguiente fotograma o, si tarda (la página está cargando y cada fotograma cuesta segundos), al cabo
+ * de `ms`: la navegación nunca queda a expensas de la animación.
+ */
+export const nextFrame = (ms = 150) =>
+  new Promise<void>((r) => {
+    const t = window.setTimeout(r, ms);
+    requestAnimationFrame(() => {
+      window.clearTimeout(t);
+      r();
+    });
+  });
 
 /**
  * Funde la imagen actual de `source` sobre lo que monte `swap`. Con `zoom`, además la amplía hacia
@@ -51,11 +62,11 @@ export async function crossfadeFrom(source: HTMLCanvasElement, swap: () => void,
     });
   }
   // Un fotograma para que el compositor tome la copia antes de bloquear el hilo principal.
-  await frame();
+  await nextFrame();
   swap();
   // La estación ha pintado cuando vuelven a correr los fotogramas tras montarla.
-  await frame();
-  await frame();
+  await nextFrame();
+  await nextFrame();
   await move?.finished.catch(() => undefined);
   const fade = snap.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FADE_MS, easing: 'ease-out', fill: 'forwards' });
   await fade.finished.catch(() => undefined);

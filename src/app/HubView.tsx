@@ -15,7 +15,7 @@ import { HUB_ZOOM_STEP, HubViewBar } from '../ui/HubViewBar';
 import { useMedia } from '../ui/useMedia';
 import { angleDelta, useSmoothHubView } from '../ui/useSmoothCamera';
 import type { ViewBarSize } from '../ui/ViewBar';
-import { crossfadeFrom } from '../ui/zoomTransition';
+import { crossfadeFrom, nextFrame } from '../ui/zoomTransition';
 
 /** Píxeles de arrastre por cada giro de 90°. */
 const DRAG_PX = 220;
@@ -106,8 +106,10 @@ export function HubView({ active }: { active: boolean }) {
   // Abrir una estación: la cámara del plano se acerca a la máquina (nítido: es la escena, no una
   // copia ampliada) y la imagen se funde con la estación, que arranca mirando la máquina desde el
   // mismo lado y después orbita hasta su vista.
+  // Desde el índice (`direct`), sin acercamiento: es la navegación accesible y no debe esperar a
+  // ninguna animación (al cargar la página, los fotogramas pueden tardar segundos).
   const open = useCallback(
-    (id: string) => {
+    (id: string, direct = false) => {
       const entry = CATALOG.find((c) => c.id === id);
       if (!entry || opening.current) return;
       if (!entry.ready) {
@@ -128,7 +130,7 @@ export function HubView({ active }: { active: boolean }) {
       };
       const from = live.current.userView;
       const canvas = stageRef.current?.querySelector('canvas');
-      if (reduceMotion || !canvas) return enter(from);
+      if (direct || reduceMotion || !canvas) return enter(from);
       opening.current = true;
       const to = focusView(from, hubCorners(entry), live.current.size, margins);
       let done = false;
@@ -139,7 +141,7 @@ export function HubView({ active }: { active: boolean }) {
         window.clearTimeout(timer);
         landing.current = null;
         // Un fotograma más: el lienzo ya muestra la cámara en su sitio cuando se copia.
-        requestAnimationFrame(() => void crossfadeFrom(canvas, () => enter(to)).finally(() => (opening.current = false)));
+        void nextFrame().then(() => crossfadeFrom(canvas, () => enter(to)).finally(() => (opening.current = false)));
       };
       const timer = window.setTimeout(fire, FLIGHT_MAX_MS);
       landing.current = fire;
@@ -435,7 +437,7 @@ export function HubView({ active }: { active: boolean }) {
                   <button
                     key={c.id}
                     className={`st-chip${role ? ` st-chip--${role}` : ''}${hovered === c.id || selected === c.id ? ' is-hover' : ''}`}
-                    onClick={() => (c.ready ? open(c.id) : undefined)}
+                    onClick={() => (c.ready ? open(c.id, true) : undefined)}
                     onMouseEnter={() => setHovered(c.id)}
                     onMouseLeave={() => setHovered(null)}
                     onFocus={() => setHovered(c.id)}
