@@ -3,6 +3,7 @@ import { Quaternion, Vector3 } from 'three';
 import { AnatomyBody } from '../anatomy/AnatomyBody';
 import { useAnatomy } from '../anatomy/useAnatomy';
 import type { MuscleId } from '../content/muscles';
+import type { Sex } from '../engine/anthropometry';
 import { SIDES, sideSign, type SolvedBody } from '../engine/body';
 import { STATUS_RANK } from '../engine/evaluate';
 import type { Frame } from '../engine/math';
@@ -210,6 +211,8 @@ function muscleShells(body: SolvedBody): Shell[] {
 }
 
 export interface AvatarProps {
+  /** Modelo anatómico (hombre o mujer). */
+  sex: Sex;
   body: SolvedBody;
   palette: ScenePalette;
   statuses: Map<string, Status>;
@@ -223,9 +226,9 @@ export interface AvatarProps {
   castShadow?: boolean;
 }
 
-/** Avatar: modelo anatómico (Z-Anatomy) sobre el rig del motor; maniquí simple mientras carga. */
+/** Avatar: modelo anatómico propio sobre el rig del motor; maniquí simple mientras carga. */
 export function Avatar(props: AvatarProps) {
-  const model = useAnatomy();
+  const model = useAnatomy(props.sex);
   // Si el modelo llega con la escena ya a la vista, se prepara antes de sustituir al maniquí.
   const [modelAtMount] = useState(() => model !== null);
   if (!model) return <Mannequin {...props} />;

@@ -43,6 +43,8 @@ export interface ScenePalette {
   /** Materiales del modelo anatómico. */
   anatomy: {
     muscle: string;
+    /** Capa profunda: lo que se ve entre músculos. */
+    deep: string;
     tendon: string;
     bone: string;
     skin: string;
@@ -95,6 +97,7 @@ export const PALETTES: Record<ThemeId, ScenePalette> = {
     },
     anatomy: {
       muscle: '#8a6560',
+      deep: '#4f3735',
       tendon: '#bfae9d',
       bone: '#e4d9c1',
       skin: '#c7ad98',
@@ -142,6 +145,7 @@ export const PALETTES: Record<ThemeId, ScenePalette> = {
     },
     anatomy: {
       muscle: '#b78a83',
+      deep: '#7d5a54',
       tendon: '#d6c8b8',
       bone: '#ede3cc',
       skin: '#d3b7a1',
@@ -189,6 +193,7 @@ export const PALETTES: Record<ThemeId, ScenePalette> = {
     },
     anatomy: {
       muscle: '#2c6a43',
+      deep: '#173d26',
       tendon: '#78c793',
       bone: '#9fe8b6',
       skin: '#4fa76d',

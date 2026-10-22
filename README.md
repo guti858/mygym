@@ -17,6 +17,7 @@ Gimnasio isométrico en el navegador donde cada máquina es una **estación** co
 | F4c–d · **Abductores / aductores** y **rack de mancuernas** (7 ejercicios) | ✅ pendiente de tu validación |
 | Sala realista generada con **Blender** (luz horneada con Cycles) y cámara en órbita por estación | ✅ ver [`docs/ENTORNO_3D.md`](docs/ENTORNO_3D.md) |
 | Interfaz **single-view**: cada vista cabe en la pantalla sin desplazarse (Técnica = guion + errores + articulaciones; vista dentro de la escena) | ✅ acta del consejo en [`docs/UX_CONSEJO.md`](docs/UX_CONSEJO.md) |
+| **Modelo anatómico propio** (hombre y mujer): músculos a la vista bajo una piel envolvente, generado por código | ✅ ver [`docs/MODELO_ANATOMICO.md`](docs/MODELO_ANATOMICO.md) |
 | Gimnasio v2: **navegación** (zoom, desplazamiento, planta, inclinación, teclado), **elegir y abrir** una máquina (tarjeta y acercamiento real de la cámara) y **escenario** con la marca en las cuatro paredes y el suelo, ventanales con exterior y estores, y espejos con reflejo horneado | ✅ fases F1–F3 del acta [`docs/CONSEJO_GIMNASIO_3D.md`](docs/CONSEJO_GIMNASIO_3D.md) |
 
 Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
@@ -38,6 +39,8 @@ npm test             # tests del motor y contrato de cada estación
 npm run e2e          # pruebas de extremo a extremo (escritorio y móvil); requiere `npm run build`
 npm run studio       # Remotion Studio: una composición por estación y variante
 npm run docs         # regenera docs/stations/<estación>.md y la matriz muscular desde el código
+npm run anatomy:build    # regenera los modelos anatómicos (hombre y mujer) desde scripts/anatomy/gen
+npm run anatomy:measure -- M   # perímetros de la piel frente a medias antropométricas
 npm run anatomy:bodymap  # regenera los trazados SVG del mapa muscular desde el modelo anatómico
 npm run env:layout   # planta del gimnasio para el script de Blender que genera las salas
 ```
@@ -55,7 +58,7 @@ En la app, el comando de consola `exportar` imprime el comando exacto con tus aj
 
 ### Consola
 
-Pulsa `:` (o el botón *Consola*). Ejemplos: `ir jalon`, `variante supino-estrecho`, `carga 45`, `error balanceo`, `tempo 3-1-1-1`, `vista lateral`, `girar 45`, `inclinar 15`, `zoom 1.5`, `fase siguiente`, `angulos`, `ajuste`, `momentos`, `altura 182`, `movilidad cadera 110`, `tema terminal`, `ayuda`. En el gimnasio: `vista iso2`, `vista planta`, `vista inicio`, `girar 90`, `zoom 2`.
+Pulsa `:` (o el botón *Consola*). Ejemplos: `ir jalon`, `variante supino-estrecho`, `carga 45`, `error balanceo`, `tempo 3-1-1-1`, `vista lateral`, `girar 45`, `inclinar 15`, `zoom 1.5`, `fase siguiente`, `angulos`, `ajuste`, `momentos`, `cuerpo mujer`, `altura 182`, `movilidad cadera 110`, `tema terminal`, `ayuda`. En el gimnasio: `vista iso2`, `vista planta`, `vista inicio`, `girar 90`, `zoom 2`.
 
 ### Plano del gimnasio
 
@@ -86,13 +89,15 @@ Las salas (la de cada estación y el gimnasio completo) salen de `scripts/enviro
 
 ## Modelo anatómico
 
-El avatar usa músculos, huesos y piel (cabeza, manos y pies) del atlas libre [Z-Anatomy](https://www.z-anatomy.com) (CC BY-SA 4.0), derivado de [BodyParts3D](https://lifesciencedb.jp/bp3d/) © The Database Center for Life Science (CC BY-SA 2.1 Japan). Se probó Sketchfab: su API de descarga exige OAuth y cada modelo tiene su propia licencia, así que se optó por esta fuente libre y reproducible.
+El avatar es un modelo **propio, generado por código** (sin mallas de terceros), de hombre o de mujer según *Tu cuerpo*: músculos a la vista bajo una piel envolvente translúcida (opaca si se ocultan los músculos), con guantes, zapatillas y pelo. Proceso, bases lógicas, calibración y medidas de rendimiento en [`docs/MODELO_ANATOMICO.md`](docs/MODELO_ANATOMICO.md).
 
-- `scripts/anatomy/export_zanatomy.py` (Blender como módulo de Python, `bpy`) selecciona las piezas, las simplifica, calcula los pesos de *skinning* respecto al rig del motor y mide los centros articulares. Genera `src/anatomy/data.generated.ts`, que es obra derivada y se distribuye con la misma licencia **CC BY-SA 4.0**.
+- `scripts/anatomy/gen/` genera cada modelo en unos segundos: esqueleto paramétrico con las proporciones del motor, capa profunda y piel por campos de distancia, 44 músculos por lado como láminas de fibras apiladas por capas, y pesos de *skinning* para el rig del motor. Escribe `src/anatomy/data-m.generated.ts` y `data-f.generated.ts`.
 - `src/anatomy/rig.ts` traduce cada postura del motor (marcos de pelvis, columna y cuello, IK de brazos y piernas, pronosupinación, dedos cerrados sobre el maneral) a una matriz por hueso; huesos auxiliares de medio giro conservan el volumen en las articulaciones.
-- El modelo se carga en un fragmento aparte (~0,8 MB comprimido) y, mientras llega, se ve el maniquí simplificado.
-- El mapa muscular del gimnasio («Filtrar por músculo») es una proyección frontal y dorsal del **mismo modelo**: `scripts/anatomy/bodymap-svg.ts` rasteriza la postura de referencia con prueba de profundidad, traza las fronteras entre regiones (compartidas, sin huecos ni solapes) y genera `src/ui/bodymap.generated.ts` (SVG, también CC BY-SA 4.0).
+- Cada avatar son dos mallas (todo lo opaco y la piel): el color y la contracción de cada músculo salen de tablas de uniformes, sin materiales por pieza. Solo se descarga el modelo del sexo elegido (~360 KB comprimido) y, mientras llega, se ve el maniquí simplificado.
+- El mapa muscular del gimnasio («Filtrar por músculo») es una proyección frontal y dorsal del **mismo modelo**: `scripts/anatomy/bodymap-svg.ts` baja los brazos con el propio *skinning*, rasteriza con prueba de profundidad, traza las fronteras entre regiones (compartidas, sin huecos ni solapes) y genera `src/ui/bodymap.generated.ts`.
 
 ## Dependencias con licencia propia
 
 Remotion es gratuito para particulares y empresas de hasta 3 personas; por encima hace falta licencia de empresa ([licencia de Remotion](https://www.remotion.dev/license)).
+
+El generador del modelo anatómico usa [meshoptimizer](https://github.com/zeux/meshoptimizer) (MIT) para simplificar mallas; es solo una dependencia de desarrollo y no viaja en la app.
