@@ -995,28 +995,118 @@ def build_station():
 # ---------------------------------------------------------------------------------------------
 # Gimnasio
 # ---------------------------------------------------------------------------------------------
+# --- atrezo de suelo del gimnasio (piezas exentas, ejes de la app) -------------------------------
+def floor_poly(part, pts, slot, y=0.002, depth=0.002):
+    """Pintura en el suelo: polígono convexo de puntos (x, z)."""
+    part.prism([(x, -z) for x, z in pts], (0, y, 0), (1, 0, 0), (0, 0, -1), depth, slot)
+
+
+def chevron(part, c, d, size=0.22, w=0.075, slot='line'):
+    """Flecha «>» pintada en el suelo en `c` (x, z) apuntando en la dirección `d` (x, z)."""
+    dx, dz = d
+    px, pz = -dz, dx
+    tip = (c[0] + dx * size * 0.8, c[1] + dz * size * 0.8)
+    for s in (-1, 1):
+        # Un brazo: banda de anchura w entre la punta y una esquina trasera.
+        back = (c[0] - dx * size * 0.8 + s * px * size, c[1] - dz * size * 0.8 + s * pz * size)
+        nx, nz = back[0] - tip[0], back[1] - tip[1]
+        ln = math.hypot(nx, nz)
+        qx, qz = -nz / ln * w / 2, nx / ln * w / 2
+        floor_poly(part, [(tip[0] - qx, tip[1] - qz), (back[0] - qx, back[1] - qz), (back[0] + qx, back[1] + qz), (tip[0] + qx, tip[1] + qz)], slot)
+
+
+def route_marker(part, c, n, R=0.32):
+    """Marca numerada del recorrido: aro pintado y el número del paso."""
+    emblem_ring(part, (c[0], 0.002, c[1]), R, 'line')
+    cap = R * 0.95
+    size = cap / brand_cap()
+    w = text_extent(str(n), font('display'))[0] * size
+    part.text(str(n), (c[0] - w / 2, 0.002, c[1] + cap / 2), (1, 0, 0), size, 'accent', depth=0.002, up=(0, 0, -1), face=font('display'))
+
+
+def emblem_ring(part, center, R, slot, depth=0.002):
+    segs = 32
+    for i in range(segs):
+        a0, a1 = 2 * math.pi * i / segs, 2 * math.pi * (i + 1) / segs
+        floor_poly(part, [(center[0] + math.cos(a) * r, center[2] + math.sin(a) * r) for a, r in ((a0, R), (a1, R), (a1, R * 0.84), (a0, R * 0.84))], slot, depth=depth)
+
+
+def treadmill(part, x, z):
+    """Cinta de correr mirando a +X (a los ventanales)."""
+    part.box((x - 0.95, 0, z - 0.4), (x + 0.75, 0.18, z + 0.4), 'iron')
+    part.box((x - 0.9, 0.18, z - 0.27), (x + 0.7, 0.2, z + 0.27), 'pad')
+    for s in (-1, 1):
+        part.box((x - 0.95, 0.18, z + s * 0.4 - 0.06), (x + 0.75, 0.23, z + s * 0.4 + 0.06), 'metal')
+        part.cyl((x + 0.68, 0.18, z + s * 0.33), (x + 0.86, 1.25, z + s * 0.33), 0.03, 'frame', segs=8)
+        part.cyl((x + 0.84, 1.22, z + s * 0.36), (x + 0.4, 1.02, z + s * 0.36), 0.018, 'metal', segs=6)
+    part.box((x + 0.76, 1.2, z - 0.38), (x + 0.98, 1.45, z + 0.38), 'iron')
+    part.box((x + 0.745, 1.24, z - 0.26), (x + 0.76, 1.41, z + 0.26), 'screen')
+
+
+def bike(part, x, z):
+    """Bicicleta estática mirando a +X."""
+    part.box((x - 0.55, 0, z - 0.25), (x + 0.55, 0.06, z + 0.25), 'iron')
+    part.cyl((x - 0.3, 0.06, z), (x - 0.15, 0.86, z), 0.04, 'frame', segs=8)
+    part.cyl((x + 0.35, 0.06, z), (x + 0.3, 1.05, z), 0.04, 'frame', segs=8)
+    part.cyl((x + 0.2, 0.35, z - 0.05), (x + 0.2, 0.35, z + 0.05), 0.24, 'iron', segs=20)
+    part.box((x - 0.28, 0.86, z - 0.12), (x - 0.02, 0.93, z + 0.12), 'pad')
+    part.cyl((x + 0.3, 1.05, z - 0.25), (x + 0.3, 1.05, z + 0.25), 0.02, 'metal', segs=6)
+    part.box((x + 0.24, 1.07, z - 0.1), (x + 0.36, 1.17, z + 0.1), 'screen')
+
+
+def reception(part, x0, x1, z0, z1):
+    """Mostrador de recepción (de frente al gimnasio, hacia −Z) con el emblema, pantalla y taburete."""
+    part.box((x0, 0, z0), (x1, 1.0, z1), 'frame')
+    part.box((x0 - 0.03, 1.0, z0 - 0.04), (x1 + 0.03, 1.05, z1 + 0.03), 'wood')
+    part.box((x0, 0.12, z0 - 0.012), (x1, 0.18, z0), 'accent')
+    emblem(part, ((x0 + x1) / 2, 0.6, z0 - 0.002), (-1, 0, 0), (0, 1, 0), 0.24, slots=('accent', 'accent', None), depth=0.01)
+    xm = x0 + (x1 - x0) * 0.7
+    part.box((xm - 0.04, 1.05, z1 - 0.25), (xm + 0.04, 1.2, z1 - 0.2), 'iron')
+    part.box((xm - 0.28, 1.2, z1 - 0.25), (xm + 0.28, 1.52, z1 - 0.22), 'screen')
+    part.cyl((xm, 0, z1 + 0.35), (xm, 0.68, z1 + 0.35), 0.03, 'metal', segs=8)
+    part.cyl((xm, 0.68, z1 + 0.35), (xm, 0.73, z1 + 0.35), 0.19, 'pad', segs=16)
+
+
+def stretching(part, x0, z0):
+    """Zona de estiramientos desde (x0, z0): esterillas, cajones, rodillos y kettlebells."""
+    for i in range(3):
+        part.box((x0 + i * 0.75, 0, z0), (x0 + i * 0.75 + 0.6, 0.015, z0 + 1.8), 'accent' if i == 1 else 'pad')
+    bx, bz = x0 + 2.65, z0 + 0.3
+    for v0, h, sz in ((0, 0.6, 0.6), (0.6, 0.4, 0.5)):
+        part.box((bx - sz / 2, v0, bz - sz / 2), (bx + sz / 2, v0 + h, bz + sz / 2), 'wood')
+    for i in range(3):
+        part.cyl((bx - 0.3, 0.075, z0 + 1.0 + i * 0.17), (bx + 0.3, 0.075, z0 + 1.0 + i * 0.17), 0.075, 'accent' if i == 1 else 'pad', segs=14)
+    for i in range(4):
+        k = 0.75 + 0.15 * i
+        c = V(x0 + 0.25 + i * 0.32, 0.1 * k, z0 + 2.1)
+        part.sphere(c, 0.1 * k, 'iron', segs=14, squash=0.95)
+        part.torus(c + UP * (0.105 * k), (0, 0, 1), 0.055 * k, 0.014 * k, 'iron')
+
+
 def build_hub():
     Hb = L['hub']
     hx, hz = Hb['floor'][0] / 2, Hb['floor'][1] / 2
     H = Hb['height']
     room = Room('hub')
 
-    # Suelo: pasillos, suelo de cada zona y su línea pintada, en una sola malla.
+    # Suelo: pasillos, suelo de cada zona, el área de cardio y su línea pintada, en una sola malla.
     INSET, LINE = 0.12, 0.05
-    zones = Hb['zones']
+    zones = dict(Hb['zones'])
+    areas = {a['id']: a for a in Hb['areas']}
+    painted = {**{f'zone_{k}': r for k, r in zones.items()}, 'floor': areas['cardio']}
     xs, zs = {-hx, hx}, {-hz, hz}
-    for r in zones.values():
+    for r in painted.values():
         for s, e in ((1, r['x'] - r['w'] / 2), (-1, r['x'] + r['w'] / 2)):
             xs |= {e + s * INSET, e + s * (INSET + LINE)}
         for s, e in ((1, r['z'] - r['d'] / 2), (-1, r['z'] + r['d'] / 2)):
             zs |= {e + s * INSET, e + s * (INSET + LINE)}
 
     def floor_slot(x, z):
-        for name, r in zones.items():
+        for slot, r in painted.items():
             dx = r['w'] / 2 - abs(x - r['x'])
             dz = r['d'] / 2 - abs(z - r['z'])
             if min(dx, dz) > INSET + LINE:
-                return f'zone_{name}'
+                return slot
             if min(dx, dz) > INSET:
                 return 'line'
         return 'floor'
@@ -1027,20 +1117,50 @@ def build_hub():
     # Cada giro del plano levanta dos paredes (0: xp+zn · 1: xn+zn · 2: xn+zp · 3: xp+zp): todas
     # llevan la marca y las dos laterales, ventanales; así ningún giro se queda sin «postal».
 
-    # Suelo: logotipo pintado en el hueco libre de la zona de empuje y el emblema entre pierna y zona
-    # libre. Es lo único de la marca que se ve con cualquier giro. Se lee desde la cámara del giro 0.
+    # Suelo: logotipo pintado delante de la puerta (se lee desde la cámara del giro 0; es lo único de
+    # la marca que se ve con cualquier giro), las marcas numeradas del recorrido docente y sus flechas.
     paint = room.part('floor_logo', light='vertex')
-    cap = 0.95
+    cap = 0.6
     width = lockup_layout(cap, sub=False)[1]
-    lockup(paint, (-0.9 - width / 2, 0.002, 5.05), (1, 0, 0), (0, 0, -1), cap, slots=('accent', 'line', 'line'), sub=False, depth=0.002)
-    emblem(paint, (6.15, 0.002, 2.3), (1, 0, 0), (0, 0, -1), 0.62, slots=('line', 'accent', None), depth=0.002)
+    lockup(paint, (1.2 - width / 2, 0.002, 4.75), (1, 0, 0), (0, 0, -1), cap, slots=('accent', 'line', 'line'), sub=False, depth=0.002)
     log('hub', f'logotipo del suelo: {width:.2f} × {cap:.2f} m')
+    markers = [tuple(r['marker']) for r in Hb['route']]
+    for i, m in enumerate(markers):
+        route_marker(paint, m, i + 1)
+    path = [tuple(p) for p in Hb['path']]
+    arrows = 0
+    for (ax, az), (bx, bz) in zip(path, path[1:]):
+        ln = math.hypot(bx - ax, bz - az)
+        d = ((bx - ax) / ln, (bz - az) / ln)
+        t = 0.45
+        while t < ln - 0.3:
+            c = (ax + d[0] * t, az + d[1] * t)
+            if all(math.hypot(c[0] - mx, c[1] - mz) > 0.65 for mx, mz in markers):
+                chevron(paint, c, d)
+                arrows += 1
+            t += 1.25
+    log('hub', f'recorrido: {len(markers)} marcas y {arrows} flechas')
+
+    # Áreas sin estación: cardio frente a los ventanales del este, recepción junto a la entrada y
+    # estiramientos en la zona libre.
+    deco = room.part('deco', light='vertex')
+    ca = areas['cardio']
+    z0 = ca['z'] - ca['d'] / 2
+    for k in range(3):
+        treadmill(deco, ca['x'] + ca['w'] / 2 - 1.15, z0 + 0.65 + k * 1.05)
+    for k in range(2):
+        bike(deco, ca['x'] - ca['w'] / 2 + 0.7, z0 + 0.75 + k * 1.15)
+    re = areas['recepcion']
+    reception(deco, re['x'] - 0.85, re['x'] + 0.85, re['z'] - 0.45, re['z'] + 0.15)
+    lz = zones['libre']
+    stretching(deco, lz['x'] - lz['w'] / 2 + 4.15, lz['z'] - lz['d'] / 2 + 0.6)
 
     # zn · pared del fondo: espejos, el logotipo grande encima y ventanas altas a los lados.
     zn_logo = lockup_layout(0.9)[1]
     edge = zn_logo / 2 + 0.5
-    span = (8.9 - edge - 0.4) / 2
-    hi_win = [(s * a, s * b, 2.25, 2.95) for s in (-1, 1) for a, b in ((edge, edge + span), (edge + span + 0.4, 8.9))]
+    outer = hx - 0.35
+    span = (outer - edge - 0.4) / 2
+    hi_win = [(s * a, s * b, 2.25, 2.95) for s in (-1, 1) for a, b in ((edge, edge + span), (edge + span + 0.4, outer))]
     hi_win = [(min(a, b), max(a, b), c, d) for a, b, c, d in hi_win]
     w = build_wall(room, F['zn'], H, hi_win)
     for o in hi_win:
@@ -1050,17 +1170,17 @@ def build_hub():
     for i in range(10):
         u0 = -8.04 + i * 1.62
         mirror(w, u0, u0 + 1.5, 0.4, 1.92, tilt=float(rng.uniform(-0.6, 0.6)))
-    led_strip(w, -9.0, 9.0, 1.99)
+    led_strip(w, -(hx - 0.3), hx - 0.3, 1.99)
     wall_lockup(w, 0.0, 2.15, 0.9)
 
-    # xp · ventanales grandes con estores hacia la zona de pierna y emblema en la esquina.
+    # xp · ventanales grandes con estores (frente a las cintas de correr) y emblema en la esquina.
     win = [(-5.6, -3.0, 0.9, 2.75), (-2.3, 0.3, 0.9, 2.75), (1.0, 3.6, 0.9, 2.75)]
     w = build_wall(room, F['xp'], H, win)
     for o, blind in zip(win, (0.25, 0.4, 0.3)):
         window(w, *o, blind=blind)
         sky_light(w, *o, 300)
     wall_emblem(w, 5.0, 2.2, 0.55)
-    plant(w, -6.0, seed=11)
+    plant(w, -5.9, seed=11)
     plant(w, 5.9, seed=12)
 
     # zp · fachada de entrada: puerta con el logotipo encima, taquillas, fuente y planta.
@@ -1070,8 +1190,8 @@ def build_hub():
     exterior(w, *dw)
     wall_lockup(w, -1.5, 2.42, 0.55)
     lockers(w, 0.6, 4.2)
-    water_fountain(w, -3.3)
-    plant(w, -4.3, seed=13)
+    water_fountain(w, 5.0)
+    plant(w, -5.4, seed=13)
     tv(w, 2.4, 2.05, 1.2)
 
     # xn · tres ventanales (como xp), reloj y emblema pequeño.

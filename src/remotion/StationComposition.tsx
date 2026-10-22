@@ -14,13 +14,14 @@ import { fitCamera, keyLightFor, project } from '../scene/camera';
 import { Lights } from '../scene/Environment';
 import { GymRoom, RoomLighting } from '../scene/GymRoom';
 import { BakedRoom } from '../scene/env/BakedRoom';
+import { LiveMirror, createMirrorLink } from '../scene/env/LiveMirror';
 import { useEnvironment } from '../scene/env/useEnvironment';
 import { Repaint, tuneRenderer } from '../scene/Repaint';
 import { STATION_ROOM } from '../scene/layout';
 import { Gauges } from '../scene/Gauges';
 import { XRay } from '../scene/XRay';
 import { gaugeArcs, type GaugeArc } from '../scene/gauges';
-import { PALETTES } from '../scene/palette';
+import { AMBIENT_LIGHT, PALETTES, withAmbient, withFloorTint } from '../scene/palette';
 import type { StationCompProps } from './props';
 import { activationFor } from './timing';
 import { useStationFrame } from './useStation';
@@ -98,6 +99,8 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
   const { fps, width, height } = useVideoConfig();
   const { mod, seg, variant, timeline, state, result } = useStationFrame(props, frame, fps);
   const palette = PALETTES[props.theme];
+  // La sala: el ambiente elegido y el suelo con el color de la zona de la estación en el gimnasio.
+  const roomPalette = withFloorTint(withAmbient(palette, props.ambient ?? 'dia'), palette.zone[mod.content.zone]);
   const views = mod.content.views;
   const view = views.find((v) => v.id === props.viewId) ?? views[0]!;
   // Encuadre estable para toda la serie: cuerpo en las posturas extremas + puntos de la máquina.
@@ -137,6 +140,8 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
   const b = mod.logic.bounds;
   const floorCenter: [number, number] = [(b.min[0] + b.max[0]) / 2, (b.min[2] + b.max[2]) / 2];
   const machineRef = useRef<Group>(null);
+  const avatarRef = useRef<Group>(null);
+  const mirrorLink = useMemo(createMirrorLink, []);
   const toCamera = cam.position.clone().sub(cam.target).normalize();
   const bd = result.body;
   const xrayPts = [bd.head, bd.c7, bd.c7.clone().lerp(bd.pelvis.origin, 0.5), bd.pelvis.origin];
@@ -194,7 +199,9 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
           return env ? (
             <BakedRoom
               asset={env.rooms.station}
-              palette={palette}
+              palette={roomPalette}
+              light={AMBIENT_LIGHT[props.ambient ?? 'dia']}
+              mirrorLink={props.mirror ? mirrorLink : undefined}
               azimuth={azimuth}
               position={[floorCenter[0], 0, floorCenter[1]]}
               floorSize={[STATION_ROOM.size, STATION_ROOM.size]}
@@ -209,16 +216,19 @@ export const StationComposition: React.FC<StationCompProps> = (props) => {
           <mod.Machine m={result.machine} palette={palette} H={seg.H} />
         </group>
         <XRay target={machineRef} points={xrayPts} toCamera={toCamera} />
-        <Avatar
-          sex={props.anthro.sex}
-          body={result.body}
-          palette={palette}
-          statuses={statuses}
-          muscles={variant.muscles}
-          activation={activationFor(state.kind)}
-          showMuscles={props.showMuscles}
-          pulse={frame * 0.35}
-        />
+        <group ref={avatarRef}>
+          <Avatar
+            sex={props.anthro.sex}
+            body={result.body}
+            palette={palette}
+            statuses={statuses}
+            muscles={variant.muscles}
+            activation={activationFor(state.kind)}
+            showMuscles={props.showMuscles}
+            pulse={frame * 0.35}
+          />
+        </group>
+        {props.mirror && env && <LiveMirror link={mirrorLink} subjects={[machineRef, avatarRef]} />}
         {props.showGauges && <Gauges arcs={arcs} statusOf={arcStatus} colors={palette.status} neutral={neutral} />}
         <Repaint ready={[env, anatomy]} />
       </ThreeCanvas>

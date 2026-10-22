@@ -29,13 +29,18 @@ texturas de terceros):
   ventanales con estores y banco (fondo de la vista lateral), almacén de peso libre con mancuernas,
   discos, kettlebells y TV (fondo de las vistas posteriores) y espaldera, cajones, rodillos, reloj y
   fuente.
-- **hub**: el gimnasio de 19 × 13 m con el suelo de cada zona y su línea pintada. Cada giro del plano
-  levanta dos paredes (0: `xp`+`zn` · 1: `xn`+`zn` · 2: `xn`+`zp` · 3: `xp`+`zp`) y las cuatro llevan
-  la marca, así que ningún giro se queda sin ella: logotipo grande sobre los espejos (`zn`, con
-  ventanas altas a los lados), logotipo sobre la puerta de entrada (`zp`, con taquillas, fuente y
-  TV), y tres ventanales con estores y un emblema en cada pared lateral (`xp`, `xn`, con reloj y
-  plantas). En el suelo, el logotipo pintado (se lee desde la vista de arranque) y el emblema
-  circular, lo único de la marca que se ve con cualquier giro.
+- **hub**: el gimnasio de 17,5 × 12,5 m en tres filas con pasillos de al menos 1,45 m entre
+  máquinas: al fondo, contra los espejos, tracción, brazos y pierna; en medio, empuje; y delante la
+  zona libre (mancuernas y estiramientos), la entrada con la recepción y el cardio (cintas y
+  bicicletas frente a los ventanales del este). La planta sale de `src/scene/layout.ts` (zonas, áreas
+  sin estación, recorrido docente) y de la posición de cada máquina en `src/stations/catalog.ts`.
+  Cada giro del plano levanta dos paredes (0: `xp`+`zn` · 1: `xn`+`zn` · 2: `xn`+`zp` · 3: `xp`+`zp`) y
+  las cuatro llevan la marca, así que ningún giro se queda sin ella: logotipo grande sobre los
+  espejos (`zn`, con ventanas altas a los lados), logotipo sobre la puerta de entrada (`zp`, con
+  taquillas, fuente y TV), y tres ventanales con estores y un emblema en cada pared lateral (`xp`,
+  `xn`, con reloj y plantas). En el suelo, el logotipo pintado delante de la puerta (se lee desde la
+  vista de arranque), las marcas numeradas del **recorrido docente** (1 cardio, 2 empuje, 3 tracción,
+  4 brazos, 5 pierna, 6 zona libre) y las flechas que lo siguen por los pasillos.
   El script comprueba que el atrezo no invade la huella de ninguna máquina.
 
 **Marca.** El logotipo es el de la cabecera de la app: ◢◣ (triángulos de acento) + «MYGYM» en
@@ -111,6 +116,15 @@ entre lo que exporta Blender y lo que espera la app (escenas, paredes, modos de 
   el músculo principal; muy cerca, sin zonas. Teclado sobre el plano: flechas eligen la máquina
   vecina en pantalla, Intro abre, Esc suelta, + − acercan, Q E giran, 0 vuelve al arranque. Consola:
   `vista iso1…iso4|planta|inicio`, `girar 90`, `inclinar 10`, `zoom 2`.
+- **Mini-mapa**: con zoom, arriba a la derecha del plano, una planta esquemática (norte arriba) con
+  las zonas, las máquinas y el trozo que se ve; un clic o un arrastre centran el plano ahí.
+- **Recorrido guiado** («▶ Recorrido guiado» en el índice o `recorrido` en la consola): la cámara visita
+  las seis paradas del recorrido docente (unos 7 s cada una, con pausa, anterior y siguiente; con
+  «reducir movimiento», a mano). Cada parada dice qué se hace ahí y lista sus estaciones para abrirlas.
+  Cualquier cambio de la vista (girar, acercar, arrastrar) lo termina.
+- **Ambiente** (Capas o `ambiente dia|tarde|noche`): la luz horneada es la de día; por la tarde y de
+  noche cambian el cielo de los ventanales y el tono de las tiras LED y la luz de la sala se atenúa.
+  Las máquinas y el avatar no cambian. Se guarda como preferencia y vale también para la estación.
 - **Elegir y abrir una máquina**: un clic (o un toque) la **elige**: anillo de acento, el resto se
   atenúa con una viñeta y aparece una tarjeta con zona, modalidades, músculos principales y
   «Abrir estación». Un segundo clic en la misma máquina, el botón o Intro la **abre**. La zona de clic
@@ -125,6 +139,12 @@ entre lo que exporta Blender y lo que espera la app (escenas, paredes, modos de 
 - **Resolución del plano**: el lienzo se pinta a la densidad de la pantalla (de 1× a 2× de la
   composición, según el tamaño real del plano): nítido en pantallas Retina sin pintar de más en las
   normales.
+- **Sala de cada estación**: el suelo toma el color de la zona de la máquina en el gimnasio (la prensa,
+  el de pierna; el jalón, el de tracción…), así la estación se reconoce como un trozo del gimnasio.
+- **Reflejo vivo** (Capas de la estación, apagado por defecto): máquina y avatar se reflejan en los
+  espejos. Una cámara virtual, reflejo de la de la escena en el plano de las lunas, pinta solo máquina y
+  avatar en una textura a media resolución que las lunas proyectan sobre su reflejo horneado
+  (`src/scene/env/LiveMirror.tsx`). Cuesta otro render de máquina y avatar por fotograma.
 - El enlace de una estación guarda el ángulo (`giro`, `incl`) además de la vista.
 
 ## 5. Carga sin tirones
@@ -138,7 +158,7 @@ dónde se bloquea el hilo principal):
 | Shaders nuevos (sala, modelo anatómico) | three.js espera al driver nada más usar cada programa (`onFirstUse`, `WebGLUniforms`) | Se preparan antes de mostrarlos: texturas a la GPU (una por fotograma) y `compileAsync`, que con `KHR_parallel_shader_compile` (Chrome, Edge, Firefox y Safari con GPU) compila fuera del hilo principal; mientras, se ve lo de antes (maniquí, sala procedural) |
 | Comprobación de errores de shaders | Consultas síncronas al driver por cada programa | Desactivada (`tuneRenderer`): los shaders son los de three.js |
 | Recursos de varios MB | Decodificar base64 en un bucle de JavaScript; evaluación encima de los primeros fotogramas | Decodificación nativa (`Uint8Array.fromBase64` donde existe); la carga empieza con el navegador libre y la sala después del modelo anatómico |
-| Peso de la sala | 2,68 MB con normales y UV que no se usan | `compact_glb.py`: 1,86 MB (−31 %); con la marca, los exteriores y el reflejo de los espejos, 2,13 MB (2,85 MB en base64 dentro de la app, +15 %) |
+| Peso de la sala | 2,68 MB con normales y UV que no se usan | `compact_glb.py`: 1,86 MB (−31 %); con la marca, los exteriores y el reflejo de los espejos, 2,13 MB; con el atrezo de cardio, recepción y estiramientos, 2,43 MB (3,24 MB en base64 dentro de la app) |
 | Esfera envolvente del avatar | three.js la calculaba aplicando los huesos a cada vértice la primera vez | Esfera fija |
 | Ratón sobre el gimnasio | Los eventos probaban todas las mallas de máquinas y avatares | Solo una caja invisible por máquina |
 | Gimnasio animado | 12 máquinas con avatar repintadas a 30 fps | Memoizadas y a 15 fps (la mitad de trabajo de React y de GPU) |

@@ -14,9 +14,9 @@ import { GymRoom, RoomLighting } from '../scene/GymRoom';
 import { BakedRoom } from '../scene/env/BakedRoom';
 import { useEnvironment } from '../scene/env/useEnvironment';
 import { Repaint, tuneRenderer } from '../scene/Repaint';
-import { HUB_FLOOR, HUB_HEIGHT, HUB_ZONES } from '../scene/layout';
+import { HUB_AREAS, HUB_FLOOR, HUB_HEIGHT, HUB_ROUTE, HUB_ZONES } from '../scene/layout';
 import { Mat } from '../scene/kit';
-import { PALETTES, type ThemeId } from '../scene/palette';
+import { AMBIENT_LIGHT, PALETTES, withAmbient, type ThemeId } from '../scene/palette';
 import { Placeholder } from '../scene/Placeholder';
 import { MUSCLES } from '../content/muscles';
 import { CATALOG, ZONE_LABEL, type CatalogEntry, type Zone } from '../stations/catalog';
@@ -27,6 +27,17 @@ import { MONO, SANS } from './StationComposition';
 
 const FLOOR = HUB_FLOOR;
 const ZONES = HUB_ZONES;
+
+/**
+ * Rótulos de suelo: las zonas y las áreas sin estación, numeradas en el orden del recorrido docente
+ * (calentar en el cardio, empuje, tracción, brazos, pierna, estirar en la zona libre).
+ */
+const ROUTE_STEP = new Map<string, number>(HUB_ROUTE.map((r, i) => [r.id, i + 1]));
+const numbered = (id: string, label: string) => (ROUTE_STEP.has(id) ? `${ROUTE_STEP.get(id)} · ${label}` : label);
+const LABEL_REGIONS: { key: string; text: string; rect: { x: number; z: number; w: number; d: number } }[] = [
+  ...(Object.keys(ZONES) as Zone[]).map((z) => ({ key: z, text: numbered(z, ZONE_LABEL[z]), rect: ZONES[z] })),
+  ...HUB_AREAS.map((a) => ({ key: a.id, text: numbered(a.id, a.label), rect: a })),
+];
 
 type Rect = { x0: number; y0: number; x1: number; y1: number };
 /** Distancia entre dos rectángulos de pantalla; negativa si se solapan (cuanto más, más negativa). */
@@ -97,16 +108,16 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
       { x0: lx - lw / 2, x1: lx + lw / 2, y0: ly - (level ? 48 : 30) * unit, y1: ly },
     ];
   });
-  const zoneLabelAt = {} as Record<Zone, [number, number]>;
-  for (const z of showZones ? (Object.keys(ZONES) as Zone[]) : []) {
-    const zr = ZONES[z];
-    const w = ZONE_LABEL[z].length * (0.68 * 15 * unit + 2);
+  const zoneLabelAt: { key: string; text: string; at: [number, number] }[] = [];
+  for (const region of showZones ? LABEL_REGIONS : []) {
+    const zr = region.rect;
+    const w = region.text.length * (0.68 * 15 * unit + 2);
     const h = 18 * unit;
     let best: [number, number] = [0, 0];
     let bestScore = -Infinity;
     for (let i = 0; i <= 4; i++) {
       for (let j = 0; j <= 4; j++) {
-        const [cx, cy] = project(cam, new Vector3(zr.x + (i / 2 - 1) * (zr.w / 2 - 0.5), 0, zr.z + (j / 2 - 1) * (zr.d / 2 - 0.4)));
+        const [cx, cy] = project(cam, new Vector3(zr.x + (i / 2 - 1) * Math.max(0, zr.w / 2 - 0.5), 0, zr.z + (j / 2 - 1) * Math.max(0, zr.d / 2 - 0.4)));
         const r: Rect = { x0: cx - w / 2, x1: cx + w / 2, y0: cy - h / 2, y1: cy + h / 2 };
         const inside = r.x0 > 0 && r.x1 < width && r.y0 > 0 && r.y1 < height;
         const score = (inside ? 0 : -1e6) + Math.min(...occupied.map((o) => rectGap(r, o)));
@@ -116,7 +127,7 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
         }
       }
     }
-    zoneLabelAt[z] = best;
+    zoneLabelAt.push({ key: region.key, text: region.text, at: best });
     occupied.push({ x0: best[0] - w / 2, x1: best[0] + w / 2, y0: best[1] - h / 2, y1: best[1] + h / 2 });
   }
 
@@ -168,7 +179,16 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
             </>
           );
           return env ? (
-            <BakedRoom asset={env.rooms.hub} palette={palette} azimuth={azimuth} floorSize={FLOOR} shadowOpacity={0.24} warm={!envAtMount} fallback={procedural} />
+            <BakedRoom
+              asset={env.rooms.hub}
+              palette={withAmbient(palette, props.ambient ?? 'dia')}
+              light={AMBIENT_LIGHT[props.ambient ?? 'dia']}
+              azimuth={azimuth}
+              floorSize={FLOOR}
+              shadowOpacity={0.24}
+              warm={!envAtMount}
+              fallback={procedural}
+            />
           ) : (
             procedural
           );
@@ -227,31 +247,28 @@ export const HubComposition: React.FC<HubCompProps> = (props) => {
         />
       )}
 
-      {(Object.keys(zoneLabelAt) as Zone[]).map((z) => {
-        const [x, y] = zoneLabelAt[z];
-        return (
-          <div
-            key={z}
-            style={{
-              position: 'absolute',
-              left: x,
-              top: y,
-              color: palette.label,
-              opacity: dim ? 0.4 : 0.75,
-              textShadow: `0 0 ${4 * unit}px ${palette.bg}, 0 0 ${2 * unit}px ${palette.bg}`,
-              translate: '-50% -50%',
-              whiteSpace: 'nowrap',
-              fontSize: 15 * unit,
-              fontWeight: 800,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              pointerEvents: 'none',
-            }}
-          >
-            {ZONE_LABEL[z]}
-          </div>
-        );
-      })}
+      {zoneLabelAt.map(({ key, text, at: [x, y] }) => (
+        <div
+          key={key}
+          style={{
+            position: 'absolute',
+            left: x,
+            top: y,
+            color: palette.label,
+            opacity: dim ? 0.4 : 0.75,
+            textShadow: `0 0 ${4 * unit}px ${palette.bg}, 0 0 ${2 * unit}px ${palette.bg}`,
+            translate: '-50% -50%',
+            whiteSpace: 'nowrap',
+            fontSize: 15 * unit,
+            fontWeight: 800,
+            letterSpacing: 2,
+            textTransform: 'uppercase',
+            pointerEvents: 'none',
+          }}
+        >
+          {text}
+        </div>
+      ))}
 
       {CATALOG.map((entry) => {
         const hovered = props.hovered === entry.id;

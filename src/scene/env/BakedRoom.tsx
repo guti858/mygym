@@ -1,10 +1,11 @@
 import { useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, type ReactNode } from 'react';
 import { useWarmReveal } from '../warm';
-import { BufferAttribute, Color, MeshBasicMaterial, MeshStandardMaterial, type Material, type Mesh, type Object3D } from 'three';
+import { BufferAttribute, Color, Mesh, MeshBasicMaterial, MeshStandardMaterial, Plane, Vector3, type Material, type Object3D } from 'three';
 import { mirrorTexture } from '../GymRoom';
 import type { ScenePalette } from '../palette';
 import type { BakedRoomAsset } from './environment';
+import { mirrorOverlayMaterial, type MirrorLink } from './LiveMirror';
 import { isWallKey, parseMaterialName, slotColor, wallOpacity, type WallKey } from './roomMaterials';
 
 /**
@@ -25,7 +26,7 @@ const MIRROR_RANGE = 2;
 /** Opacidad del vidrio de ventanas y puertas: deja ver el exterior que hay detrás. */
 const GLASS_OPACITY = 0.3;
 
-function roomMaterial(src: MeshStandardMaterial, palette: ScenePalette, range: number, vertexLit: boolean): Material {
+function roomMaterial(src: MeshStandardMaterial, palette: ScenePalette, range: number, vertexLit: boolean, light: number): Material {
   const { slot, mode } = parseMaterialName(src.name);
   const color = new Color(slotColor(palette, slot));
   // Espejo: luna con degradado y, encima, lo que refleja la sala (horneado en Blender; un reflejo en
@@ -34,7 +35,7 @@ function roomMaterial(src: MeshStandardMaterial, palette: ScenePalette, range: n
     const m = new MeshBasicMaterial({ map: mirrorTexture(palette) });
     if (src.emissiveMap) {
       m.lightMap = src.emissiveMap;
-      m.lightMapIntensity = Math.PI * MIRROR_RANGE;
+      m.lightMapIntensity = Math.PI * MIRROR_RANGE * light;
     }
     return m;
   }
@@ -78,22 +79,24 @@ function fitMirrorUv(mesh: Mesh) {
   g.userData.mirrorUv = true;
 }
 
-function instantiate(asset: BakedRoomAsset, palette: ScenePalette) {
+function instantiate(asset: BakedRoomAsset, palette: ScenePalette, light: number) {
   const root = asset.root.clone(true);
   const groups = new Map<WallKey, FadeGroup>();
   const made: Material[] = [];
+  const mirrors: { mesh: Mesh; key: WallKey | null }[] = [];
   root.traverse((o) => {
     const mesh = o as Mesh;
     if (!mesh.isMesh) return;
     const src = mesh.material as MeshStandardMaterial;
     if (parseMaterialName(src.name).slot === 'mirror') fitMirrorUv(mesh);
-    const mat = roomMaterial(src, palette, asset.lightRange, !!mesh.geometry.getAttribute('color'));
+    const mat = roomMaterial(src, palette, asset.lightRange * light, !!mesh.geometry.getAttribute('color'), light);
     mesh.material = mat;
     made.push(mat);
     // La clave de desvanecido está en el nodo de Blender (el padre si la malla tiene varios materiales).
     let n: Object3D | null = mesh;
     while (n && n.userData.fade === undefined) n = n.parent;
     const key: unknown = n?.userData.fade;
+    if (parseMaterialName(src.name).slot === 'mirror') mirrors.push({ mesh, key: isWallKey(key) ? key : null });
     if (isWallKey(key)) {
       const g = groups.get(key) ?? { key, objects: [], materials: [] };
       g.objects.push(mesh);
@@ -101,7 +104,7 @@ function instantiate(asset: BakedRoomAsset, palette: ScenePalette) {
       groups.set(key, g);
     }
   });
-  return { root, groups: [...groups.values()], dispose: () => made.forEach((m) => m.dispose()) };
+  return { root, groups: [...groups.values()], mirrors, dispose: () => made.forEach((m) => m.dispose()) };
 }
 
 export interface BakedRoomProps {
@@ -117,11 +120,15 @@ export interface BakedRoomProps {
   warm?: boolean;
   /** Lo que se ve mientras se prepara (la sala procedural). */
   fallback?: ReactNode;
+  /** Factor de la luz horneada (ambiente: 1 = día). */
+  light?: number;
+  /** Reflejo vivo de máquina y avatar en las lunas (LiveMirror): si se indica, se pinta encima. */
+  mirrorLink?: MirrorLink;
 }
 
-export function BakedRoom({ asset, palette, azimuth, position = [0, 0, 0], floorSize, shadowOpacity = 0.32, warm = false, fallback }: BakedRoomProps) {
+export function BakedRoom({ asset, palette, azimuth, position = [0, 0, 0], floorSize, shadowOpacity = 0.32, warm = false, fallback, light = 1, mirrorLink }: BakedRoomProps) {
   const invalidate = useThree((s) => s.invalidate);
-  const room = useMemo(() => instantiate(asset, palette), [asset, palette]);
+  const room = useMemo(() => instantiate(asset, palette, light), [asset, palette, light]);
   const ready = useWarmReveal(room.root, warm);
   useEffect(() => room.dispose, [room]);
   useLayoutEffect(() => {
@@ -140,9 +147,44 @@ export function BakedRoom({ asset, palette, azimuth, position = [0, 0, 0], floor
         }
         m.opacity = a * base;
       }
+      if (mirrorLink && room.mirrors.some((r) => r.key === g.key)) {
+        mirrorLink.uniforms.fade.value = a;
+        mirrorLink.visible = a > 0.01;
+      }
     }
     invalidate();
-  }, [room, azimuth, invalidate]);
+  }, [room, azimuth, invalidate, mirrorLink]);
+  // Reflejo vivo: una capa encima de cada luna y el plano de las lunas (hacia la sala) para la cámara
+  // reflejada.
+  const [px, , pz] = position;
+  useLayoutEffect(() => {
+    if (!mirrorLink || !room.mirrors.length) return;
+    const mat = mirrorOverlayMaterial(mirrorLink);
+    const overlays = room.mirrors.map(({ mesh }) => {
+      const o = new Mesh(mesh.geometry, mat);
+      o.renderOrder = 1;
+      mesh.add(o);
+      return o;
+    });
+    const first = room.mirrors[0]!.mesh;
+    first.updateWorldMatrix(true, false);
+    const g = first.geometry;
+    g.computeBoundingBox();
+    const center = g.boundingBox!.getCenter(new Vector3()).applyMatrix4(first.matrixWorld);
+    const pos = g.getAttribute('position');
+    const [a, b, c] = [0, 1, 2].map((i) => new Vector3(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(first.matrixWorld));
+    const normal = b!.clone().sub(a!).cross(c!.clone().sub(a!)).normalize();
+    // Hacia el centro de la sala.
+    const roomCenter = new Vector3(px, 1, pz);
+    if (normal.dot(roomCenter.clone().sub(center)) < 0) normal.negate();
+    mirrorLink.plane = new Plane().setFromNormalAndCoplanarPoint(normal, center);
+    invalidate();
+    return () => {
+      for (const o of overlays) o.removeFromParent();
+      mat.dispose();
+      mirrorLink.plane = null;
+    };
+  }, [room, mirrorLink, px, pz, invalidate]);
   return (
     <>
       {!ready && fallback}

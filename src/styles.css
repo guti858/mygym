@@ -792,6 +792,38 @@ input[type='range'] {
   font-weight: 600;
   font-size: 13.5px;
 }
+/* Recorrido guiado: arriba a la izquierda del plano. */
+.hub-tour {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: min(300px, calc(100% - 20px));
+  padding: 10px 12px;
+  pointer-events: auto;
+  animation: card-in var(--dur-2) var(--ease-out);
+}
+.hub-tour__stations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+/* Mini-mapa: arriba a la derecha del plano, solo con zoom. */
+.hub-minimap {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 190px;
+  height: auto;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  box-shadow: 0 8px 24px -14px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
 .hud__field {
   display: flex;
   align-items: center;
