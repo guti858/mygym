@@ -272,3 +272,43 @@ Cada fase se verifica con `npm test`, `npm run e2e` (incluido el cero-scroll) y 
 3. ¿La **sala de cada estación** hereda la decoración de su zona (Z5) en esta ronda, o se mantiene genérica hasta después de F2?
 4. ¿Se acepta subir el techo de peso del entorno de ~2,5 MB a ~3,5 MB?
 5. ¿El logotipo se mantiene con *Big Shoulders Display* (la de la cabecera) o se quiere otra tipografía?
+
+---
+
+## 8. Implementación de F1, F2 y F3 y valoración global
+
+Las tres fases se desarrollaron a la vez: el horneado de Blender (F3, ~14 min de CPU en el contenedor)
+corría en segundo plano mientras se programaban F1 y F2. Después se revisaron juntas y se fusionaron
+con la rama por defecto.
+
+### 8.1 Qué se ha hecho
+
+| Fase | Decisiones | Implementación |
+|---|---|---|
+| **F1 · Navegación** | M1–M5, M11, M12, LOD de rótulos, Z7 | `src/scene/hubCamera.ts` (cámara pura: zoom bajo el puntero, desplazamiento limitado al suelo, encuadre de una máquina, vecino con flechas, nivel de rótulos) · `src/ui/HubViewBar.tsx` (Iso 1–4 · Planta · ↺ ↻ · ⤒ ⤓ · − + · ⌂ · Capas · ⛶) · gestos en `src/app/HubView.tsx` (arrastre que gira o, con zoom, desplaza; Ctrl/⌘ + rueda; pellizco) · teclado (flechas, Intro, Esc, + −, Q E, 0) · consola (`vista iso1…iso4|planta|inicio`, `girar 90`, `inclinar`, `zoom`) · zona de clic con la caja de cada máquina (`src/stations/hubPlacement.ts`) |
+| **F2 · Acercamiento** | Z1, Z2, Z3, Z4, Z6, Z8, dpr dinámico | Clic = elegir (anillo, viñeta, tarjeta con zona, modalidades y músculos, «Abrir estación»); segundo clic, botón o Intro = abrir. La cámara del plano vuela a la máquina con los márgenes de la estación y el plano, ya nítido, se funde (220 ms) con la estación (`crossfadeFrom`; la copia ampliada queda como respaldo). Al volver, el plano se aleja hasta la vista anterior y destaca la máquina 1,5 s. Con «reducir movimiento», todo directo. El lienzo se pinta a la densidad de la pantalla (1×–2×). |
+| **F3 · Escenario v2** | L1–L4, V1–V4, E1–E2, H6 | `scripts/environment/build_rooms.py`: logotipo de la cabecera (◢◣ MYGYM guion articular) en relieve con *Big Shoulders Display* e *IBM Plex Mono* (OFL, `scripts/environment/fonts/`): 0,9 m sobre los espejos, sobre la puerta, en el suelo y en la sala de estación (0,7 m); emblema circular en las paredes laterales y en el suelo. Tres ventanales con estores en cada pared lateral, exterior (cielo, edificios, árboles) tras cada hueco y vidrio translúcido. Espejos con reflejo horneado (Cycles, vista de frente), lunas con leve giro y marco de acero. Opción `--gpu` (Metal en el M3). |
+
+Lo que queda fuera de estas fases (F4–F5 del acta): reparto y compactación de áreas, áreas
+decorativas de cardio y recepción, recorrido guiado, mini-mapa, ambiente día/noche, sala de estación
+por zona y reflejo vivo del avatar. Tampoco va el enlace compartible del plano (M9).
+
+### 8.2 Valoración global: cómo encajan las tres fases
+
+| Cruce | Riesgo | Cómo queda |
+|---|---|---|
+| F1 × F2 | Un arrastre (giro o desplazamiento) acaba en clic y elige o abre una máquina sin querer | El clic que cierra un arrastre se descarta (umbral de 6 px), igual que antes con el giro. Dos dedos nunca cuentan como clic. La tarjeta y la barra no inician arrastres |
+| F1 × F2 | El vuelo a la máquina pisa el zoom y el desplazamiento del usuario | El vuelo es una vista aparte: al volver, la cámara regresa a la vista que había (giro, inclinación, zoom y desplazamiento intactos) |
+| F1 × F2 | Teclado del plano frente a teclado global (`:` abre la consola) y foco en la tarjeta | El plano solo atiende teclas cuando el foco está en él (no en sus botones) y sin modificadores; `:` sigue abriendo la consola |
+| F2 × F3 | La copia para el fundido necesita el búfer del lienzo | `preserveDrawingBuffer` se mantiene; la copia tiene la resolución real del lienzo (también con `dpr` > 1) |
+| F2 × F3 | Vidrio translúcido y desvanecido de paredes | El desvanecido multiplica la opacidad propia del vidrio (no la sustituye) |
+| F1 × F3 | Con la cámara alta (60°) o en planta, el exterior podría asomar por encima de las paredes | El exterior va pegado a la cara exterior del muro y no sube por encima del hueco: con 60° queda justo al borde y en planta se ve de canto |
+| F1 × F3 | Planta: paredes y marca | Las paredes se desvanecen con el azimut como siempre; desde arriba se ven de canto y el logotipo del suelo queda a la vista |
+| Todas × vídeo | El vídeo del gimnasio (Remotion) cambia sin querer | Las props nuevas son opcionales: sin ellas, la composición encuadra igual que antes. Lo único que cambia en el vídeo es la sala (F3), a propósito |
+| Todas × single-view | La barra o la tarjeta provocan desplazamiento | Barra y tarjeta van dentro del plano; en la app el encuadre reserva abajo la franja de la barra (10 %), como la estación |
+| Todas × peso | El entorno crece | glTF de 1,86 a 2,13 MB (base64 en la app: de 2,48 a 2,85 MB, +0,37 MB): dentro del techo de 3,5 MB y de los +0,8 MB previstos |
+| Todas × rendimiento | Más trabajo por fotograma | El plano solo se repinta mientras la cámara se mueve (como el giro de antes); las máquinas siguen a 15 fps. Rótulos de la marca con curvas simplificadas (de ~230 KB a ~70 KB cada uno) |
+
+### 8.3 Verificación
+
+VERIFICACION_RESULTADOS

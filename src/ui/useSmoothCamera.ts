@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { HubView } from '../scene/hubCamera';
 
 export interface CameraAngles {
   azimuth: number;
@@ -47,5 +48,51 @@ export function useSmoothCamera(target: CameraAngles, instant: boolean, jumpKey 
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [azimuth, elevation, instant, jumpKey]);
+  return cur;
+}
+
+/**
+ * Lo mismo para el plano del gimnasio, que además se acerca y se desplaza: giro por el camino más
+ * corto, zoom en escala logarítmica (acercarse de 1× a 2× dura lo mismo que de 2× a 4×) y
+ * desplazamiento lineal.
+ */
+export function useSmoothHubView(target: HubView, instant: boolean): HubView {
+  const [cur, setCur] = useState(target);
+  const ref = useRef(target);
+  const { azimuth, elevation, zoom, panX, panZ } = target;
+  useEffect(() => {
+    if (instant) {
+      ref.current = { azimuth, elevation, zoom, panX, panZ };
+      setCur(ref.current);
+      return;
+    }
+    let raf = 0;
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const c = ref.current;
+      const d = {
+        azimuth: angleDelta(c.azimuth, azimuth),
+        elevation: elevation - c.elevation,
+        zoom: Math.log(zoom / c.zoom),
+        panX: panX - c.panX,
+        panZ: panZ - c.panZ,
+      };
+      const done = Math.abs(d.azimuth) < 0.05 && Math.abs(d.elevation) < 0.05 && Math.abs(d.zoom) < 0.002 && Math.abs(d.panX) < 0.005 && Math.abs(d.panZ) < 0.005;
+      const k = done ? 1 : 1 - Math.exp(-dt / CAMERA_TAU);
+      ref.current = {
+        azimuth: c.azimuth + d.azimuth * k,
+        elevation: c.elevation + d.elevation * k,
+        zoom: c.zoom * Math.exp(d.zoom * k),
+        panX: c.panX + d.panX * k,
+        panZ: c.panZ + d.panZ * k,
+      };
+      setCur(ref.current);
+      if (!done) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [azimuth, elevation, zoom, panX, panZ, instant]);
   return cur;
 }

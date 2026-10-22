@@ -20,12 +20,31 @@ interface FadeGroup {
   materials: Material[];
 }
 
+/** El reflejo horneado de los espejos guarda la mediana en 0,5 (build_rooms.py: bake_reflections). */
+const MIRROR_RANGE = 2;
+/** Opacidad del vidrio de ventanas y puertas: deja ver el exterior que hay detrás. */
+const GLASS_OPACITY = 0.3;
+
 function roomMaterial(src: MeshStandardMaterial, palette: ScenePalette, range: number, vertexLit: boolean): Material {
   const { slot, mode } = parseMaterialName(src.name);
   const color = new Color(slotColor(palette, slot));
-  // Espejo: luna con degradado y reflejos (un reflejo real costaría otro render de la escena).
-  if (slot === 'mirror') return new MeshBasicMaterial({ map: mirrorTexture(palette) });
-  // Vidrio (cielo) y tiras LED: luz propia, sin tono de cámara en el LED para que brille.
+  // Espejo: luna con degradado y, encima, lo que refleja la sala (horneado en Blender; un reflejo en
+  // tiempo real costaría otro render de la escena).
+  if (slot === 'mirror') {
+    const m = new MeshBasicMaterial({ map: mirrorTexture(palette) });
+    if (src.emissiveMap) {
+      m.lightMap = src.emissiveMap;
+      m.lightMapIntensity = Math.PI * MIRROR_RANGE;
+    }
+    return m;
+  }
+  // Vidrio: translúcido y algo más claro que el exterior (brillo del cristal).
+  if (slot === 'window' && mode === 'none') {
+    const m = new MeshBasicMaterial({ color: color.lerp(new Color('#ffffff'), 0.35), transparent: true, opacity: GLASS_OPACITY, depthWrite: false });
+    m.userData.baseOpacity = GLASS_OPACITY;
+    return m;
+  }
+  // Vidrio macizo (atrezo) y tiras LED: luz propia, sin tono de cámara en el LED para que brille.
   if (slot === 'window' || slot === 'led') return new MeshBasicMaterial({ color, toneMapped: slot !== 'led' });
   const m = new MeshBasicMaterial({ color, map: src.map, side: src.side });
   if (m.map) m.map.anisotropy = 8;
@@ -111,12 +130,15 @@ export function BakedRoom({ asset, palette, azimuth, position = [0, 0, 0], floor
       const fading = a < 0.999;
       for (const o of g.objects) o.visible = a > 0.01;
       for (const m of g.materials) {
-        if (m.transparent !== fading) {
-          m.transparent = fading;
-          m.depthWrite = !fading;
+        // El vidrio ya es translúcido: el desvanecido multiplica su opacidad propia.
+        const base = (m.userData.baseOpacity as number | undefined) ?? 1;
+        const transparent = fading || base < 1;
+        if (m.transparent !== transparent) {
+          m.transparent = transparent;
+          m.depthWrite = !transparent;
           m.needsUpdate = true;
         }
-        m.opacity = a;
+        m.opacity = a * base;
       }
     }
     invalidate();

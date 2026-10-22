@@ -17,6 +17,7 @@ Gimnasio isométrico en el navegador donde cada máquina es una **estación** co
 | F4c–d · **Abductores / aductores** y **rack de mancuernas** (7 ejercicios) | ✅ pendiente de tu validación |
 | Sala realista generada con **Blender** (luz horneada con Cycles) y cámara en órbita por estación | ✅ ver [`docs/ENTORNO_3D.md`](docs/ENTORNO_3D.md) |
 | Interfaz **single-view**: cada vista cabe en la pantalla sin desplazarse (Técnica = guion + errores + articulaciones; vista dentro de la escena) | ✅ acta del consejo en [`docs/UX_CONSEJO.md`](docs/UX_CONSEJO.md) |
+| Gimnasio v2: **navegación** (zoom, desplazamiento, planta, inclinación, teclado), **elegir y abrir** una máquina (tarjeta y acercamiento real de la cámara) y **escenario** con la marca en las cuatro paredes y el suelo, ventanales con exterior y estores, y espejos con reflejo horneado | ✅ fases F1–F3 del acta [`docs/CONSEJO_GIMNASIO_3D.md`](docs/CONSEJO_GIMNASIO_3D.md) |
 
 Plan completo: [`docs/PLAN.md`](docs/PLAN.md).
 
@@ -54,7 +55,11 @@ En la app, el comando de consola `exportar` imprime el comando exacto con tus aj
 
 ### Consola
 
-Pulsa `:` (o el botón *Consola*). Ejemplos: `ir jalon`, `variante supino-estrecho`, `carga 45`, `error balanceo`, `tempo 3-1-1-1`, `vista lateral`, `girar 45`, `inclinar 15`, `fase siguiente`, `angulos`, `ajuste`, `momentos`, `altura 182`, `movilidad cadera 110`, `tema terminal`, `ayuda`.
+Pulsa `:` (o el botón *Consola*). Ejemplos: `ir jalon`, `variante supino-estrecho`, `carga 45`, `error balanceo`, `tempo 3-1-1-1`, `vista lateral`, `girar 45`, `inclinar 15`, `zoom 1.5`, `fase siguiente`, `angulos`, `ajuste`, `momentos`, `altura 182`, `movilidad cadera 110`, `tema terminal`, `ayuda`. En el gimnasio: `vista iso2`, `vista planta`, `vista inicio`, `girar 90`, `zoom 2`.
+
+### Plano del gimnasio
+
+Un clic en una máquina la elige (tarjeta con sus modalidades y músculos); otro clic, *Abrir estación* o Intro la abren con un acercamiento de la cámara. Barra de vista: cuatro isométricas y planta, giro, inclinación, zoom (también Ctrl/⌘ + rueda y pellizco), vista de arranque, capas y pantalla completa. Con zoom, el arrastre desplaza el plano. Teclado sobre el plano: flechas (máquina vecina), Intro, Esc, + −, Q E (girar) y 0 (arranque).
 
 ## Arquitectura
 
@@ -77,7 +82,7 @@ src/
 
 ## Sala del gimnasio (Blender)
 
-Las salas (la de cada estación y el gimnasio completo) salen de `scripts/environment/build_rooms.py`, que usa Blender como módulo de Python (`bpy`): geometría procedural, texturas de detalle sin costuras y luz horneada con Cycles (luminarias, sol y cielo por los ventanales, con rebotes). La app tiñe cada material con el tema activo y desvanece las paredes que tapan la máquina. Evaluación del entorno, proceso y regeneración en [`docs/ENTORNO_3D.md`](docs/ENTORNO_3D.md).
+Las salas (la de cada estación y el gimnasio completo) salen de `scripts/environment/build_rooms.py`, que usa Blender como módulo de Python (`bpy`): geometría procedural, texturas de detalle sin costuras y luz horneada con Cycles (luminarias, sol y cielo por los ventanales, con rebotes) y el reflejo de los espejos horneado. La marca («◢◣ MYGYM guion articular») va en relieve con las tipografías de la app (`scripts/environment/fonts/`, licencia OFL). La app tiñe cada material con el tema activo y desvanece las paredes que tapan la máquina. Con GPU en local (p. ej. un Mac con Apple Silicon), `--gpu` hornea con Cycles por Metal. Evaluación del entorno, proceso y regeneración en [`docs/ENTORNO_3D.md`](docs/ENTORNO_3D.md).
 
 ## Modelo anatómico
 

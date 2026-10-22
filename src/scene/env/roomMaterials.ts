@@ -53,6 +53,10 @@ export function slotColor(p: ScenePalette, slot: string): string {
     window: p.room.window,
     screen: p.room.screen,
     iron: p.room.iron,
+    // Logotipo: el color del texto de la interfaz (como «MYGYM» en la cabecera).
+    sign: p.label,
+    // Lo que se ve por los ventanales: la textura pone cielo, edificios y árboles; el tema, el tono.
+    exterior: p.room.window,
   };
   return map[slot] ?? p.room.wall;
 }

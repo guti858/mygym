@@ -67,7 +67,7 @@ describe('contrato con el glTF generado por Blender (scripts/environment/build_r
     }
   });
   it('todas las ranuras tienen color en todos los temas', () => {
-    const known = new Set(Object.keys({ ...PALETTES.claro.room, wallLow: 1, skirt: 1, accent: 1, frame: 1, metal: 1, pad: 1, floor: 1 }));
+    const known = new Set(Object.keys({ ...PALETTES.claro.room, wallLow: 1, skirt: 1, accent: 1, frame: 1, metal: 1, pad: 1, floor: 1, sign: 1, exterior: 1 }));
     for (const m of J.materials) {
       const { slot } = parseMaterialName(m.name);
       expect(known.has(slot) || slot.startsWith('zone_') || slot.startsWith('plate'), slot).toBe(true);
@@ -96,5 +96,39 @@ describe('contrato con el glTF generado por Blender (scripts/environment/build_r
       const keys = new Set(J.nodes.filter((n) => n.name.startsWith(`${room}/wall_`)).map((n) => n.extras?.fade));
       expect([...keys].sort()).toEqual(['xn', 'xp', 'zn', 'zp']);
     }
+  });
+  it('los espejos traen su reflejo horneado en UV 1', () => {
+    const mirrors = J.nodes.filter((n) => n.name.includes('/mirror_') && n.mesh !== undefined);
+    expect(mirrors.length).toBeGreaterThanOrEqual(13);
+    for (const n of mirrors) {
+      for (const p of J.meshes[n.mesh!]!.primitives) {
+        expect(J.materials[p.material]!.emissiveTexture?.texCoord, n.name).toBe(1);
+        expect(p.attributes.TEXCOORD_1, n.name).toBeDefined();
+      }
+    }
+  });
+  it('cada ventana tiene exterior detrás (desvanecido con su pared)', () => {
+    for (const room of ['station', 'hub']) {
+      const glass = J.nodes.filter((n) => n.name.startsWith(`${room}/glass_`));
+      const outside = J.nodes.filter((n) => n.name.startsWith(`${room}/exterior_`));
+      expect(outside.length, room).toBeGreaterThanOrEqual(glass.length);
+      for (const n of outside) expect(isWallKey(n.extras?.fade), n.name).toBe(true);
+    }
+  });
+  it('la marca se ve con cualquier giro del plano: logotipo en el suelo y en una pared de cada giro', () => {
+    expect(J.nodes.some((n) => n.name === 'hub/floor_logo' && n.extras?.fade === '')).toBe(true);
+    const branded = new Set(J.nodes.filter((n) => /^hub\/(sign|emblem)_/.test(n.name)).map((n) => n.extras?.fade));
+    // Giro k (azimut −45° + 90°·k): las dos paredes del fondo.
+    const back: WallKey[][] = [
+      ['xp', 'zn'],
+      ['xn', 'zn'],
+      ['xn', 'zp'],
+      ['xp', 'zp'],
+    ];
+    back.forEach((walls, k) => {
+      expect((['xp', 'xn', 'zp', 'zn'] as WallKey[]).filter((w) => wallOpacity(w, -45 + 90 * k) > 0.99).sort()).toEqual([...walls].sort());
+      expect(walls.some((w) => branded.has(w)), `giro ${k}`).toBe(true);
+    });
+    expect([...branded].sort()).toEqual(['xn', 'xp', 'zn', 'zp']);
   });
 });
